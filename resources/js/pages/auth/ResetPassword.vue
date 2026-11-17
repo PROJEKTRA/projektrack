@@ -11,13 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { t } from '@/i18n/strings';
 import { update } from '@/routes/password';
 
 defineOptions({
-    layout: {
-        title: 'Reset password',
-        description: 'Please enter your new password below',
-    },
+    layout: () => ({
+        title: t('core:auth.reset_password.title'),
+        description: t('core:auth.reset_password.description'),
+    }),
 });
 
 const props = defineProps<{
@@ -30,7 +31,7 @@ const inputEmail = ref(props.email);
 </script>
 
 <template>
-    <Head title="Reset password" />
+    <Head :title="$t('core:auth.reset_password.title')" />
 
     <Form
         v-slot="{ errors, processing }"
@@ -40,7 +41,9 @@ const inputEmail = ref(props.email);
     >
         <div class="grid gap-6">
             <div class="grid gap-2">
-                <Label for="email">Email</Label>
+                <Label for="email">{{
+                    $t('core:auth.reset_password.email_label')
+                }}</Label>
                 <Input
                     id="email"
                     v-model="inputEmail"
@@ -54,27 +57,37 @@ const inputEmail = ref(props.email);
             </div>
 
             <div class="grid gap-2">
-                <Label for="password">Password</Label>
+                <Label for="password">{{
+                    $t('core:auth.reset_password.password_label')
+                }}</Label>
                 <PasswordInput
                     id="password"
                     name="password"
                     autocomplete="new-password"
                     class="mt-1 block w-full"
                     autofocus
-                    placeholder="Password"
+                    :placeholder="
+                        $t('core:auth.reset_password.password_placeholder')
+                    "
                     :passwordrules="passwordRules"
                 />
                 <InputError :message="errors.password" />
             </div>
 
             <div class="grid gap-2">
-                <Label for="password_confirmation"> Confirm password </Label>
+                <Label for="password_confirmation">{{
+                    $t('core:auth.reset_password.password_confirmation_label')
+                }}</Label>
                 <PasswordInput
                     id="password_confirmation"
                     name="password_confirmation"
                     autocomplete="new-password"
                     class="mt-1 block w-full"
-                    placeholder="Confirm password"
+                    :placeholder="
+                        $t(
+                            'core:auth.reset_password.password_confirmation_placeholder',
+                        )
+                    "
                     :passwordrules="passwordRules"
                 />
                 <InputError :message="errors.password_confirmation" />
@@ -87,7 +100,7 @@ const inputEmail = ref(props.email);
                 data-test="reset-password-button"
             >
                 <Spinner v-if="processing" />
-                Reset password
+                {{ $t('core:auth.reset_password.submit') }}
             </Button>
         </div>
     </Form>

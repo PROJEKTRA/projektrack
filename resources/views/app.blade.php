@@ -3,9 +3,15 @@
     SPDX-License-Identifier: AGPL-3.0-only
 --}}
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
+@php($strings = $page['props']['strings'] ?? null)
+<html lang="{{ $strings['locale'] ?? str_replace('_', '-', app()->getLocale()) }}" dir="{{ $strings['dir'] ?? 'ltr' }}" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
     <head>
         <meta charset="utf-8">
+        @if ($strings)
+            {{-- String bundle of the user's language chain (S-0916), fetched in parallel with the scripts --}}
+            <meta name="strings-bundle" content="{{ $strings['url'] }}" data-version="{{ $strings['version'] }}" data-locale="{{ $strings['locale'] }}" data-dir="{{ $strings['dir'] }}">
+            <link rel="preload" href="{{ $strings['url'] }}" as="fetch" crossorigin="anonymous">
+        @endif
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
         <meta name="referrer" content="no-referrer">

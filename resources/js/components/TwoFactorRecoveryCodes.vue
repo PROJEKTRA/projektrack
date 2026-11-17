@@ -46,11 +46,12 @@ onMounted(async () => {
     <Card class="w-full">
         <CardHeader>
             <CardTitle class="flex gap-3">
-                <LockKeyhole class="size-4" />2FA recovery codes
+                <LockKeyhole class="size-4" />{{
+                    $t('core:settings.security.recovery_codes.title')
+                }}
             </CardTitle>
             <CardDescription>
-                Recovery codes let you regain access if you lose your 2FA
-                device. Store them in a secure password manager.
+                {{ $t('core:settings.security.recovery_codes.description') }}
             </CardDescription>
         </CardHeader>
         <CardContent class="space-y-3">
@@ -96,7 +97,8 @@ onMounted(async () => {
                     type="submit"
                     :disabled="processing"
                 >
-                    <RefreshCw /> Regenerate codes
+                    <RefreshCw />
+                    {{ $t('core:settings.security.recovery_codes.regenerate') }}
                 </Button>
             </Form>
         </CardContent>

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import type { Directive } from 'vue';
+import type { StringsMeta, t } from '@/i18n/strings';
 import type { Auth } from '@/types/auth';
 
 // Extend ImportMeta interface for Vite...
@@ -26,6 +27,8 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             /** Set when the audit log failed its integrity check (core.audit.view only). */
             auditWarning: string | null;
+            /** Current string bundle (S-0916). */
+            strings: StringsMeta;
             [key: string]: unknown;
         };
     }
@@ -40,5 +43,7 @@ declare module 'vue' {
         $inertia: typeof Router;
         $page: Page;
         $headManager: ReturnType<typeof createHeadManager>;
+        /** Resolve a string identifier such as `core:save` (S-0916). */
+        $t: typeof t;
     }
 }

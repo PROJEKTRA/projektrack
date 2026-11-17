@@ -9,11 +9,13 @@ use App\Providers\AppServiceProvider;
 use App\Providers\AuditServiceProvider;
 use App\Providers\AuthorizationServiceProvider;
 use App\Providers\FortifyServiceProvider;
+use App\Providers\I18nServiceProvider;
 use App\Providers\ModuleServiceProvider;
 use App\Providers\TenancyServiceProvider;
 
 return [
     TenancyServiceProvider::class,
+    I18nServiceProvider::class,
     AuthorizationServiceProvider::class,
     AuditServiceProvider::class,
     AppServiceProvider::class,

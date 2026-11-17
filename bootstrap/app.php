@@ -13,6 +13,7 @@ use App\Http\Middleware\RequireModule;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\RouteAccess;
+use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\SetSecurityHeaders;
 use App\Tenancy\CrossTenantWrite;
 use App\Tenancy\TenantContext;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->web(append: [
+            SetLocale::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

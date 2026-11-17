@@ -7,6 +7,8 @@
 
 use App\Audit\ChainVerifier;
 use App\Authorization\PermissionCatalog;
+use App\I18n\Locales;
+use App\I18n\StringCatalog;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
@@ -37,6 +39,17 @@ Artisan::command('projektrack:audit:verify {--tenant= : Verify only this tenant 
 
     return $failures === 0 ? 0 : 1;
 })->purpose('Recompute the audit hash chains and report the first broken entry');
+
+Artisan::command('projektrack:strings:cache', function (StringCatalog $catalog, Locales $locales) {
+    foreach ($catalog->compile($locales->available()) as $locale => $count) {
+        $this->line("{$locale}: {$count} strings compiled.");
+    }
+})->purpose('Compile the shipped strings of every locale for fast loading');
+
+Artisan::command('projektrack:strings:clear', function (StringCatalog $catalog) {
+    $catalog->clear();
+    $this->info('Compiled strings removed.');
+})->purpose('Remove the compiled strings; they are read from the language files again');
 
 // Security baseline 8.2: weekly verification; failures are logged as critical.
 Schedule::command('projektrack:audit:verify')->weekly()->sundays()->at('03:00');

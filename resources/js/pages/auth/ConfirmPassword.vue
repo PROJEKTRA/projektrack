@@ -9,19 +9,19 @@ import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { t } from '@/i18n/strings';
 import { store } from '@/routes/password/confirm';
 
 defineOptions({
-    layout: {
-        title: 'Confirm password',
-        description:
-            'This is a secure area of the application. Please confirm your password before continuing.',
-    },
+    layout: () => ({
+        title: t('core:auth.confirm_password.title'),
+        description: t('core:auth.confirm_password.description'),
+    }),
 });
 </script>
 
 <template>
-    <Head title="Confirm password" />
+    <Head :title="$t('core:auth.confirm_password.title')" />
 
     <Form
         v-slot="{ errors, processing }"
@@ -30,7 +30,9 @@ defineOptions({
     >
         <div class="space-y-6">
             <div class="grid gap-2">
-                <Label html-for="password">Password</Label>
+                <Label html-for="password">{{
+                    $t('core:auth.confirm_password.password_label')
+                }}</Label>
                 <PasswordInput
                     id="password"
                     name="password"
@@ -50,7 +52,7 @@ defineOptions({
                     data-test="confirm-password-button"
                 >
                     <Spinner v-if="processing" />
-                    Confirm password
+                    {{ $t('core:auth.confirm_password.submit') }}
                 </Button>
             </div>
         </div>

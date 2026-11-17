@@ -6,30 +6,31 @@
 import { Head } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import Heading from '@/components/Heading.vue';
+import { t } from '@/i18n/strings';
 import { edit } from '@/routes/appearance';
 
 defineOptions({
-    layout: {
+    layout: () => ({
         breadcrumbs: [
             {
-                title: 'Appearance settings',
+                title: t('core:settings.appearance.title'),
                 href: edit(),
             },
         ],
-    },
+    }),
 });
 </script>
 
 <template>
-    <Head title="Appearance settings" />
+    <Head :title="$t('core:settings.appearance.title')" />
 
-    <h1 class="sr-only">Appearance settings</h1>
+    <h1 class="sr-only">{{ $t('core:settings.appearance.title') }}</h1>
 
     <div class="space-y-6">
         <Heading
             variant="small"
-            title="Appearance settings"
-            description="Update the appearance settings for your account"
+            :title="$t('core:settings.appearance.title')"
+            :description="$t('core:settings.appearance.description')"
         />
         <AppearanceTabs />
     </div>

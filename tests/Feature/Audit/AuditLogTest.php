@@ -196,7 +196,7 @@ describe('hash chain', function () {
         $employee = User::factory()->create();
 
         $this->actingAs($admin)->get('/dashboard')
-            ->assertInertia(fn ($page) => $page->where('auditWarning', __('audit.integrity_warning', ['seq' => 2])));
+            ->assertInertia(fn ($page) => $page->where('auditWarning', __('core:audit.integrity_warning', ['seq' => 2])));
         $this->actingAs($employee)->get('/dashboard')
             ->assertInertia(fn ($page) => $page->where('auditWarning', null));
     });

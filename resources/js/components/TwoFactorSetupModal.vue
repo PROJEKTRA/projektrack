@@ -25,6 +25,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { useAppearance } from '@/composables/useAppearance';
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
+import { t } from '@/i18n/strings';
 import { confirm } from '@/routes/two-factor';
 import type { TwoFactorConfigContent } from '@/types';
 
@@ -50,26 +51,30 @@ const pinInputContainerRef = useTemplateRef('pinInputContainerRef');
 const modalConfig = computed<TwoFactorConfigContent>(() => {
     if (props.twoFactorEnabled) {
         return {
-            title: 'Two-factor authentication enabled',
-            description:
-                'Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.',
-            buttonText: 'Close',
+            title: t('core:settings.security.two_factor.setup.enabled_title'),
+            description: t(
+                'core:settings.security.two_factor.setup.enabled_description',
+            ),
+            buttonText: t('core:common.close'),
         };
     }
 
     if (showVerificationStep.value) {
         return {
-            title: 'Verify authentication code',
-            description: 'Enter the 6-digit code from your authenticator app',
-            buttonText: 'Continue',
+            title: t('core:settings.security.two_factor.setup.verify_title'),
+            description: t(
+                'core:settings.security.two_factor.setup.verify_description',
+            ),
+            buttonText: t('core:common.continue'),
         };
     }
 
     return {
-        title: 'Enable two-factor authentication',
-        description:
-            'To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app',
-        buttonText: 'Continue',
+        title: t('core:settings.security.two_factor.setup.enable_title'),
+        description: t(
+            'core:settings.security.two_factor.setup.enable_description',
+        ),
+        buttonText: t('core:common.continue'),
     };
 });
 
@@ -203,9 +208,11 @@ watch(
                             <div
                                 class="absolute inset-0 top-1/2 h-px w-full bg-border"
                             />
-                            <span class="relative bg-card px-2 py-1"
-                                >or, enter the code manually</span
-                            >
+                            <span class="relative bg-card px-2 py-1">{{
+                                $t(
+                                    'core:settings.security.two_factor.setup.manual_entry',
+                                )
+                            }}</span>
                         </div>
 
                         <div
@@ -225,10 +232,20 @@ watch(
                                         type="text"
                                         readonly
                                         :value="manualSetupKey"
+                                        :aria-label="
+                                            $t(
+                                                'core:settings.security.two_factor.setup.setup_key_label',
+                                            )
+                                        "
                                         class="h-full w-full bg-background p-3 text-foreground"
                                     />
                                     <button
                                         class="relative block h-auto border-l border-border px-3 hover:bg-muted"
+                                        :aria-label="
+                                            $t(
+                                                'core:settings.security.two_factor.setup.copy_key',
+                                            )
+                                        "
                                         @click="copy(manualSetupKey || '')"
                                     >
                                         <Check
@@ -286,14 +303,14 @@ watch(
                                     :disabled="processing"
                                     @click="showVerificationStep = false"
                                 >
-                                    Back
+                                    {{ $t('core:common.back') }}
                                 </Button>
                                 <Button
                                     type="submit"
                                     class="w-auto flex-1"
                                     :disabled="processing || code.length < 6"
                                 >
-                                    Confirm
+                                    {{ $t('core:common.confirm') }}
                                 </Button>
                             </div>
                         </div>

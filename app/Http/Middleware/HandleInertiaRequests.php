@@ -8,6 +8,7 @@
 namespace App\Http\Middleware;
 
 use App\Authorization\Permissions;
+use App\I18n\Strings;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,9 +54,28 @@ class HandleInertiaRequests extends Middleware
                 // For showing or hiding UI only; the server checks every action again.
                 'permissions' => $user instanceof User ? app(Permissions::class)->of($user) : [],
             ],
+            // Which string bundle the page needs (S-0916).
+            'strings' => $this->strings(),
             // Integrity warning for those who may read the audit log (S-0907).
             'auditWarning' => fn (): ?string => $this->auditWarning($user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+
+    /**
+     * @return array{locale: string, dir: string, version: string, url: string}
+     */
+    private function strings(): array
+    {
+        $strings = app(Strings::class);
+        $chain = $strings->chain();
+        $version = $strings->bundleVersion($chain);
+
+        return [
+            'locale' => $chain[0],
+            'dir' => $strings->direction($chain[0]),
+            'version' => $version,
+            'url' => route('strings.bundle', ['chain' => implode('.', $chain), 'version' => $version], false),
         ];
     }
 
@@ -71,8 +91,6 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        $warning = __('audit.integrity_warning', ['seq' => (int) $broken]);
-
-        return is_string($warning) ? $warning : null;
+        return app(Strings::class)->get('core:audit.integrity_warning', ['seq' => (int) $broken]);
     }
 }

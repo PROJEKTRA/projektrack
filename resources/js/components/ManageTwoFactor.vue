@@ -45,8 +45,8 @@ onUnmounted(() => clearTwoFactorAuthData());
     <div v-if="canManageTwoFactor" class="space-y-6">
         <Heading
             variant="small"
-            title="Two-factor authentication"
-            description="Manage your two-factor authentication settings"
+            :title="$t('core:settings.security.two_factor.title')"
+            :description="$t('core:settings.security.two_factor.description')"
         />
 
         <p
@@ -63,14 +63,14 @@ onUnmounted(() => clearTwoFactorAuthData());
             class="flex flex-col items-start justify-start space-y-4"
         >
             <p class="text-sm text-muted-foreground">
-                When you enable two-factor authentication, you will be prompted
-                for a secure pin during login. This pin can be retrieved from a
-                TOTP-supported application on your phone.
+                {{ $t('core:settings.security.two_factor.disabled_help') }}
             </p>
 
             <div>
                 <Button v-if="hasSetupData" @click="showSetupModal = true">
-                    <ShieldCheck />Continue setup
+                    <ShieldCheck />{{
+                        $t('core:settings.security.two_factor.continue_setup')
+                    }}
                 </Button>
                 <Form
                     v-else
@@ -79,7 +79,7 @@ onUnmounted(() => clearTwoFactorAuthData());
                     @success="showSetupModal = true"
                 >
                     <Button type="submit" :disabled="processing">
-                        Enable 2FA
+                        {{ $t('core:settings.security.two_factor.enable') }}
                     </Button>
                 </Form>
             </div>
@@ -87,9 +87,7 @@ onUnmounted(() => clearTwoFactorAuthData());
 
         <div v-else class="flex flex-col items-start justify-start space-y-4">
             <p class="text-sm text-muted-foreground">
-                You will be prompted for a secure, random pin during login,
-                which you can retrieve from the TOTP-supported application on
-                your phone.
+                {{ $t('core:settings.security.two_factor.enabled_help') }}
             </p>
 
             <div v-if="!twoFactorRequired" class="relative inline">
@@ -99,7 +97,7 @@ onUnmounted(() => clearTwoFactorAuthData());
                         type="submit"
                         :disabled="processing"
                     >
-                        Disable 2FA
+                        {{ $t('core:settings.security.two_factor.disable') }}
                     </Button>
                 </Form>
             </div>

@@ -157,6 +157,17 @@ The build fails if:
 8. Playwright visual regression for main screens in `bs` (LTR) and `ar` (RTL) shows unapproved differences; pseudo-locale smoke test shows untranslated text.
 9. Plural tests per shipped language fail (for example `bs`: 1, 2, 5, 11, 21, 22, 25, 1.5; `ar`: 0, 1, 2, 3, 11, 100).
 
+## Implementation notes (S-0916, 18.11.2026)
+
+- **Code:** `app/I18n/` holds `Locales` (available locales and the chain), `StringCatalog` (shipped strings per locale, compiled cache), `Strings` (resolve and format) and `StringTranslator` (bridge for Laravel's translator). Configuration is in `config/i18n.php`; `I18N_LOCALES` lists the offered locales (0.9: `bs,en`; `de` follows with S-0922).
+- **Locale per request:** the `SetLocale` web middleware uses the signed-in user's language, else the tenant language, else `bs`. The browser's `Accept-Language` is not read (no fingerprint before sign-in). Mail and notifications use `User::preferredLocale()`.
+- **Framework texts:** Laravel's groups `validation`, `auth`, `passwords` and `pagination` map to `core:<group>.<key>`, and the sentence keys of framework mail templates map to `core:email.*`. Validation messages keep Laravel's `:attribute` placeholders, because the validator fills them after the lookup; they are still valid ICU messages. Messages called with arguments (for example `core:auth.throttle`) use ICU plurals.
+- **Bundle:** `GET /strings/<chain>/<version>.json`, for example `/strings/bs.en/3fa2c1d4e5f60718.json`. It is public (sign-in pages need it), runs without a session, and is sent as `private, max-age=31536000, immutable` for the current version and `no-store` for an outdated one. The Inertia shared prop `strings` (`locale`, `dir`, `version`, `url`) names it; the page template preloads it. Messages from a later chain locale are listed in `sources`, so the browser formats them with that locale's plural rules. Server-only strings (`core:validation.*`, `core:email.*`, `core:passwords.*`, `core:pagination.*`, `core:auth.failed|password|throttle`) are not sent.
+- **Compiled cache:** `php artisan optimize` (or `projektrack:strings:cache`) writes `bootstrap/cache/strings/<locale>.php`; `optimize:clear` (or `projektrack:strings:clear`) removes it. Without a compiled file the JSON files are read.
+- **Missing strings:** a miss in a chain locale is logged as a warning once per identifier, locale and day; a string missing in every locale (or not valid ICU) is logged as an error and shown as `core:string_missing`, never as the identifier.
+- **Bidi:** string arguments are wrapped in FSI and PDI on the server and in the browser when the message locale is right to left.
+- **Later layers:** tenant and instance overrides (S-0918) and installed language packs (S-0921) are added in `Strings::resolve()`; quality gates and pseudo-locales follow in S-0917; the PHP and browser parity test in S-0917.
+
 ## Alternatives considered
 
 - **Laravel's native `__()` with PHP array files and `trans_choice`:** no ICU MessageFormat, weak plural support for `ar` and `bs` (pipe syntax), no shared syntax with the frontend. Kept only as a bridge. Rejected as the primary layer.

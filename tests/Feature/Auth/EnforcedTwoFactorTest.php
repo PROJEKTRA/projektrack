@@ -58,7 +58,7 @@ describe('enforcement', function () {
         $this->actingAs($controller)->withSession(passwordConfirmed())->get('/settings/security')
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('twoFactorRequired', true)
-                ->where('twoFactorNotices.required', __('two_factor.required')));
+                ->where('twoFactorNotices.required', __('core:two_factor.required')));
 
         $this->actingAs($controller)->withSession(passwordConfirmed())->post('/user/two-factor-authentication')
             ->assertSessionHasNoErrors();

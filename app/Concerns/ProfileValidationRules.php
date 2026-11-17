@@ -7,10 +7,12 @@
 
 namespace App\Concerns;
 
+use App\I18n\Locales;
 use App\Models\User;
 use App\Tenancy\TenantContext;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\In;
 use Illuminate\Validation\Rules\Unique;
 
 trait ProfileValidationRules
@@ -25,7 +27,18 @@ trait ProfileValidationRules
         return [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
+            'locale' => $this->localeRules(),
         ];
+    }
+
+    /**
+     * The user's own language (S-0916). Empty means: use the tenant language.
+     *
+     * @return array<int, ValidationRule|string|In>
+     */
+    protected function localeRules(): array
+    {
+        return ['sometimes', 'nullable', 'string', Rule::in(app(Locales::class)->available())];
     }
 
     /**

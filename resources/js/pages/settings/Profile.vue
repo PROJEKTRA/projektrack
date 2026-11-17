@@ -13,34 +13,42 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { t } from '@/i18n/strings';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 
 defineOptions({
-    layout: {
+    layout: () => ({
         breadcrumbs: [
             {
-                title: 'Profile settings',
+                title: t('core:settings.profile.title'),
                 href: edit(),
             },
         ],
-    },
+    }),
 });
+
+defineProps<{
+    /** The user's own language; null means the organization's language. */
+    locale: string | null;
+    /** Offered languages, each labeled in its own language. */
+    locales: { value: string; label: string }[];
+}>();
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 </script>
 
 <template>
-    <Head title="Profile settings" />
+    <Head :title="$t('core:settings.profile.title')" />
 
-    <h1 class="sr-only">Profile settings</h1>
+    <h1 class="sr-only">{{ $t('core:settings.profile.title') }}</h1>
 
     <div class="flex flex-col space-y-6">
         <Heading
             variant="small"
-            title="Profile"
-            description="Update your name and email address"
+            :title="$t('core:settings.profile.heading')"
+            :description="$t('core:settings.profile.description')"
         />
 
         <Form
@@ -49,7 +57,9 @@ const user = computed(() => page.props.auth.user);
             class="space-y-6"
         >
             <div class="grid gap-2">
-                <Label for="name">Name</Label>
+                <Label for="name">{{
+                    $t('core:settings.profile.name_label')
+                }}</Label>
                 <Input
                     id="name"
                     class="mt-1 block w-full"
@@ -57,13 +67,15 @@ const user = computed(() => page.props.auth.user);
                     :default-value="user.name"
                     required
                     autocomplete="name"
-                    placeholder="Full name"
+                    :placeholder="$t('core:settings.profile.name_placeholder')"
                 />
                 <InputError class="mt-2" :message="errors.name" />
             </div>
 
             <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+                <Label for="email">{{
+                    $t('core:settings.profile.email_label')
+                }}</Label>
                 <Input
                     id="email"
                     type="email"
@@ -72,20 +84,20 @@ const user = computed(() => page.props.auth.user);
                     :default-value="user.email"
                     required
                     autocomplete="username"
-                    placeholder="Email address"
+                    :placeholder="$t('core:settings.profile.email_placeholder')"
                 />
                 <InputError class="mt-2" :message="errors.email" />
             </div>
 
             <div v-if="page.props.mustVerifyEmail && !user.email_verified_at">
                 <p class="-mt-4 text-sm text-muted-foreground">
-                    Your email address is unverified.
+                    {{ $t('core:settings.profile.email_unverified') }}
                     <Link
                         :href="send()"
                         as="button"
                         class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
                     >
-                        Click here to re-send the verification email.
+                        {{ $t('core:settings.profile.resend_verification') }}
                     </Link>
                 </p>
 
@@ -93,13 +105,44 @@ const user = computed(() => page.props.auth.user);
                     v-if="page.props.status === 'verification-link-sent'"
                     class="mt-2 text-sm font-medium text-green-600"
                 >
-                    A new verification link has been sent to your email address.
+                    {{ $t('core:settings.profile.verification_link_sent') }}
                 </div>
             </div>
 
+            <div class="grid gap-2">
+                <Label for="locale">{{
+                    $t('core:settings.profile.locale_label')
+                }}</Label>
+                <select
+                    id="locale"
+                    name="locale"
+                    class="mt-1 block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    aria-describedby="locale-help"
+                >
+                    <option value="" :selected="locale === null">
+                        {{ $t('core:settings.profile.locale_default') }}
+                    </option>
+                    <option
+                        v-for="option in locales"
+                        :key="option.value"
+                        :value="option.value"
+                        :lang="option.value"
+                        :selected="locale === option.value"
+                    >
+                        {{ option.label }}
+                    </option>
+                </select>
+                <p id="locale-help" class="text-sm text-muted-foreground">
+                    {{ $t('core:settings.profile.locale_help') }}
+                </p>
+                <InputError class="mt-2" :message="errors.locale" />
+            </div>
+
             <div class="flex items-center gap-4">
-                <Button :disabled="processing" data-test="update-profile-button"
-                    >Save</Button
+                <Button
+                    :disabled="processing"
+                    data-test="update-profile-button"
+                    >{{ $t('core:common.save') }}</Button
                 >
             </div>
         </Form>

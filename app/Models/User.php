@@ -9,9 +9,12 @@ namespace App\Models;
 
 use App\Auth\TwoFactor\RecoveryCodeUsed;
 use App\Authorization\UserType;
+use App\I18n\Strings;
 use App\Tenancy\BelongsToTenant;
+use App\Tenancy\TenantContext;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -41,9 +44,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'locale'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use BelongsToTenant, HasFactory, HasUlids, Notifiable, TwoFactorAuthenticatable;
@@ -64,6 +67,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_roles');
+    }
+
+    /**
+     * Language for mails and notifications to this user (S-0916): their own
+     * language, else the tenant language, else bs.
+     */
+    public function preferredLocale(): string
+    {
+        $tenants = app(TenantContext::class);
+        $tenantLocale = $tenants->has() ? $tenants->current()->default_locale : null;
+
+        return app(Strings::class)->chain($this->locale ?? $tenantLocale)[0];
     }
 
     /**

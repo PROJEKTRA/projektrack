@@ -48,7 +48,7 @@ class EnsureTwoFactorEnrolled
             && ! $user->hasEnabledTwoFactorAuthentication()
             && ! $request->routeIs(...self::ENROLLMENT_ROUTES)
             && $this->requirement->isRequired($user)) {
-            abort_if($request->expectsJson(), 403, __('two_factor.required'));
+            abort_if($request->expectsJson(), 403, __('core:two_factor.required'));
 
             return redirect()->route('security.edit');
         }

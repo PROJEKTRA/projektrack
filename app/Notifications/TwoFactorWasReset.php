@@ -7,6 +7,7 @@
 
 namespace App\Notifications;
 
+use App\I18n\Strings;
 use App\Models\User;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -25,16 +26,20 @@ class TwoFactorWasReset extends Notification
         return ['mail'];
     }
 
+    /**
+     * Written in the recipient's language chain, whatever the sender's
+     * language is.
+     */
     public function toMail(User $notifiable): MailMessage
     {
-        $locale = $notifiable->locale ?? app()->getLocale();
-        $brand = config()->string('app.name');
+        $strings = app(Strings::class);
+        $locale = $notifiable->preferredLocale();
 
         return (new MailMessage)
-            ->subject(__('two_factor.reset_mail.subject', ['brand' => $brand], $locale))
-            ->greeting(__('two_factor.reset_mail.greeting', ['name' => $notifiable->name], $locale))
-            ->line(__('two_factor.reset_mail.body', [], $locale))
-            ->line(__('two_factor.reset_mail.not_you', [], $locale))
-            ->salutation(__('two_factor.reset_mail.salutation', ['brand' => $brand], $locale));
+            ->subject($strings->get('core:two_factor.reset_mail.subject', [], $locale))
+            ->greeting($strings->get('core:two_factor.reset_mail.greeting', ['name' => $notifiable->name], $locale))
+            ->line($strings->get('core:two_factor.reset_mail.body', [], $locale))
+            ->line($strings->get('core:two_factor.reset_mail.not_you', [], $locale))
+            ->salutation($strings->get('core:two_factor.reset_mail.salutation', [], $locale));
     }
 }

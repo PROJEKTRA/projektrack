@@ -31,7 +31,7 @@ class DisableTwoFactorAuthentication extends FortifyDisable
         // when the user abandons the confirmation step).
         if ($user->hasEnabledTwoFactorAuthentication() && $this->requirement->isRequired($user)) {
             throw ValidationException::withMessages([
-                'two_factor' => [__('two_factor.cannot_disable')],
+                'two_factor' => [__('core:two_factor.cannot_disable')],
             ]);
         }
 

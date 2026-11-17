@@ -11,17 +11,26 @@ use App\Audit\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\I18n\Locales;
+use App\I18n\Strings;
+use App\Tenancy\TenantContext;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Locale;
 
 class ProfileController extends Controller
 {
-    public function __construct(private readonly AuditLog $audit) {}
+    public function __construct(
+        private readonly AuditLog $audit,
+        private readonly Locales $locales,
+        private readonly Strings $strings,
+    ) {}
 
     /**
      * Show the user's profile settings page.
@@ -31,6 +40,12 @@ class ProfileController extends Controller
         return Inertia::render('settings/Profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'locale' => $this->currentUser($request)->locale,
+            // Each language under its own name, so it is found in any interface language.
+            'locales' => array_map(fn (string $locale): array => [
+                'value' => $locale,
+                'label' => mb_convert_case(Locale::getDisplayName($locale, $locale) ?: $locale, MB_CASE_TITLE),
+            ], $this->locales->available()),
         ]);
     }
 
@@ -57,7 +72,9 @@ class ProfileController extends Controller
             }
         });
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
+        // A new language applies to this confirmation already.
+        App::setLocale($this->strings->chain($user->locale ?? app(TenantContext::class)->current()->default_locale)[0]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('core:flash.profile_updated')]);
 
         return to_route('profile.edit');
     }

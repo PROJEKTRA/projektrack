@@ -38,6 +38,7 @@ import {
 import UserMenuContent from '@/components/UserMenuContent.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
+import { t } from '@/i18n/strings';
 import { toUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem, NavItem } from '@/types';
@@ -57,13 +58,13 @@ const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
 const activeItemStyles =
     'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';
 
-const mainNavItems: NavItem[] = [
+const mainNavItems = computed<NavItem[]>(() => [
     {
-        title: 'Dashboard',
+        title: t('core:nav.dashboard'),
         href: dashboard(),
         icon: LayoutGrid,
     },
-];
+]);
 
 // No external links: the app never points users to third-party sites.
 const rightNavItems: NavItem[] = [];
@@ -81,14 +82,15 @@ const rightNavItems: NavItem[] = [];
                                 variant="ghost"
                                 size="icon"
                                 class="mr-2 h-9 w-9"
+                                :aria-label="$t('core:nav.open_menu')"
                             >
                                 <Menu class="h-5 w-5" />
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" class="w-[300px] p-6">
-                            <SheetTitle class="sr-only"
-                                >Navigation menu</SheetTitle
-                            >
+                            <SheetTitle class="sr-only">{{
+                                $t('core:nav.menu')
+                            }}</SheetTitle>
                             <SheetHeader class="flex justify-start text-left">
                                 <AppLogoIcon
                                     class="size-6 fill-current text-black dark:text-white"
@@ -188,6 +190,7 @@ const rightNavItems: NavItem[] = [];
                             variant="ghost"
                             size="icon"
                             class="group h-9 w-9 cursor-pointer"
+                            :aria-label="$t('core:nav.search')"
                         >
                             <Search
                                 class="size-5 opacity-80 group-hover:opacity-100"

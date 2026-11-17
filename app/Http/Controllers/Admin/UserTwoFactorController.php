@@ -24,7 +24,7 @@ class UserTwoFactorController extends Controller
     {
         $reset($user, $this->currentUser($request));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('two_factor.reset_done')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('core:two_factor.reset_done')]);
 
         return back();
     }

@@ -10,14 +10,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { t } from '@/i18n/strings';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
 
 defineOptions({
-    layout: {
-        title: 'Forgot password',
-        description: 'Enter your email to receive a password reset link',
-    },
+    layout: () => ({
+        title: t('core:auth.forgot_password.title'),
+        description: t('core:auth.forgot_password.description'),
+    }),
 });
 
 defineProps<{
@@ -26,7 +27,7 @@ defineProps<{
 </script>
 
 <template>
-    <Head title="Forgot password" />
+    <Head :title="$t('core:auth.forgot_password.title')" />
 
     <div
         v-if="status"
@@ -38,14 +39,18 @@ defineProps<{
     <div class="space-y-6">
         <Form v-slot="{ errors, processing }" v-bind="email.form()">
             <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+                <Label for="email">{{
+                    $t('core:auth.forgot_password.email_label')
+                }}</Label>
                 <Input
                     id="email"
                     v-focus
                     type="email"
                     name="email"
                     autocomplete="off"
-                    placeholder="email@example.com"
+                    :placeholder="
+                        $t('core:auth.forgot_password.email_placeholder')
+                    "
                 />
                 <InputError :message="errors.email" />
             </div>
@@ -57,14 +62,15 @@ defineProps<{
                     data-test="email-password-reset-link-button"
                 >
                     <Spinner v-if="processing" />
-                    Email password reset link
+                    {{ $t('core:auth.forgot_password.submit') }}
                 </Button>
             </div>
         </Form>
 
-        <div class="space-x-1 text-center text-sm text-muted-foreground">
-            <span>Or, return to</span>
-            <TextLink :href="login()">log in</TextLink>
+        <div class="text-center text-sm text-muted-foreground">
+            <TextLink :href="login()">{{
+                $t('core:auth.forgot_password.back_to_login')
+            }}</TextLink>
         </div>
     </div>
 </template>

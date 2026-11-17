@@ -38,7 +38,7 @@ defineProps<Props>();
         <DropdownMenuItem :as-child="true">
             <Link class="block w-full cursor-pointer" :href="edit()" prefetch>
                 <Settings class="mr-2 h-4 w-4" />
-                Settings
+                {{ $t('core:nav.settings') }}
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>
@@ -52,7 +52,7 @@ defineProps<Props>();
             @click="handleLogout"
         >
             <LogOut class="mr-2 h-4 w-4" />
-            Log out
+            {{ $t('core:nav.log_out') }}
         </Link>
     </DropdownMenuItem>
 </template>

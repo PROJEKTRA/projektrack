@@ -5,22 +5,23 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+import { t } from '@/i18n/strings';
 import { dashboard } from '@/routes';
 
 defineOptions({
-    layout: {
+    layout: () => ({
         breadcrumbs: [
             {
-                title: 'Dashboard',
+                title: t('core:nav.dashboard'),
                 href: dashboard(),
             },
         ],
-    },
+    }),
 });
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head :title="$t('core:nav.dashboard')" />
 
     <div
         class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"

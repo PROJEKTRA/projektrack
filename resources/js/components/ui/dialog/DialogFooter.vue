@@ -27,7 +27,9 @@ const props = withDefaults(
     >
         <slot />
         <DialogClose v-if="showCloseButton" as-child>
-            <Button variant="outline"> Close </Button>
+            <Button variant="outline">
+                {{ $t('core:common.close') }}
+            </Button>
         </DialogClose>
     </div>
 </template>

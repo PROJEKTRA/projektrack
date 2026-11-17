@@ -13,6 +13,7 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from '@/components/ui/input-otp';
+import { t } from '@/i18n/strings';
 import { store } from '@/routes/two-factor/login';
 import type { TwoFactorConfigContent } from '@/types';
 
@@ -22,18 +23,20 @@ const code = ref<string>('');
 const authConfigContent = computed<TwoFactorConfigContent>(() => {
     if (showRecoveryInput.value) {
         return {
-            title: 'Recovery code',
-            description:
-                'Please confirm access to your account by entering one of your emergency recovery codes.',
-            buttonText: 'login using an authentication code',
+            title: t('core:auth.two_factor_challenge.recovery_title'),
+            description: t(
+                'core:auth.two_factor_challenge.recovery_description',
+            ),
+            buttonText: t(
+                'core:auth.two_factor_challenge.use_authentication_code',
+            ),
         };
     }
 
     return {
-        title: 'Authentication code',
-        description:
-            'Enter the authentication code provided by your authenticator application.',
-        buttonText: 'login using a recovery code',
+        title: t('core:auth.two_factor_challenge.code_title'),
+        description: t('core:auth.two_factor_challenge.code_description'),
+        buttonText: t('core:auth.two_factor_challenge.use_recovery_code'),
     };
 });
 
@@ -52,7 +55,7 @@ const toggleRecoveryMode = (clearErrors: () => void): void => {
 </script>
 
 <template>
-    <Head title="Two-factor authentication" />
+    <Head :title="$t('core:auth.two_factor_challenge.page_title')" />
 
     <div class="space-y-6">
         <template v-if="!showRecoveryInput">
@@ -86,11 +89,10 @@ const toggleRecoveryMode = (clearErrors: () => void): void => {
                     </div>
                     <InputError :message="errors.code" />
                 </div>
-                <Button type="submit" class="w-full" :disabled="processing"
-                    >Continue</Button
-                >
+                <Button type="submit" class="w-full" :disabled="processing">{{
+                    $t('core:common.continue')
+                }}</Button>
                 <div class="text-center text-sm text-muted-foreground">
-                    <span>or you can </span>
                     <button
                         type="button"
                         class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
@@ -113,16 +115,19 @@ const toggleRecoveryMode = (clearErrors: () => void): void => {
                     v-focus
                     name="recovery_code"
                     type="text"
-                    placeholder="Enter recovery code"
+                    :placeholder="
+                        $t(
+                            'core:auth.two_factor_challenge.recovery_code_placeholder',
+                        )
+                    "
                     required
                 />
                 <InputError :message="errors.recovery_code" />
-                <Button type="submit" class="w-full" :disabled="processing"
-                    >Continue</Button
-                >
+                <Button type="submit" class="w-full" :disabled="processing">{{
+                    $t('core:common.continue')
+                }}</Button>
 
                 <div class="text-center text-sm text-muted-foreground">
-                    <span>or you can </span>
                     <button
                         type="button"
                         class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"

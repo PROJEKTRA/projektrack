@@ -45,9 +45,9 @@ class SecurityController extends Controller
             $props['requiresConfirmation'] = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
             $props['twoFactorRequired'] = $required;
             $props['twoFactorNotices'] = [
-                'required' => $required ? __('two_factor.required') : null,
-                'shownOnce' => __('two_factor.recovery_codes_shown_once'),
-                'hidden' => __('two_factor.recovery_codes_hidden', ['count' => count($user->recoveryCodes())]),
+                'required' => $required ? __('core:two_factor.required') : null,
+                'shownOnce' => __('core:two_factor.recovery_codes_shown_once'),
+                'hidden' => __('core:two_factor.recovery_codes_hidden', ['count' => count($user->recoveryCodes())]),
             ];
         }
 
@@ -66,7 +66,7 @@ class SecurityController extends Controller
             $this->audit->record('auth.password_changed', $user);
         });
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('core:flash.password_updated')]);
 
         return back();
     }
