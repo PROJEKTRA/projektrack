@@ -1,0 +1,213 @@
+# Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Quality and security pipeline (S-0908). Every pull request and every push to
+# main runs static checks once and the test suite on each supported database
+# and PHP version. Third-party actions are pinned to full commit SHAs.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  checks:
+    name: Static checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci
+
+      - name: Dependency audit
+        run: |
+          composer audit --no-dev
+          npm audit --omit=dev --audit-level=high
+
+      - name: PHP style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: PHP static analysis (PHPStan max)
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Frontend lint, format and types
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          npm run build
+          npm run lint
+          npm run format:check
+          npm run typecheck
+
+      - name: Frontend unit tests (Vitest)
+        run: npm test
+
+      - name: Forbidden content
+        run: |
+          # Docs, UI copy and templates use no en dash (project rule).
+          if grep -rn $'–' --include='*.md' --include='*.vue' --include='*.ts' --include='*.php' --include='*.json' . \
+               --exclude-dir=vendor --exclude-dir=node_modules --exclude-dir=public; then
+            echo "::error::En dash found"; exit 1
+          fi
+          # Every first-party source file carries the copyright header.
+          missing=$(grep -rL 'PROJEKTRA IT SAVJETOVANJE' app bootstrap/app.php config database routes tests resources/js resources/css resources/views \
+                     --include='*.php' --include='*.ts' --include='*.vue' --include='*.css' \
+                     | grep -v -E 'resources/js/(components/ui|actions|routes|wayfinder)/' || true)
+          if [ -n "$missing" ]; then echo "::error::Missing copyright header:"; echo "$missing"; exit 1; fi
+
+  tests:
+    name: Tests (PHP ${{ matrix.php }}, ${{ matrix.db.name }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4', '8.5']
+        db:
+          - name: MySQL 8.4
+            connection: mysql
+            image: mysql:8.4
+            port: 3306
+            user: root
+            health: >-
+              --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -psecret"
+              --health-interval=5s --health-timeout=5s --health-retries=20
+          - name: MariaDB 11.4
+            connection: mariadb
+            image: mariadb:11.4
+            port: 3306
+            user: root
+            health: >-
+              --health-cmd="healthcheck.sh --connect --innodb_initialized"
+              --health-interval=5s --health-timeout=5s --health-retries=20
+          - name: PostgreSQL 16
+            connection: pgsql
+            image: postgres:16
+            port: 5432
+            user: projektrack
+            health: >-
+              --health-cmd="pg_isready -U projektrack"
+              --health-interval=5s --health-timeout=5s --health-retries=20
+
+    services:
+      db:
+        image: ${{ matrix.db.image }}
+        env:
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_DATABASE: projektrack
+          MYSQL_USER: projektrack
+          MYSQL_PASSWORD: secret
+          MARIADB_ROOT_PASSWORD: secret
+          MARIADB_DATABASE: projektrack
+          MARIADB_USER: projektrack
+          MARIADB_PASSWORD: secret
+          POSTGRES_DB: projektrack
+          POSTGRES_USER: projektrack
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+          - 3306:3306
+        options: ${{ matrix.db.health }}
+
+    env:
+      DB_CONNECTION: ${{ matrix.db.connection }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.db.port }}
+      DB_DATABASE: projektrack
+      # Parallel tests create one database per process, which needs an admin account.
+      DB_USERNAME: ${{ matrix.db.user }}
+      DB_PASSWORD: secret
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, pdo_pgsql, intl, bcmath, sodium
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install and build
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci
+          cp .env.example .env
+          php artisan key:generate
+          npm run build
+
+      - name: Pest on ${{ matrix.db.name }}
+        run: vendor/bin/pest --parallel
+
+  plain-hosting:
+    name: Tests (plain hosting profile, SQLite, no Redis)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DB_CONNECTION: sqlite
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      SESSION_DRIVER: database
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, intl, bcmath, sodium, :redis
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install and build
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci
+          cp .env.example .env
+          php artisan key:generate
+          npm run build
+
+      - name: Pest on SQLite
+        run: vendor/bin/pest --parallel

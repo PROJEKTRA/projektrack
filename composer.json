@@ -1,0 +1,100 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "projektra/projektrack",
+    "type": "project",
+    "description": "Projektrack: projects, time tracking, service reports, quotes and invoicing.",
+    "homepage": "https://projektra.net",
+    "license": "AGPL-3.0-only",
+    "authors": [
+        {
+            "name": "PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting)",
+            "homepage": "https://projektra.net"
+        }
+    ],
+    "require": {
+        "php": ">=8.4.1 <8.6",
+        "inertiajs/inertia-laravel": "^3.7",
+        "laravel/fortify": "^1.42",
+        "laravel/framework": "^13.42",
+        "laravel/tinker": "^3.1",
+        "laravel/wayfinder": "^0.1.23"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.24",
+        "larastan/larastan": "^3.15",
+        "laravel/pail": "^1.3",
+        "laravel/pint": "^1.32",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.9",
+        "pestphp/pest": "^5.3",
+        "pestphp/pest-plugin-laravel": "^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "setup": [
+            "composer install",
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+            "@php artisan key:generate",
+            "@php artisan migrate --force",
+            "npm ci",
+            "npm run build"
+        ],
+        "dev": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php artisan dev"
+        ],
+        "lint": [
+            "pint --parallel"
+        ],
+        "lint:check": [
+            "pint --parallel --test"
+        ],
+        "types:check": [
+            "phpstan analyse --memory-limit=1G"
+        ],
+        "test": [
+            "@php artisan config:clear --ansi",
+            "pest --parallel"
+        ],
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+        ],
+        "pre-package-uninstall": [
+            "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "platform": {
+            "php": "8.4.1"
+        },
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

@@ -1,0 +1,16 @@
+{
+    "printWidth": 80,
+    "tabWidth": 4,
+    "singleQuote": true,
+    "semi": true,
+    "htmlWhitespaceSensitivity": "css",
+    "plugins": ["prettier-plugin-tailwindcss"],
+    "tailwindStylesheet": "./resources/css/app.css",
+    "tailwindFunctions": ["clsx", "cn", "cva"],
+    "overrides": [
+        {
+            "files": ["**/*.yml", "**/*.yaml"],
+            "options": { "tabWidth": 2 }
+        }
+    ]
+}

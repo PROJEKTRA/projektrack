@@ -1,6 +1,4 @@
 # Local working files: never committed
-/CLAUDE.md
-/.claude/
 /docs/MASTER_PROMPT.md
 
 # Dependencies and builds
@@ -8,8 +6,17 @@
 /node_modules/
 /public/build/
 /public/hot
-/storage/*.key
+/public/storage
+/public/fonts-manifest.dev.json
+/bootstrap/ssr
 /bootstrap/cache/*.php
+/storage/*.key
+/storage/pail
+
+# Generated route and action types (rebuilt by the Vite plugin)
+/resources/js/actions
+/resources/js/routes
+/resources/js/wayfinder
 
 # Environment and secrets
 .env
@@ -18,6 +25,7 @@
 *.pem
 *.key
 /storage/keys/
+/auth.json
 
 # Tooling
 .phpunit.result.cache
@@ -25,8 +33,11 @@
 /coverage/
 /playwright-report/
 /test-results/
+/database/*.sqlite
 .idea/
 .vscode/
+.fleet/
+.zed/
 *.log
 .DS_Store
 Thumbs.db
