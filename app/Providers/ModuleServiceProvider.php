@@ -8,6 +8,7 @@
 namespace App\Providers;
 
 use App\Modules\ModuleRegistry;
+use App\Modules\TenantModules;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
@@ -26,6 +27,9 @@ class ModuleServiceProvider extends ServiceProvider
             [base_path('modules'), base_path('ee/modules')],
             $this->app->make(LoggerInterface::class),
         ));
+
+        // Scoped: the per-tenant cache lives for one request or job only.
+        $this->app->scoped(TenantModules::class);
 
         foreach ($this->app->make(ModuleRegistry::class)->all() as $module) {
             $studly = Str::studly($module->key);

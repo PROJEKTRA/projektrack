@@ -8,6 +8,7 @@
 namespace App\Concerns;
 
 use App\Models\User;
+use App\Tenancy\TenantContext;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
@@ -19,7 +20,7 @@ trait ProfileValidationRules
      *
      * @return array<string, array<int, Unique|ValidationRule|array<mixed>|string>>
      */
-    protected function profileRules(?int $userId = null): array
+    protected function profileRules(?string $userId = null): array
     {
         return [
             'name' => $this->nameRules(),
@@ -42,16 +43,17 @@ trait ProfileValidationRules
      *
      * @return array<int, Unique|ValidationRule|array<mixed>|string>
      */
-    protected function emailRules(?int $userId = null): array
+    protected function emailRules(?string $userId = null): array
     {
+        // E-mail addresses are unique per tenant, not per instance (ADR-0006).
+        $unique = Rule::unique(User::class)->where('tenant_id', app(TenantContext::class)->id());
+
         return [
             'required',
             'string',
             'email',
             'max:255',
-            $userId === null
-                ? Rule::unique(User::class)
-                : Rule::unique(User::class)->ignore($userId),
+            $userId === null ? $unique : $unique->ignore($userId),
         ];
     }
 }

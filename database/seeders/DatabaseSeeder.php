@@ -7,24 +7,35 @@
 
 namespace Database\Seeders;
 
+use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
+/**
+ * Local development data only: one synthetic tenant served at the host of
+ * APP_URL and one verified user. Never run against production.
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (app()->environment('production')) {
+            throw new RuntimeException('The development seeder must not run in production.');
+        }
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $url = config('app.url');
+        $host = (is_string($url) ? parse_url($url, PHP_URL_HOST) : null) ?: 'localhost';
+
+        $tenant = Tenant::factory()->withDomain($host)->create([
+            'slug' => 'demo-company',
+            'name' => 'Demo Company d.o.o.',
         ]);
+
+        app(TenantContext::class)->run($tenant, fn () => User::factory()->create([
+            'name' => 'Demo Admin',
+            'email' => 'admin@example.test',
+        ]));
     }
 }

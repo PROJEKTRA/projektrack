@@ -7,6 +7,8 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequireModule;
+use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\SetSecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,8 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Global: applies to every response, including errors and redirects.
-        $middleware->prepend(SetSecurityHeaders::class);
+        // Global, in this order: headers wrap every response (also the unknown-host 404),
+        // then the tenant is resolved from the host before sessions or auth run.
+        $middleware->prepend([SetSecurityHeaders::class, ResolveTenant::class]);
+
+        $middleware->alias(['module' => RequireModule::class]);
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
