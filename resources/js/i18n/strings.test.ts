@@ -78,7 +78,7 @@ describe('core string files', () => {
     it.each(LOCALES)('contain only valid ICU messages (%s)', (locale) => {
         for (const [key, message] of Object.entries(catalogs[locale])) {
             expect(typeof message, key).toBe('string');
-            expect(message.includes('–'), `${key} has an en dash`).toBe(false);
+            expect(message.includes('\u2013'), `${key} has an en dash`).toBe(false);
             // Same options as the runtime formatter in strings.ts.
             expect(
                 () =>
