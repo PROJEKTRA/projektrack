@@ -7,6 +7,10 @@
 
 namespace App\Modules;
 
+use App\Authorization\FieldAccess;
+use App\Authorization\FieldDeclaration;
+use App\Authorization\FieldRisk;
+
 /**
  * A validated module.json (docs/architecture/modules.md, section 2).
  *
@@ -26,12 +30,20 @@ final readonly class ModuleManifest
 
     private const string PERMISSION_PATTERN = '/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/';
 
+    private const string NAME_PATTERN = '/^[a-z][a-z0-9_]{0,63}$/';
+
+    /** Namespace owned by the tax engine of the invoices module (ADR-0004). */
+    private const string TAX_NAMESPACE = 'tax.';
+
     /**
      * @param  list<string>  $requires  hard dependencies, without "core"
      * @param  list<string>  $optional
      * @param  list<string>  $conflicts
      * @param  list<string>  $permissions
      * @param  list<string>  $featureFlags
+     * @param  list<FieldDeclaration>  $fieldPermissions
+     * @param  array<string, list<string>>  $roleDefaults  role template key => permissions granted on first enable
+     * @param  array<string, list<string>>  $projectRoleDefaults  project role template key => permissions
      * @param  array<string, mixed>  $raw
      */
     private function __construct(
@@ -45,6 +57,9 @@ final readonly class ModuleManifest
         public array $conflicts,
         public array $permissions,
         public array $featureFlags,
+        public array $fieldPermissions,
+        public array $roleDefaults,
+        public array $projectRoleDefaults,
         public string $path,
         public array $raw,
     ) {}
@@ -106,6 +121,19 @@ final readonly class ModuleManifest
             $problems[] = 'a module cannot depend on or conflict with itself';
         }
 
+        foreach ($permissions as $permission) {
+            $ownNamespace = $key !== '' && str_starts_with($permission, $key.'.');
+            $taxNamespace = $key === 'invoices' && str_starts_with($permission, self::TAX_NAMESPACE);
+
+            if (! $ownNamespace && ! $taxNamespace) {
+                $problems[] = "permission \"{$permission}\" must start with the module key";
+            }
+        }
+
+        $fields = self::fieldPermissions($data, $permissions, $problems);
+        $roleDefaults = self::defaults($data, 'role_defaults', $permissions, $problems);
+        $projectRoleDefaults = self::defaults($data, 'project_role_defaults', $permissions, $problems);
+
         if ($problems !== [] || $edition === null) {
             throw new InvalidModuleManifest($path, $problems);
         }
@@ -121,9 +149,104 @@ final readonly class ModuleManifest
             conflicts: $conflicts,
             permissions: $permissions,
             featureFlags: $flags,
+            fieldPermissions: $fields,
+            roleDefaults: $roleDefaults,
+            projectRoleDefaults: $projectRoleDefaults,
             path: $path,
             raw: $data,
         );
+    }
+
+    /**
+     * "field_permissions": sensitive fields of the module's entities. Financial
+     * and security fields must default to hidden (deny by default).
+     *
+     * @param  array<string, mixed>  $data
+     * @param  list<string>  $permissions
+     * @param  list<string>  $problems
+     * @return list<FieldDeclaration>
+     */
+    private static function fieldPermissions(array $data, array $permissions, array &$problems): array
+    {
+        $value = $data['field_permissions'] ?? [];
+
+        if (! is_array($value) || ! array_is_list($value)) {
+            $problems[] = '"field_permissions" must be a list';
+
+            return [];
+        }
+
+        $fields = [];
+        foreach ($value as $i => $item) {
+            $entity = is_array($item) ? ($item['entity'] ?? null) : null;
+            $field = is_array($item) ? ($item['field'] ?? null) : null;
+            $default = is_array($item) && is_string($item['default'] ?? null) ? FieldAccess::tryFrom($item['default']) : null;
+            $riskValue = is_array($item) ? ($item['risk'] ?? 'none') : null;
+            $risk = is_string($riskValue) ? FieldRisk::tryFrom($riskValue) : null;
+            $permission = is_array($item) ? ($item['permission'] ?? null) : null;
+
+            if (! is_string($entity) || preg_match(self::NAME_PATTERN, $entity) !== 1
+                || ! is_string($field) || preg_match(self::NAME_PATTERN, $field) !== 1
+                || $default === null || $risk === null
+                || ($permission !== null && (! is_string($permission) || ! in_array($permission, $permissions, true)))) {
+                $problems[] = "\"field_permissions\" entry {$i} is invalid";
+
+                continue;
+            }
+
+            if ($risk->mustDefaultToHidden() && $default !== FieldAccess::Hidden) {
+                $problems[] = "\"field_permissions\" entry {$i} holds {$risk->value} data and must default to hidden";
+
+                continue;
+            }
+
+            $fields[] = new FieldDeclaration($entity, $field, $default, $risk, $permission);
+        }
+
+        return $fields;
+    }
+
+    /**
+     * "role_defaults" / "project_role_defaults": what the module suggests for the
+     * role templates. Applied once, when a tenant first enables the module.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  list<string>  $permissions
+     * @param  list<string>  $problems
+     * @return array<string, list<string>>
+     */
+    private static function defaults(array $data, string $name, array $permissions, array &$problems): array
+    {
+        $value = $data[$name] ?? [];
+
+        if (! is_array($value) || ($value !== [] && array_is_list($value))) {
+            $problems[] = "\"{$name}\" must be an object";
+
+            return [];
+        }
+
+        $defaults = [];
+        foreach ($value as $role => $granted) {
+            if (! is_string($role) || preg_match(self::NAME_PATTERN, $role) !== 1 || ! is_array($granted) || ! array_is_list($granted)) {
+                $problems[] = "\"{$name}\" is invalid";
+
+                return [];
+            }
+
+            $keys = [];
+            foreach ($granted as $permission) {
+                if (! is_string($permission) || ! in_array($permission, $permissions, true)) {
+                    $problems[] = "\"{$name}\" grants a permission the module does not declare";
+
+                    return [];
+                }
+                $keys[] = $permission;
+            }
+
+            $defaults[$role] = array_values(array_unique($keys));
+        }
+
+        return $defaults;
     }
 
     /**

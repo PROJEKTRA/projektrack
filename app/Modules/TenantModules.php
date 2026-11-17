@@ -9,6 +9,7 @@ namespace App\Modules;
 
 use App\Models\TenantModule;
 use App\Models\User;
+use App\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,26 +21,33 @@ use Illuminate\Support\Facades\DB;
  */
 final class TenantModules
 {
-    /** @var list<string>|null */
-    private ?array $cache = null;
+    /** @var array<string, list<string>> tenant id => enabled keys */
+    private array $cache = [];
 
-    public function __construct(private readonly ModuleRegistry $registry) {}
+    public function __construct(
+        private readonly ModuleRegistry $registry,
+        private readonly TenantContext $tenant,
+    ) {}
 
     /**
      * @return list<string> enabled module keys of the current tenant, in boot order
      */
     public function enabled(): array
     {
-        if ($this->cache === null) {
-            $keys = TenantModule::query()->where('enabled', true)->pluck('module_key')->all();
+        return $this->cache[$this->tenant->id()] ??= $this->load();
+    }
 
-            $this->cache = array_values(array_filter(
-                array_keys($this->registry->all()),
-                fn (string $key): bool => in_array($key, $keys, true),
-            ));
-        }
+    /**
+     * @return list<string>
+     */
+    private function load(): array
+    {
+        $keys = TenantModule::query()->where('enabled', true)->pluck('module_key')->all();
 
-        return $this->cache;
+        return array_values(array_filter(
+            array_keys($this->registry->all()),
+            fn (string $key): bool => in_array($key, $keys, true),
+        ));
     }
 
     public function isEnabled(string $key): bool
@@ -66,16 +74,28 @@ final class TenantModules
     {
         $plan = $this->enablePlan($key);
 
-        DB::transaction(function () use ($plan, $actor): void {
+        /** @var list<string> $first */
+        $first = DB::transaction(function () use ($plan, $actor): array {
+            $first = [];
             foreach ($plan as $module) {
-                TenantModule::query()->updateOrCreate(
+                $row = TenantModule::query()->updateOrCreate(
                     ['module_key' => $module],
                     ['enabled' => true, 'enabled_at' => now(), 'disabled_at' => null, 'changed_by' => $actor?->id],
                 );
+
+                if ($row->wasRecentlyCreated) {
+                    $first[] = $module;
+                }
             }
+
+            return $first;
         });
 
-        $this->cache = null;
+        unset($this->cache[$this->tenant->id()]);
+
+        foreach ($plan as $module) {
+            event(new ModuleEnabled($this->tenant->id(), $module, in_array($module, $first, true), $actor?->id));
+        }
 
         return $plan;
     }
@@ -95,6 +115,8 @@ final class TenantModules
             ->where('module_key', $key)
             ->update(['enabled' => false, 'disabled_at' => now(), 'changed_by' => $actor?->id]);
 
-        $this->cache = null;
+        unset($this->cache[$this->tenant->id()]);
+
+        event(new ModuleDisabled($this->tenant->id(), $key, $actor?->id));
     }
 }

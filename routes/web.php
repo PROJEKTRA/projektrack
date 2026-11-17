@@ -10,10 +10,16 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
 
-// No public landing page: the root sends visitors straight to sign-in or the dashboard.
-Route::get('/', fn (): RedirectResponse => to_route('dashboard'))->name('home');
+/*
+ * Deny by default: every route carries "permission:<key>" (or a "can:" policy
+ * check) or an explicit "access:public" / "access:self" marker. The route test
+ * in tests/Feature/Security/RouteAuthorizationTest.php enforces this.
+ */
 
-Route::middleware(['auth', 'verified'])->group(function () {
+// No public landing page: the root sends visitors straight to sign-in or the dashboard.
+Route::get('/', fn (): RedirectResponse => to_route('dashboard'))->middleware('access:public')->name('home');
+
+Route::middleware(['auth', 'verified', 'access:self'])->group(function () {
     Route::get('dashboard', fn (): Response => Inertia::render('Dashboard'))->name('dashboard');
 });
 

@@ -7,6 +7,7 @@ export type User = {
     name: string;
     email: string;
     avatar?: string;
+    user_type: 'full' | 'light' | 'portal' | 'service';
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
     created_at: string;
@@ -16,6 +17,8 @@ export type User = {
 
 export type Auth = {
     user: User;
+    /** Effective global permissions; for showing or hiding UI only. */
+    permissions: string[];
 };
 
 export type TwoFactorConfigContent = {

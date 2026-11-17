@@ -24,12 +24,16 @@ return new class extends Migration
             $table->string('email');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            // full, light, portal, service (ADR-0003). Full and light are derived from
+            // effective permissions; portal and service are fixed account kinds.
+            $table->string('user_type', 16)->default('light');
             $table->string('locale', 16)->nullable();
             $table->string('timezone', 64)->nullable();
             $table->rememberToken();
             $table->timestamps();
 
             $table->unique(['tenant_id', 'email']);
+            $table->index(['tenant_id', 'user_type']);
             // Target of tenant-safe composite foreign keys from child tables.
             $table->unique(['tenant_id', 'id']);
         });

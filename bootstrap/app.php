@@ -8,7 +8,9 @@
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireModule;
+use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\ResolveTenant;
+use App\Http\Middleware\RouteAccess;
 use App\Http\Middleware\SetSecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -27,7 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // then the tenant is resolved from the host before sessions or auth run.
         $middleware->prepend([SetSecurityHeaders::class, ResolveTenant::class]);
 
-        $middleware->alias(['module' => RequireModule::class]);
+        $middleware->alias([
+            'module' => RequireModule::class,
+            'permission' => RequirePermission::class,
+            'access' => RouteAccess::class,
+        ]);
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 

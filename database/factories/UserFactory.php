@@ -52,6 +52,14 @@ class UserFactory extends Factory
     }
 
     /**
+     * A customer contact's portal account.
+     */
+    public function portal(): static
+    {
+        return $this->state(fn (array $attributes) => ['user_type' => 'portal']);
+    }
+
+    /**
      * Indicate that the model has two-factor authentication configured.
      */
     public function withTwoFactor(): static

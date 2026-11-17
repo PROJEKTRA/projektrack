@@ -38,7 +38,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Private files are served only by controllers that check permissions,
+            // never by the framework's generic signed-URL route.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

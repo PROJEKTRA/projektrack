@@ -59,8 +59,9 @@ Editions: **C** = Community (AGPL-3.0), **B** = Business, **E** = Enterprise, **
 | fiscal_ba | Fiscalization Bosnia and Herzegovina | C | core, invoices, taxpack_ba | (none) | 2.0 | `fiscal_ba.manage` |
 
 Notes:
-- Field permissions (for example `field:time_entries.sales_amount`, `field:quote_lines.unit_cost_minor`) are declared by modules in `field_permissions` and appear in the permission matrix with risk hints.
-- Light users are restricted at role level to `timesheets.*`, `expenses.submit`, own work items and approvals; the role template defines the licensed user type.
+- Field permissions (for example `field:time_entries.sales_amount`, `field:quote_lines.unit_cost_minor`) are declared by modules in `field_permissions` and appear in the permission matrix with risk hints. A declaration can name a module permission (for example `timesheets.view_rates`) that grants read access to the field, so admins grant one permission instead of many fields.
+- The Light set is owned by the core, not by module manifests, because it decides what a customer pays: `timesheets.view`, `timesheets.book`, `timesheets.approve`, `expenses.view`, `expenses.submit`, `expenses.approve`, `absences.request`, `absences.approve`, `work.view`, `work.transition`, `work.comment`, `core.files.upload`. A user is Light while every permission their global and project roles grant is in this set, and Full otherwise (ADR-0003); a role's licensed user type is derived the same way.
+- `role_defaults` and `project_role_defaults` suggest grants for the role templates. They are applied once, when a tenant first enables the module. A permission added by a later module version is granted to no role until an admin grants it (deny by default).
 - Edition gating is checked at enable time and on every request (expired commercial license: read-only).
 
 ## 2. module.json schema
@@ -89,8 +90,15 @@ Example:
     "timesheets.view_rates"
   ],
   "field_permissions": [
-    { "entity": "time_entries", "field": "sales_amount", "default": "hidden", "risk": "financial" }
+    { "entity": "time_entries", "field": "sales_amount", "default": "hidden", "risk": "financial", "permission": "timesheets.view_rates" }
   ],
+  "role_defaults": {
+    "employee": ["timesheets.view", "timesheets.book"],
+    "controller": ["timesheets.view", "timesheets.approve", "timesheets.view_rates"]
+  },
+  "project_role_defaults": {
+    "project_lead": ["timesheets.approve"]
+  },
   "navigation": [
     { "label_string": "timesheets:nav", "route": "timesheets.index", "icon": "clock", "permission": "timesheets.view" }
   ],
@@ -154,10 +162,13 @@ JSON Schema (draft 2020-12):
           "entity": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
           "field": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
           "default": { "enum": ["hidden", "read", "write"] },
-          "risk": { "enum": ["none", "personal", "financial", "security"] }
+          "risk": { "enum": ["none", "personal", "financial", "security"] },
+          "permission": { "type": "string", "description": "A permission of this module that grants read access to the field." }
         }
       }
     },
+    "role_defaults": { "$ref": "#/$defs/roleGrants" },
+    "project_role_defaults": { "$ref": "#/$defs/roleGrants" },
     "navigation": {
       "type": "array",
       "items": {
@@ -242,6 +253,12 @@ JSON Schema (draft 2020-12):
       "type": "array",
       "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" },
       "uniqueItems": true
+    },
+    "roleGrants": {
+      "type": "object",
+      "description": "Role template key to the permissions of this module suggested for it.",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+      "additionalProperties": { "$ref": "#/$defs/dottedNames" }
     }
   }
 }
@@ -250,6 +267,7 @@ JSON Schema (draft 2020-12):
 Validation rules beyond the schema (enforced by the registry):
 - `requires` must form an acyclic graph; every required module must be installed and enabled first. Disabling a module that others require is refused with a plain-language list of dependents.
 - Every permission must start with the module key (or `field:` for field permissions declared separately). The only exception is the reserved `tax.` namespace, owned by the tax engine shipped with the `invoices` module (for example `tax.legal_notice.override`, ADR-0004).
+- Fields with risk `financial` or `security` must default to `hidden`. A field's `permission` and every permission in `role_defaults` and `project_role_defaults` must be declared in the module's own `permissions`.
 - Every string identifier used in the manifest must exist in the module's `lang/en` and `lang/bs` files.
 - A module with `edition` other than `community` loads only when the installed license covers it; otherwise it is installed but not enableable.
 - Third-party modules (`vendor` not `projektra`) display their `capabilities_required` to the admin, who must approve them before enabling; the approval is stored in `tenant_modules.approved_capabilities` and audited.

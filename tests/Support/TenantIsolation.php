@@ -57,9 +57,10 @@ final class TenantIsolation
             $template = $make();
             $copy = $template->replicate();
             $copy->setAttribute('tenant_id', Tenant::factory()->create()->id);
+            $before = $model::query()->count();
 
             expect(fn () => $copy->save())->toThrow(CrossTenantWrite::class);
-            expect($model::query()->count())->toBe(1);
+            expect($model::query()->count())->toBe($before);
         });
 
         test("{$short}: tenant_id cannot change", function () use ($make) {
