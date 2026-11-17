@@ -1,0 +1,32 @@
+# Local working files: never committed
+/CLAUDE.md
+/.claude/
+/docs/MASTER_PROMPT.md
+
+# Dependencies and builds
+/vendor/
+/node_modules/
+/public/build/
+/public/hot
+/storage/*.key
+/bootstrap/cache/*.php
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/storage/keys/
+
+# Tooling
+.phpunit.result.cache
+.phpunit.cache/
+/coverage/
+/playwright-report/
+/test-results/
+.idea/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
