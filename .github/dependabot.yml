@@ -25,3 +25,10 @@ updates:
     cooldown:
       default-days: 5
     open-pull-requests-limit: 5
+    ignore:
+      # ADR-0001: vue-tsc does not support TypeScript 7 yet.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # Types follow the Node LTS line used in CI (24), not the newest Node.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
