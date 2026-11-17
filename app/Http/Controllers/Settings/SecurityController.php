@@ -7,11 +7,13 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Audit\AuditLog;
 use App\Authorization\TwoFactorRequirement;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,7 +21,10 @@ use Laravel\Fortify\Features;
 
 class SecurityController extends Controller
 {
-    public function __construct(private readonly TwoFactorRequirement $requirement) {}
+    public function __construct(
+        private readonly TwoFactorRequirement $requirement,
+        private readonly AuditLog $audit,
+    ) {}
 
     /**
      * Show the user's security settings page.
@@ -54,9 +59,12 @@ class SecurityController extends Controller
      */
     public function update(PasswordUpdateRequest $request): RedirectResponse
     {
-        $this->currentUser($request)->update([
-            'password' => $request->password,
-        ]);
+        $user = $this->currentUser($request);
+
+        DB::transaction(function () use ($user, $request): void {
+            $user->update(['password' => $request->password]);
+            $this->audit->record('auth.password_changed', $user);
+        });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
 

@@ -24,6 +24,8 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            /** Set when the audit log failed its integrity check (core.audit.view only). */
+            auditWarning: string | null;
             [key: string]: unknown;
         };
     }

@@ -98,7 +98,7 @@ Editable aggregates carry `lock_version int` for optimistic locking (concurrent 
 ### 1.8 Audit hash chain
 
 - `audit_log` is append-only per tenant with a gapless per-tenant `seq`.
-- `hash = SHA-256(prev_hash || canonical_json(entry without hash))`. Canonical JSON: sorted keys, UTF-8, no insignificant whitespace, timestamps in ISO 8601 UTC with microseconds.
+- `hash = HMAC-SHA256(chain_key[key_id], prev_hash || canonical_json(entry without id and hash))` (security baseline 8.2). The chain key is derived from the application key, so database write access alone cannot produce valid hashes; `key_id` lets entries written before a key rotation verify. Canonical JSON: sorted keys, UTF-8, no insignificant whitespace, no floats, timestamps in UTC with microseconds. `context` is stored as canonical JSON text so every engine returns it unchanged.
 - Writers serialize through `audit_chain_heads` (one row per tenant, `SELECT ... FOR UPDATE` inside the business transaction), which works on all three engines. The audit entry commits atomically with the change it describes.
 - `audit_checkpoints` periodically store `(seq, hash)` signed with the instance key and optionally exported off-system, so truncation of the tail is also detectable.
 - A verification command recomputes the chain and reports the first broken link.

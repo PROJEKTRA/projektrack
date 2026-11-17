@@ -3,6 +3,7 @@
     SPDX-License-Identifier: AGPL-3.0-only
 -->
 <script setup lang="ts">
+import AuditIntegrityAlert from '@/components/AuditIntegrityAlert.vue';
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 
@@ -13,6 +14,7 @@ const { breadcrumbs = [] } = defineProps<{
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+        <AuditIntegrityAlert />
         <slot />
     </AppLayout>
 </template>

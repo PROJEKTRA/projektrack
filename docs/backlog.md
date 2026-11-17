@@ -11,3 +11,7 @@ Rules:
 
 | ID | Idea | Source | Date | Target release candidate |
 |---|---|---|---|---|
+| BL-001 | Audit checkpoints: daily head hash per chain signed with the instance Ed25519 key, exportable off-system, checked by `projektrack:audit:verify` (security baseline 8.2). Needs the instance key from licensing. | Internal review (S-0907) | 18.11.2026 | 0.9.1 |
+| BL-002 | Instance audit chain for operator events (no tenant). | Internal review (S-0907) | 18.11.2026 | 0.9.2 |
+| BL-003 | Database guard against UPDATE and DELETE on audit tables: restricted database user on P2 to P5, triggers on P1 (security baseline 8.2). | Internal review (S-0907) | 18.11.2026 | 0.9.1 |
+| BL-004 | Admin > Security: run the audit verification on demand and browse or export the audit log. | Internal review (S-0907) | 18.11.2026 | 0.9.1 |

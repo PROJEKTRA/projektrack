@@ -10,6 +10,7 @@ namespace App\Http\Middleware;
 use App\Authorization\Permissions;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -52,7 +53,26 @@ class HandleInertiaRequests extends Middleware
                 // For showing or hiding UI only; the server checks every action again.
                 'permissions' => $user instanceof User ? app(Permissions::class)->of($user) : [],
             ],
+            // Integrity warning for those who may read the audit log (S-0907).
+            'auditWarning' => fn (): ?string => $this->auditWarning($user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    private function auditWarning(mixed $user): ?string
+    {
+        if (! $user instanceof User || ! app(Permissions::class)->allows($user, 'core.audit.view')) {
+            return null;
+        }
+
+        $broken = DB::table('audit_chain_heads')->where('tenant_id', $user->tenant_id)->value('broken_at_seq');
+
+        if (! is_numeric($broken)) {
+            return null;
+        }
+
+        $warning = __('audit.integrity_warning', ['seq' => (int) $broken]);
+
+        return is_string($warning) ? $warning : null;
     }
 }
