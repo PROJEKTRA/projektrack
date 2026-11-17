@@ -7,6 +7,7 @@
 
 namespace App\Models;
 
+use App\Auth\TwoFactor\RecoveryCodeUsed;
 use App\Authorization\UserType;
 use App\Tenancy\BelongsToTenant;
 use Database\Factories\UserFactory;
@@ -31,6 +32,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property UserType $user_type
+ * @property string|null $locale
+ * @property string|null $timezone
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -61,6 +64,33 @@ class User extends Authenticatable implements MustVerifyEmail
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_roles');
+    }
+
+    /**
+     * Hashes of the unused recovery codes (S-0904). Plain codes are never stored.
+     *
+     * @return list<string>
+     */
+    public function recoveryCodes(): array
+    {
+        $decoded = is_string($this->two_factor_recovery_codes) ? json_decode($this->two_factor_recovery_codes, true) : null;
+
+        return is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : [];
+    }
+
+    /**
+     * Called by Fortify after a successful recovery-code sign-in with the
+     * matching hash: the code is used up, not replaced.
+     *
+     * @param  string  $code
+     */
+    public function replaceRecoveryCode($code): void
+    {
+        $remaining = array_values(array_filter($this->recoveryCodes(), fn (string $hash): bool => ! hash_equals($hash, $code)));
+
+        $this->forceFill(['two_factor_recovery_codes' => json_encode($remaining, JSON_THROW_ON_ERROR)])->save();
+
+        event(new RecoveryCodeUsed($this->tenant_id, $this->id, count($remaining)));
     }
 
     /**

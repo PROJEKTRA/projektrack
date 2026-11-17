@@ -5,6 +5,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use App\Http\Controllers\Admin\UserTwoFactorController;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -21,6 +23,13 @@ Route::get('/', fn (): RedirectResponse => to_route('dashboard'))->middleware('a
 
 Route::middleware(['auth', 'verified', 'access:self'])->group(function () {
     Route::get('dashboard', fn (): Response => Inertia::render('Dashboard'))->name('dashboard');
+});
+
+// User administration. Sensitive steps need a recent password confirmation (15 minutes).
+Route::middleware(['auth', 'verified', 'permission:core.users.manage'])->group(function () {
+    Route::delete('users/{user}/two-factor', [UserTwoFactorController::class, 'destroy'])
+        ->middleware(RequirePassword::class)
+        ->name('users.two-factor.reset');
 });
 
 require __DIR__.'/settings.php';

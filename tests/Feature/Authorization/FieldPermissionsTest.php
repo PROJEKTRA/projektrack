@@ -57,7 +57,8 @@ beforeEach(function () {
 
 function withRole(string $key): User
 {
-    $user = User::factory()->create();
+    // Enrolled in two-factor, so roles that require it can reach the routes.
+    $user = User::factory()->withTwoFactor()->create();
     app(RoleManager::class)->assign($user, Role::query()->where('key', $key)->firstOrFail());
 
     return $user;

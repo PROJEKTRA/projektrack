@@ -4,8 +4,8 @@
 -->
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
-import { Eye, EyeOff, LockKeyhole, RefreshCw } from '@lucide/vue';
-import { nextTick, onMounted, ref, useTemplateRef } from 'vue';
+import { LockKeyhole, RefreshCw } from '@lucide/vue';
+import { onMounted, ref } from 'vue';
 import AlertError from '@/components/AlertError.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,26 +18,26 @@ import {
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
 import { regenerateRecoveryCodes } from '@/routes/two-factor';
 
+/*
+ * Recovery codes are stored as hashes. The server returns new codes exactly
+ * once, right after they were created; afterwards only regenerating helps.
+ */
+defineProps<{
+    shownOnceNotice: string;
+    hiddenNotice: string;
+}>();
+
 const { recoveryCodesList, fetchRecoveryCodes, errors } = useTwoFactorAuth();
-const isRecoveryCodesVisible = ref<boolean>(false);
-const recoveryCodeSectionRef = useTemplateRef('recoveryCodeSectionRef');
+const loaded = ref<boolean>(false);
 
-const toggleRecoveryCodesVisibility = async () => {
-    if (!isRecoveryCodesVisible.value && !recoveryCodesList.value.length) {
-        await fetchRecoveryCodes();
-    }
-
-    isRecoveryCodesVisible.value = !isRecoveryCodesVisible.value;
-
-    if (isRecoveryCodesVisible.value) {
-        await nextTick();
-        recoveryCodeSectionRef.value?.scrollIntoView({ behavior: 'smooth' });
-    }
+const loadNewCodes = async (): Promise<void> => {
+    await fetchRecoveryCodes();
+    loaded.value = true;
 };
 
 onMounted(async () => {
     if (!recoveryCodesList.value.length) {
-        await fetchRecoveryCodes();
+        await loadNewCodes();
     }
 });
 </script>
@@ -53,75 +53,52 @@ onMounted(async () => {
                 device. Store them in a secure password manager.
             </CardDescription>
         </CardHeader>
-        <CardContent>
-            <div
-                class="flex flex-col gap-3 select-none sm:flex-row sm:items-center sm:justify-between"
-            >
-                <Button class="w-fit" @click="toggleRecoveryCodesVisibility">
-                    <component
-                        :is="isRecoveryCodesVisible ? EyeOff : Eye"
-                        class="size-4"
-                    />
-                    {{ isRecoveryCodesVisible ? 'Hide' : 'View' }} recovery
-                    codes
-                </Button>
+        <CardContent class="space-y-3">
+            <AlertError v-if="errors?.length" :errors="errors" />
 
-                <Form
-                    v-if="isRecoveryCodesVisible && recoveryCodesList.length"
-                    v-slot="{ processing }"
-                    v-bind="regenerateRecoveryCodes.form()"
-                    method="post"
-                    :options="{ preserveScroll: true }"
-                    @success="fetchRecoveryCodes"
+            <template v-else-if="recoveryCodesList.length">
+                <p
+                    role="status"
+                    class="text-sm font-medium"
+                    data-test="recovery-codes-shown-once"
                 >
-                    <Button
-                        variant="secondary"
-                        type="submit"
-                        :disabled="processing"
-                    >
-                        <RefreshCw /> Regenerate codes
-                    </Button>
-                </Form>
-            </div>
-            <div
-                :class="[
-                    'relative overflow-hidden transition-all duration-300',
-                    isRecoveryCodesVisible
-                        ? 'h-auto opacity-100'
-                        : 'h-0 opacity-0',
-                ]"
-            >
-                <div v-if="errors?.length" class="mt-6">
-                    <AlertError :errors="errors" />
-                </div>
-                <div v-else class="mt-3 space-y-3">
+                    {{ shownOnceNotice }}
+                </p>
+                <div
+                    class="grid gap-1 rounded-lg bg-muted p-4 font-mono text-sm"
+                >
                     <div
-                        ref="recoveryCodeSectionRef"
-                        class="grid gap-1 rounded-lg bg-muted p-4 font-mono text-sm"
+                        v-for="(code, index) in recoveryCodesList"
+                        :key="index"
                     >
-                        <div v-if="!recoveryCodesList.length" class="space-y-2">
-                            <div
-                                v-for="n in 8"
-                                :key="n"
-                                class="h-4 animate-pulse rounded bg-muted-foreground/20"
-                            ></div>
-                        </div>
-                        <div
-                            v-for="(code, index) in recoveryCodesList"
-                            v-else
-                            :key="index"
-                        >
-                            {{ code }}
-                        </div>
+                        <bdi>{{ code }}</bdi>
                     </div>
-                    <p class="text-xs text-muted-foreground select-none">
-                        Each recovery code can be used once to access your
-                        account and will be removed after use. If you need more,
-                        click
-                        <span class="font-bold">Regenerate codes</span> above.
-                    </p>
                 </div>
-            </div>
+            </template>
+
+            <p
+                v-else-if="loaded"
+                class="text-sm text-muted-foreground"
+                data-test="recovery-codes-hidden"
+            >
+                {{ hiddenNotice }}
+            </p>
+
+            <Form
+                v-slot="{ processing }"
+                v-bind="regenerateRecoveryCodes.form()"
+                method="post"
+                :options="{ preserveScroll: true }"
+                @success="loadNewCodes"
+            >
+                <Button
+                    variant="secondary"
+                    type="submit"
+                    :disabled="processing"
+                >
+                    <RefreshCw /> Regenerate codes
+                </Button>
+            </Form>
         </CardContent>
     </Card>
 </template>

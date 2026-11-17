@@ -7,6 +7,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Authorization\TwoFactorRequirement;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
@@ -18,6 +19,8 @@ use Laravel\Fortify\Features;
 
 class SecurityController extends Controller
 {
+    public function __construct(private readonly TwoFactorRequirement $requirement) {}
+
     /**
      * Show the user's security settings page.
      */
@@ -30,9 +33,17 @@ class SecurityController extends Controller
 
         if (Features::canManageTwoFactorAuthentication()) {
             $request->ensureStateIsValid();
+            $user = $this->currentUser($request);
+            $required = $this->requirement->isRequired($user);
 
-            $props['twoFactorEnabled'] = $this->currentUser($request)->hasEnabledTwoFactorAuthentication();
+            $props['twoFactorEnabled'] = $user->hasEnabledTwoFactorAuthentication();
             $props['requiresConfirmation'] = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
+            $props['twoFactorRequired'] = $required;
+            $props['twoFactorNotices'] = [
+                'required' => $required ? __('two_factor.required') : null,
+                'shownOnce' => __('two_factor.recovery_codes_shown_once'),
+                'hidden' => __('two_factor.recovery_codes_hidden', ['count' => count($user->recoveryCodes())]),
+            ];
         }
 
         return Inertia::render('settings/Security', $props);

@@ -117,6 +117,7 @@ return [
     |
     */
 
-    'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+    // Re-authentication window for sensitive steps (security baseline 3.2: 15 minutes).
+    'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 900),
 
 ];

@@ -13,16 +13,26 @@ import { Button } from '@/components/ui/button';
 import { useTwoFactorAuth } from '@/composables/useTwoFactorAuth';
 import { disable, enable } from '@/routes/two-factor';
 
+export type TwoFactorNotices = {
+    required: string | null;
+    shownOnce: string;
+    hidden: string;
+};
+
 export type Props = {
     canManageTwoFactor?: boolean;
     requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;
+    twoFactorRequired?: boolean;
+    twoFactorNotices?: TwoFactorNotices;
 };
 
 withDefaults(defineProps<Props>(), {
     canManageTwoFactor: false,
     requiresConfirmation: false,
     twoFactorEnabled: false,
+    twoFactorRequired: false,
+    twoFactorNotices: () => ({ required: null, shownOnce: '', hidden: '' }),
 });
 
 const { hasSetupData, clearTwoFactorAuthData } = useTwoFactorAuth();
@@ -38,6 +48,15 @@ onUnmounted(() => clearTwoFactorAuthData());
             title="Two-factor authentication"
             description="Manage your two-factor authentication settings"
         />
+
+        <p
+            v-if="twoFactorNotices.required && !twoFactorEnabled"
+            role="alert"
+            class="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
+            data-test="two-factor-required"
+        >
+            {{ twoFactorNotices.required }}
+        </p>
 
         <div
             v-if="!twoFactorEnabled"
@@ -73,7 +92,7 @@ onUnmounted(() => clearTwoFactorAuthData());
                 your phone.
             </p>
 
-            <div class="relative inline">
+            <div v-if="!twoFactorRequired" class="relative inline">
                 <Form v-slot="{ processing }" v-bind="disable.form()">
                     <Button
                         variant="destructive"
@@ -85,7 +104,10 @@ onUnmounted(() => clearTwoFactorAuthData());
                 </Form>
             </div>
 
-            <TwoFactorRecoveryCodes />
+            <TwoFactorRecoveryCodes
+                :shown-once-notice="twoFactorNotices.shownOnce"
+                :hidden-notice="twoFactorNotices.hidden"
+            />
         </div>
 
         <TwoFactorSetupModal

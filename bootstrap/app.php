@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use App\Http\Middleware\EnsureTwoFactorEnrolled;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireModule;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            EnsureTwoFactorEnrolled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

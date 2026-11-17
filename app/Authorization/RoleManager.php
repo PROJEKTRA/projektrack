@@ -174,6 +174,27 @@ final class RoleManager
     }
 
     /**
+     * Require two-factor for everyone holding $role (S-0904). It can be added to
+     * any role; it cannot be removed from the administrator and controller
+     * templates. Roles with sensitive permissions require it regardless.
+     *
+     * @throws InvalidRoleChange
+     */
+    public function setTwoFactorRequired(Role $role, bool $required, ?User $actor = null): void
+    {
+        $this->sameTenant($role->tenant_id, $this->tenant->id());
+
+        if (! $required && in_array($role->template_key, ['admin', 'controller'], true)) {
+            throw new InvalidRoleChange('Two-factor authentication cannot be made optional for administrators and controllers.');
+        }
+
+        if ($role->requires_two_factor !== $required) {
+            $role->forceFill(['requires_two_factor' => $required])->save();
+            event(new PermissionsChanged($this->tenant->id(), 'role', $role->id, $required ? ['two_factor.required'] : [], $required ? [] : ['two_factor.required'], $actor?->id));
+        }
+    }
+
+    /**
      * Override a declared field for one role. Null removes the override, so the
      * module default applies again.
      *

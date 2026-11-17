@@ -196,7 +196,7 @@ describe('deny by default', function () {
 
         $this->actingAs(employee())->get('/_test/approve')->assertForbidden();
 
-        $controller = User::factory()->create();
+        $controller = User::factory()->withTwoFactor()->create();
         app(RoleManager::class)->assign($controller, role('controller'));
 
         $this->actingAs($controller)->get('/_test/approve')->assertOk();

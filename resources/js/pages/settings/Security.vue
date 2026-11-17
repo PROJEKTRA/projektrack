@@ -112,5 +112,7 @@ defineOptions({
         :can-manage-two-factor="canManageTwoFactor"
         :requires-confirmation="requiresConfirmation"
         :two-factor-enabled="twoFactorEnabled"
+        :two-factor-required="twoFactorRequired"
+        :two-factor-notices="twoFactorNotices"
     />
 </template>
