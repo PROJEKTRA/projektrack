@@ -14,7 +14,7 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = 8123;
 export const BASE_URL = `http://127.0.0.1:${PORT}`;
 
-// Passed to the seeder (global setup) and to the server, so both use the same
+// Passed to the seeder and to the server (tests/e2e/serve.ts), so both use the same
 // database and tenant host, never the database of the .env file.
 export const E2E_ENV: Record<string, string> = {
     APP_ENV: 'local',
@@ -31,7 +31,6 @@ export const E2E_ENV: Record<string, string> = {
 
 export default defineConfig({
     testDir: 'tests/e2e',
-    globalSetup: './tests/e2e/global-setup.ts',
     fullyParallel: false,
     workers: 1,
     forbidOnly: !!process.env.CI,
@@ -60,10 +59,8 @@ export default defineConfig({
         },
     ],
     webServer: {
-        // Laravel's router script, as `php artisan serve` runs it (which would
-        // drop the environment below).
-        command: `php -S 127.0.0.1:${PORT} ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php`,
-        cwd: 'public',
+        // Seeds a fresh database, then runs PHP's built-in server.
+        command: `node tests/e2e/serve.ts ${PORT}`,
         url: `${BASE_URL}/login`,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,
