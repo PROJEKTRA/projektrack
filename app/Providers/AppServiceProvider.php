@@ -7,6 +7,7 @@
 
 namespace App\Providers;
 
+use App\Auth\NotCommonPassword;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -42,14 +43,14 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+        // Password policy (S-0903, security baseline section 2): length over
+        // composition rules, a bundled list of common passwords, and the
+        // breached-password check only when an operator switches it on,
+        // because it is a request to an outside service.
+        Password::defaults(function (): Password {
+            $rule = Password::min(12)->max(128)->rules([new NotCommonPassword]);
+
+            return config('auth.password_breach_check') === true ? $rule->uncompromised() : $rule;
+        });
     }
 }

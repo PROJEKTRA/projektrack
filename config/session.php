@@ -5,8 +5,6 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-use Illuminate\Support\Str;
-
 return [
 
     /*
@@ -40,6 +38,10 @@ return [
     'lifetime' => (int) env('SESSION_LIFETIME', 120),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
+
+    // Absolute lifetime in minutes since sign-in, however active the session
+    // is (S-0903, App\Auth\Sessions). The idle timeout is 'lifetime'.
+    'absolute_lifetime' => (int) env('SESSION_ABSOLUTE_LIFETIME', 720),
 
     /*
     |--------------------------------------------------------------------------
@@ -132,9 +134,11 @@ return [
     |
     */
 
+    // S-0903: a neutral name (no product fingerprint) and, over HTTPS, the
+    // __Host- prefix: Secure, path /, no domain, so no subdomain can set it.
     'cookie' => env(
         'SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')).'-session',
+        str_starts_with((string) env('APP_URL', ''), 'https://') ? '__Host-sid' : 'sid',
     ),
 
     /*
@@ -174,7 +178,8 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Secure whenever the application is served over HTTPS (S-0903).
+    'secure' => (bool) env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL', ''), 'https://')),
 
     /*
     |--------------------------------------------------------------------------

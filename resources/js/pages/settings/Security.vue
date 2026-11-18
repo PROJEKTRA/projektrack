@@ -5,6 +5,7 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
+import SessionController from '@/actions/App/Http/Controllers/Settings/SessionController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
@@ -18,6 +19,8 @@ import ManageTwoFactor from '@/components/ManageTwoFactor.vue';
 // oxfmt-ignore
 type Props = {
     passwordRules: string;
+    /** Other sessions of the user; null when the session store cannot count them. */
+    otherSessions: number | null;
 } & ManageTwoFactorProps;
 
 const props = defineProps<Props>();
@@ -132,4 +135,38 @@ defineOptions({
         :two-factor-required="twoFactorRequired"
         :two-factor-notices="twoFactorNotices"
     />
+
+    <div class="space-y-6">
+        <Heading
+            variant="small"
+            :title="$t('core:settings.security.sessions.title')"
+            :description="$t('core:settings.security.sessions.description')"
+        />
+
+        <p
+            v-if="otherSessions !== null"
+            class="text-sm text-muted-foreground"
+            data-test="other-sessions-count"
+        >
+            {{
+                $t('core:settings.security.sessions.count', {
+                    count: otherSessions,
+                })
+            }}
+        </p>
+
+        <Form
+            v-slot="{ processing }"
+            v-bind="SessionController.destroy.form()"
+            :options="{ preserveScroll: true }"
+        >
+            <Button
+                variant="outline"
+                :disabled="processing"
+                data-test="end-other-sessions-button"
+            >
+                {{ $t('core:settings.security.sessions.submit') }}
+            </Button>
+        </Form>
+    </div>
 </template>

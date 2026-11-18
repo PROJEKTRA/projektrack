@@ -8,6 +8,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Audit\AuditLog;
+use App\Auth\Sessions;
 use App\Authorization\TwoFactorRequirement;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
@@ -24,6 +25,7 @@ class SecurityController extends Controller
     public function __construct(
         private readonly TwoFactorRequirement $requirement,
         private readonly AuditLog $audit,
+        private readonly Sessions $sessions,
     ) {}
 
     /**
@@ -34,6 +36,8 @@ class SecurityController extends Controller
         $props = [
             'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            // Null when the session driver cannot count them (S-0903).
+            'otherSessions' => $this->sessions->countOthers($this->currentUser($request), $request->session()),
         ];
 
         if (Features::canManageTwoFactorAuthentication()) {
@@ -65,6 +69,9 @@ class SecurityController extends Controller
             $user->update(['password' => $request->password]);
             $this->audit->record('auth.password_changed', $user);
         });
+
+        // A new password ends every other session (S-0903).
+        $this->sessions->endOthers($user, $request->session());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('core:flash.password_updated')]);
 

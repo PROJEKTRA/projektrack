@@ -7,6 +7,7 @@
 
 use App\Auth\TwoFactor\RecoveryCodes;
 use App\Auth\TwoFactor\RecoveryCodeUsed;
+use App\Auth\TwoFactor\TwoFactorLoginRequest;
 use App\Auth\TwoFactor\TwoFactorReset;
 use App\Authorization\InvalidRoleChange;
 use App\Authorization\RoleManager;
@@ -150,7 +151,7 @@ describe('recovery codes', function () {
         Event::fake([RecoveryCodeUsed::class]);
         $user = User::factory()->withTwoFactor()->create();
 
-        $this->withSession(['login.id' => $user->id, 'login.remember' => false])
+        $this->withSession(['login.id' => $user->id, 'login.remember' => false, TwoFactorLoginRequest::STARTED => now()->getTimestamp()])
             ->post('/two-factor-challenge', ['recovery_code' => 'recovery-code-1'])
             ->assertRedirect(route('dashboard', absolute: false));
 
@@ -160,7 +161,7 @@ describe('recovery codes', function () {
 
         auth()->logout();
 
-        $this->withSession(['login.id' => $user->id, 'login.remember' => false])
+        $this->withSession(['login.id' => $user->id, 'login.remember' => false, TwoFactorLoginRequest::STARTED => now()->getTimestamp()])
             ->post('/two-factor-challenge', ['recovery_code' => 'recovery-code-1']);
 
         $this->assertGuest();

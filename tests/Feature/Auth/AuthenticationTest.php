@@ -81,11 +81,12 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_users_are_rate_limited()
+    public function test_one_address_is_rate_limited_per_minute()
     {
         $user = User::factory()->create();
 
-        RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
+        // S-0903: 20 sign-in requests per IP and minute; per account see LoginLockoutTest.
+        RateLimiter::increment(md5('login'.'ip:127.0.0.1'), amount: 20);
 
         $response = $this->post(route('login.store'), [
             'email' => $user->email,

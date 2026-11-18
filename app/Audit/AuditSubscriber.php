@@ -22,6 +22,7 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Support\Str;
 use Laravel\Fortify\Events\RecoveryCodesGenerated;
 use Laravel\Fortify\Events\TwoFactorAuthenticationConfirmed;
 use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
@@ -79,6 +80,14 @@ final class AuditSubscriber
         // Never the submitted credentials; the subject only when the account exists.
         if ($this->tenant->has()) {
             $user = $event->user instanceof User ? $event->user : null;
+            $email = $event->credentials['email'] ?? null;
+
+            // The sign-in pipeline reports failures without the user (S-0903).
+            if ($user === null && is_string($email) && $email !== '') {
+                $found = User::query()->where('email', Str::lower(trim($email)))->first();
+                $user = $found !== null && hash_equals(Str::lower($found->email), Str::lower(trim($email))) ? $found : null;
+            }
+
             $this->audit()->record('auth.login_failed', $user, [], null);
         }
     }

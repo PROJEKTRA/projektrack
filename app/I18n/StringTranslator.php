@@ -44,6 +44,10 @@ final class StringTranslator extends Translator
         'Verify Email Address' => 'core:email.verify.subject',
         'Please click the button below to verify your email address.' => 'core:email.verify.intro',
         'If you did not create an account, no further action is required.' => 'core:email.verify.not_you',
+        // Validation sentences of the sign-in package (S-0903).
+        'The provided password was incorrect.' => 'core:auth.password',
+        'The provided two factor authentication code was invalid.' => 'core:two_factor.code_invalid',
+        'The provided two factor recovery code was invalid.' => 'core:two_factor.recovery_code_invalid',
     ];
 
     /** @var Closure(): Strings */

@@ -46,6 +46,9 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // "Remember me" lasts 30 days (S-0903); it is the one way past the
+            // absolute session lifetime, so it is capped.
+            'remember' => (int) env('AUTH_REMEMBER_MINUTES', 43200),
         ],
     ],
 
@@ -119,5 +122,9 @@ return [
 
     // Re-authentication window for sensitive steps (security baseline 3.2: 15 minutes).
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 900),
+
+    // Check new passwords against known data breaches (k-anonymity range
+    // query to an outside service). Off unless an operator enables it.
+    'password_breach_check' => (bool) env('AUTH_PASSWORD_BREACH_CHECK', false),
 
 ];

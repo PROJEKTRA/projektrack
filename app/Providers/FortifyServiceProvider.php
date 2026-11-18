@@ -8,21 +8,33 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\ResetUserPassword;
+use App\Auth\AuthenticateUser;
+use App\Auth\AuthenticationSubscriber;
+use App\Auth\ConfirmIdentity;
+use App\Auth\EnsureAccountIsNotLocked;
+use App\Auth\StartTwoFactorChallenge;
 use App\Auth\TwoFactor\DisableTwoFactorAuthentication;
 use App\Auth\TwoFactor\EnableTwoFactorAuthentication;
 use App\Auth\TwoFactor\GenerateNewRecoveryCodes;
 use App\Auth\TwoFactor\RecoveryCodeController;
 use App\Auth\TwoFactor\TwoFactorLoginRequest;
+use App\Auth\UniformPasswordResetLinkResponse;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Laravel\Fortify\Actions\AttemptToAuthenticate;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication as FortifyDisable;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication as FortifyEnable;
 use Laravel\Fortify\Actions\GenerateNewRecoveryCodes as FortifyGenerate;
+use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
+use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
+use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Controllers\RecoveryCodeController as FortifyRecoveryCodeController;
@@ -42,6 +54,10 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->bind(FortifyGenerate::class, GenerateNewRecoveryCodes::class);
         $this->app->bind(FortifyTwoFactorLoginRequest::class, TwoFactorLoginRequest::class);
         $this->app->bind(FortifyRecoveryCodeController::class, RecoveryCodeController::class);
+
+        // S-0903: the reset link form answers the same for every address.
+        $this->app->bind(FailedPasswordResetLinkRequestResponse::class, UniformPasswordResetLinkResponse::class);
+        $this->app->bind(SuccessfulPasswordResetLinkRequestResponse::class, UniformPasswordResetLinkResponse::class);
     }
 
     /**
@@ -60,6 +76,22 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureActions(): void
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+
+        // S-0903: a locked account name is refused first; credentials are
+        // checked with equal cost for unknown addresses.
+        Fortify::authenticateUsing(fn (Request $request): ?User => app(AuthenticateUser::class)($request));
+        Fortify::authenticateThrough(fn (): array => [
+            EnsureAccountIsNotLocked::class,
+            StartTwoFactorChallenge::class,
+            RedirectIfTwoFactorAuthenticatable::class,
+            AttemptToAuthenticate::class,
+            PrepareAuthenticatedSession::class,
+        ]);
+
+        // Re-authentication accepts the password or a current authenticator code.
+        Fortify::confirmPasswordsUsing(fn (mixed $user, mixed $password): bool => app(ConfirmIdentity::class)($user, $password));
+
+        Event::subscribe(AuthenticationSubscriber::class);
     }
 
     /**
@@ -88,7 +120,9 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
 
-        Fortify::confirmPasswordView(fn () => Inertia::render('auth/ConfirmPassword'));
+        Fortify::confirmPasswordView(fn (Request $request) => Inertia::render('auth/ConfirmPassword', [
+            'acceptsCode' => $request->user() instanceof User && ConfirmIdentity::acceptsCode($request->user()),
+        ]));
     }
 
     /**
@@ -100,12 +134,9 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
 
-        RateLimiter::for('login', function (Request $request) {
-            $username = $request->input(Fortify::username());
-            $throttleKey = Str::transliterate(Str::lower(is_string($username) ? $username : '').'|'.$request->ip());
-
-            return Limit::perMinute(5)->by($throttleKey);
-        });
+        // Per address: App\Auth\LoginThrottle (progressive lock). Per IP: 20 per
+        // minute, against spraying many addresses (security baseline section 2).
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(20)->by('ip:'.$request->ip()));
 
     }
 }

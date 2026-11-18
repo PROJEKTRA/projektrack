@@ -10,6 +10,7 @@ namespace App\Models;
 use App\Auth\TwoFactor\RecoveryCodeUsed;
 use App\Authorization\UserType;
 use App\I18n\Strings;
+use App\Notifications\ResetPasswordLink;
 use App\Tenancy\BelongsToTenant;
 use App\Tenancy\TenantContext;
 use Database\Factories\UserFactory;
@@ -40,6 +41,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
+ * @property int $session_version
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -56,7 +58,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      *
      * @var array<string, mixed>
      */
-    protected $attributes = ['user_type' => 'light'];
+    protected $attributes = ['user_type' => 'light', 'session_version' => 1];
 
     /**
      * Global roles. Assign and revoke through RoleManager only, which keeps the
@@ -79,6 +81,17 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         $tenantLocale = $tenants->has() ? $tenants->current()->default_locale : null;
 
         return app(Strings::class)->chain($this->locale ?? $tenantLocale)[0];
+    }
+
+    /**
+     * Reset links go out from the queue (S-0903), so the request takes as long
+     * for a known address as for an unknown one.
+     *
+     * @param  string  $token
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPasswordLink($token));
     }
 
     /**
@@ -120,6 +133,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'password' => 'hashed',
             'user_type' => UserType::class,
             'two_factor_confirmed_at' => 'datetime',
+            'session_version' => 'integer',
         ];
     }
 }

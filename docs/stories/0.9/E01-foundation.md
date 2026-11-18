@@ -154,6 +154,8 @@ Scenario: Password reset
   And the response is identical for known and unknown email addresses
 ```
 
+Implementation note (19.11.2026): Argon2id (64 MiB, time 4, one thread; older hashes are rehashed at sign-in). Passwords: 12 to 128 characters, no composition rules, a bundled list of common passwords plus repeated and straight-run checks; the breached-password check is off unless an operator enables it. Lock per tenant and address: 5 failures in 15 minutes lock for 15 minutes, doubling to 24 hours, identical for unknown addresses; 20 sign-in requests per IP and minute; `php artisan projektrack:auth:unlock <tenant> <email>` lifts a lock. Re-authentication (15 minutes) accepts the password or a current authenticator code. Settings > Security signs out all other sessions; a password change or reset does the same. Details: security baseline, implementation notes S-0903.
+
 ---
 
 ### S-0904 TOTP two-factor authentication enforced per role

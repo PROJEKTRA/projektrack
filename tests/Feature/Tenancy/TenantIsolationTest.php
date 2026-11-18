@@ -9,8 +9,8 @@ use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\TenantModule;
 use App\Models\User;
+use App\Notifications\ResetPasswordLink;
 use App\Tenancy\TenantContext;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\QueryException;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Jobs\SyncJob;
@@ -107,7 +107,7 @@ it('never accepts a password reset token from another tenant', function () {
 
     // Requesting a link here leaves the other tenant's token untouched.
     $this->post('http://localhost/forgot-password', ['email' => 'shared@example.test']);
-    Notification::assertSentTo($own, ResetPassword::class);
+    Notification::assertSentTo($own, ResetPasswordLink::class);
     expect(DB::table('password_reset_tokens')->where('tenant_id', $this->other->id)->count())->toBe(1);
 });
 

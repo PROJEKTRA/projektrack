@@ -12,6 +12,9 @@ import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/i18n/strings';
 import { store } from '@/routes/password/confirm';
 
+// Users with two-factor authentication may confirm with a current code (S-0903).
+const props = defineProps<{ acceptsCode?: boolean }>();
+
 defineOptions({
     layout: () => ({
         title: t('core:auth.confirm_password.title'),
@@ -29,9 +32,18 @@ defineOptions({
         reset-on-success
     >
         <div class="space-y-6">
+            <p
+                v-if="props.acceptsCode"
+                class="text-center text-sm text-muted-foreground"
+            >
+                {{ $t('core:auth.confirm_password.code_description') }}
+            </p>
+
             <div class="grid gap-2">
                 <Label html-for="password">{{
-                    $t('core:auth.confirm_password.password_label')
+                    props.acceptsCode
+                        ? $t('core:auth.confirm_password.code_label')
+                        : $t('core:auth.confirm_password.password_label')
                 }}</Label>
                 <PasswordInput
                     id="password"
