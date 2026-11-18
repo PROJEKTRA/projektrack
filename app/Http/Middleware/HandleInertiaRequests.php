@@ -8,6 +8,7 @@
 namespace App\Http\Middleware;
 
 use App\Authorization\Permissions;
+use App\I18n\Formats;
 use App\I18n\Strings;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -56,6 +57,8 @@ class HandleInertiaRequests extends Middleware
             ],
             // Which string bundle the page needs (S-0916).
             'strings' => $this->strings(),
+            // Regional format and time zone for dates and amounts (S-0919).
+            'formats' => app(Formats::class)->current()->toArray(),
             // Integrity warning for those who may read the audit log (S-0907).
             'auditWarning' => fn (): ?string => $this->auditWarning($user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

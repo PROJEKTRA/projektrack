@@ -6,6 +6,8 @@ import { createInertiaApp, router } from '@inertiajs/vue3';
 import { ConfigProvider } from 'reka-ui';
 import { createApp, h, ref } from 'vue';
 import { initializeTheme } from '@/composables/useAppearance';
+import { setFormats } from '@/i18n/formats';
+import type { FormatsMeta } from '@/i18n/formats';
 import { loadStrings, t } from '@/i18n/strings';
 import type { StringsMeta } from '@/i18n/strings';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -46,6 +48,8 @@ router.on('navigate', (event) => {
         dir.value = meta.dir;
         void loadStrings(meta);
     }
+
+    setFormats(event.detail.page.props.formats as FormatsMeta | undefined);
 });
 
 async function boot(): Promise<void> {
@@ -71,6 +75,10 @@ async function boot(): Promise<void> {
             }
         },
         setup: ({ el, App, props, plugin }) => {
+            setFormats(
+                props.initialPage.props.formats as FormatsMeta | undefined,
+            );
+
             // Reka UI primitives (menus, popovers, keyboard navigation) read
             // the writing direction of the user's language from here (S-0920).
             const app = createApp({

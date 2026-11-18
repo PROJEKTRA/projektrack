@@ -7,6 +7,7 @@
 
 namespace App\Concerns;
 
+use App\I18n\Formats;
 use App\I18n\TenantLanguages;
 use App\Models\User;
 use App\Tenancy\TenantContext;
@@ -28,6 +29,8 @@ trait ProfileValidationRules
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
             'locale' => $this->localeRules(),
+            'format_locale' => ['sometimes', 'nullable', 'string', Rule::in(Formats::offered())],
+            'timezone' => ['sometimes', 'nullable', 'string', 'timezone:all'],
         ];
     }
 

@@ -33,6 +33,12 @@ defineProps<{
     locale: string | null;
     /** Offered languages, each labeled in its own language. */
     locales: { value: string; label: string }[];
+    /** Regional format and time zone, separate from the language (S-0919). */
+    formatLocale: string | null;
+    formats: { value: string; label: string; example: string }[];
+    timezone: string | null;
+    timezones: { value: string; label: string }[];
+    tenantTimezone: string;
 }>();
 
 const page = usePage();
@@ -136,6 +142,71 @@ const user = computed(() => page.props.auth.user);
                     {{ $t('core:settings.profile.locale_help') }}
                 </p>
                 <InputError class="mt-2" :message="errors.locale" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="format_locale">{{
+                    $t('core:settings.profile.format_label')
+                }}</Label>
+                <select
+                    id="format_locale"
+                    name="format_locale"
+                    class="mt-1 block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    aria-describedby="format-help"
+                >
+                    <option value="" :selected="formatLocale === null">
+                        {{ $t('core:settings.profile.format_default') }}
+                    </option>
+                    <option
+                        v-for="option in formats"
+                        :key="option.value"
+                        :value="option.value"
+                        :selected="formatLocale === option.value"
+                    >
+                        {{
+                            $t('core:settings.profile.format_option', {
+                                name: option.label,
+                                example: option.example,
+                            })
+                        }}
+                    </option>
+                </select>
+                <p id="format-help" class="text-sm text-muted-foreground">
+                    {{ $t('core:settings.profile.format_help') }}
+                </p>
+                <InputError class="mt-2" :message="errors.format_locale" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="timezone">{{
+                    $t('core:settings.profile.timezone_label')
+                }}</Label>
+                <select
+                    id="timezone"
+                    name="timezone"
+                    class="mt-1 block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    aria-describedby="timezone-help"
+                >
+                    <option value="" :selected="timezone === null">
+                        {{
+                            $t('core:settings.profile.timezone_default', {
+                                timezone: tenantTimezone,
+                            })
+                        }}
+                    </option>
+                    <option
+                        v-for="option in timezones"
+                        :key="option.value"
+                        :value="option.value"
+                        :selected="timezone === option.value"
+                    >
+                        {{ option.label }}
+                    </option>
+                </select>
+                <p id="timezone-help" class="text-sm text-muted-foreground">
+                    {{ $t('core:settings.profile.timezone_help') }}
+                </p>
+                <InputError class="mt-2" :message="errors.timezone" />
             </div>
 
             <div class="flex items-center gap-4">

@@ -11,6 +11,7 @@ use App\Audit\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\I18n\Formats;
 use App\I18n\Strings;
 use App\I18n\TenantLanguages;
 use App\Tenancy\TenantContext;
@@ -34,15 +35,23 @@ class ProfileController extends Controller
     /**
      * Show the user's profile settings page.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request, Formats $formats): Response
     {
+        $user = $this->currentUser($request);
+
         return Inertia::render('settings/Profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
-            'locale' => $this->currentUser($request)->locale,
+            'locale' => $user->locale,
             // Each language under its own name, so it is found in any interface language.
             // A language the tenant deactivated is no longer offered (S-0921).
             'locales' => $this->languages->options(),
+            // Regional format and time zone, separate from the language (S-0919).
+            'formatLocale' => $user->format_locale,
+            'formats' => $formats->options(App::getLocale()),
+            'timezone' => $user->timezone,
+            'timezones' => $formats->timezones(),
+            'tenantTimezone' => app(TenantContext::class)->current()->timezone,
         ]);
     }
 

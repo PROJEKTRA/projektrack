@@ -32,6 +32,18 @@ return [
     // CI and demo instances, off in production unless an operator enables them.
     'pseudo' => (bool) env('I18N_PSEUDO', env('APP_ENV', 'production') !== 'production'),
 
+    // Regional formats users can choose, separate from the language
+    // (S-0919, ADR-0005 section 3): dates, numbers, currency amounts.
+    'formats' => ['bs-BA', 'hr-HR', 'sr-Latn-BA', 'de-DE', 'de-AT', 'de-CH', 'en-GB', 'en-US', 'fr-FR', 'es-ES', 'ar-SA', 'fa-IR'],
+
+    // Regional format when the user chose none: the usual one of their language.
+    'default_formats' => ['bs' => 'bs-BA', 'hr' => 'hr-HR', 'sr' => 'sr-Latn-BA', 'de' => 'de-DE', 'en' => 'en-GB', 'fr' => 'fr-FR', 'es' => 'es-ES', 'ar' => 'ar-SA', 'fa' => 'fa-IR', 'xx' => 'en-GB', 'xx-rtl' => 'en-GB'],
+
+    // Numeric date patterns that replace the CLDR pattern of a language
+    // (product decision S-0919: 01.11.2026 instead of CLDR's 01. 11. 2026.).
+    // Tokens: dd, d, MM, M, yyyy, yy; anything else is kept literally.
+    'date_patterns' => ['bs' => 'dd.MM.yyyy'],
+
     // Never shipped, offered or accepted (ADR-0005).
     'refused' => ['he', 'iw'],
 

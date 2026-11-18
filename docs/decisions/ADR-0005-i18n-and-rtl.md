@@ -210,6 +210,15 @@ The build fails if:
 - **Arabic until the language pack exists:** the browser tests use a tenant copy of `en` named `ar` with direction `rtl`, so the layout is Arabic while most text is English.
 - **Not covered yet:** the timesheet, project and invoice screens (screenshots follow with their stories; the timesheet maps ArrowLeft and ArrowRight to the previous and next day by direction), self-hosted Arabic and Persian fonts (section 9; the system fonts render Arabic until then), RTL exports (section 11) and alternative calendars (section 10).
 
+## Implementation notes (S-0919 regional formats and time zones, 19.11.2026)
+
+- **Choice per user:** Settings > Profile has "Regional format" and "Time zone" next to the language. `users.format_locale` holds one of `config('i18n.formats')`; empty means the usual format of the language the user sees (`i18n.default_formats`, for example `bs` to `bs-BA`, `en` to `en-GB`). `users.timezone` holds an IANA zone; empty means the tenant's zone. Storage stays UTC.
+- **One formatter on each side:** `App\I18n\Formats` picks the format for a user (`current()`, or `for($user)` for mails and exports) and returns an `App\I18n\RegionalFormat`; the browser has `resources/js/i18n/formats.ts`, fed by the shared prop `formats` (`locale`, `timeZone`, `datePattern`). Both offer `date` (a timestamp, in the time zone), `day` (a calendar date `Y-m-d`, never shifted), `time`, `dateTime`, `number` and `money`.
+- **Dates:** numeric, from the CLDR skeleton `ddMMyyyy` (`01.11.2026` de, `01/11/2026` en-GB, `11/01/2026` en-US). A language may replace it in `i18n.date_patterns`; `bs` uses `dd.MM.yyyy` as the story requires, where CLDR has `01. 11. 2026.`. Times use the locale's hour cycle with two-digit hours on 24-hour clocks (`15:05`, `3:05 PM`).
+- **Amounts:** integers in minor units with the ISO code (`1.234,50 EUR`, `EUR 1,234.50`), decimals from the currency (JPY 0, KWD 3). Integers stay exact up to 2^52 minor units (about 45 trillion in a two-decimal currency); larger amounts are refused rather than rounded.
+- **Parity:** `tests/fixtures/i18n/formats.json` is checked by Pest (ext-intl) and Vitest (Node ICU), including the DST change in Europe/Sarajevo on 25.10.2026; kinds of spaces compare equal across ICU versions.
+- **Not covered yet:** native digits and alternative calendars for `ar` and `fa` (sections 3 and 10), first day of the week and paper size, a tenant-wide default format, and durations (follow with time tracking).
+
 ## Alternatives considered
 
 - **Laravel's native `__()` with PHP array files and `trans_choice`:** no ICU MessageFormat, weak plural support for `ar` and `bs` (pipe syntax), no shared syntax with the frontend. Kept only as a bridge. Rejected as the primary layer.

@@ -1,0 +1,27 @@
+{
+    "_comment": "S-0919: expected output of App\\I18n\\RegionalFormat (tests/Feature/I18n/FormatsTest.php) and resources/js/i18n/formats.ts (formats.test.ts). Spaces of any kind compare equal, because ICU versions differ in narrow and normal no-break spaces.",
+    "cases": [
+        { "name": "story: Bosnian date", "fn": "day", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "Europe/Sarajevo", "input": "2026-11-01", "expect": "01.11.2026" },
+        { "name": "story: Bosnian amount", "fn": "money", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "Europe/Sarajevo", "input": 123450, "currency": "EUR", "expect": "1.234,50 EUR" },
+        { "name": "German date", "fn": "day", "locale": "de-DE", "pattern": null, "timeZone": "UTC", "input": "2026-11-01", "expect": "01.11.2026" },
+        { "name": "British date", "fn": "day", "locale": "en-GB", "pattern": null, "timeZone": "UTC", "input": "2026-11-01", "expect": "01/11/2026" },
+        { "name": "US date", "fn": "day", "locale": "en-US", "pattern": null, "timeZone": "UTC", "input": "2026-11-01", "expect": "11/01/2026" },
+        { "name": "calendar date is never shifted", "fn": "day", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "Pacific/Kiritimati", "input": "2026-11-01", "expect": "01.11.2026" },
+        { "name": "timestamp shows the day in the time zone", "fn": "date", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "Europe/Sarajevo", "input": "2026-10-31T23:30:00Z", "expect": "01.11.2026" },
+        { "name": "DST: last summer time half hour", "fn": "time", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "Europe/Sarajevo", "input": "2026-10-25T00:30:00Z", "expect": "02:30" },
+        { "name": "DST: same wall time after the change", "fn": "time", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "Europe/Sarajevo", "input": "2026-10-25T01:30:00Z", "expect": "02:30" },
+        { "name": "DST: winter time afternoon", "fn": "time", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "Europe/Sarajevo", "input": "2026-11-01T14:05:00Z", "expect": "15:05" },
+        { "name": "US time", "fn": "time", "locale": "en-US", "pattern": null, "timeZone": "America/New_York", "input": "2026-11-01T14:05:00Z", "expect": "9:05 AM" },
+        { "name": "date and time", "fn": "dateTime", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "Europe/Sarajevo", "input": "2026-11-01T14:05:00Z", "expect": "01.11.2026 15:05" },
+        { "name": "English interface, German formats", "fn": "dateTime", "locale": "de-DE", "pattern": null, "timeZone": "Europe/Berlin", "input": "2026-11-01T14:05:00Z", "expect": "01.11.2026 15:05" },
+        { "name": "Bosnian number", "fn": "number", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "UTC", "input": 1234.5, "decimals": 2, "expect": "1.234,50" },
+        { "name": "British number", "fn": "number", "locale": "en-GB", "pattern": null, "timeZone": "UTC", "input": 1234.5, "decimals": 2, "expect": "1,234.50" },
+        { "name": "German amount", "fn": "money", "locale": "de-DE", "pattern": null, "timeZone": "UTC", "input": 123450, "currency": "EUR", "expect": "1.234,50 EUR" },
+        { "name": "British amount", "fn": "money", "locale": "en-GB", "pattern": null, "timeZone": "UTC", "input": 123450, "currency": "EUR", "expect": "EUR 1,234.50" },
+        { "name": "convertible mark", "fn": "money", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "UTC", "input": 99, "currency": "BAM", "expect": "0,99 BAM" },
+        { "name": "negative amount", "fn": "money", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "UTC", "input": -123450, "currency": "EUR", "expect": "-1.234,50 EUR" },
+        { "name": "currency without minor unit", "fn": "money", "locale": "bs-BA", "pattern": "dd.MM.yyyy", "timeZone": "UTC", "input": 1234, "currency": "JPY", "expect": "1.234 JPY" },
+        { "name": "currency with three decimals", "fn": "money", "locale": "en-GB", "pattern": null, "timeZone": "UTC", "input": 1234567, "currency": "KWD", "expect": "KWD 1,234.567" },
+        { "name": "large amount stays exact", "fn": "money", "locale": "en-GB", "pattern": null, "timeZone": "UTC", "input": 4503599627370495, "currency": "EUR", "expect": "EUR 45,035,996,273,704.95" }
+    ]
+}
