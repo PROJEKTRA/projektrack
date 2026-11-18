@@ -16,7 +16,7 @@ use Illuminate\Translation\Translator;
  * `__()`, validation, Fortify, password reset and framework mail texts all
  * come from identifiers:
  *
- * - `__('core:save')` resolves the identifier through {@see Strings}.
+ * - `__('core:common.save')` resolves the identifier through {@see Strings}.
  * - Framework groups (`validation.required`, `auth.failed`, `passwords.sent`,
  *   `pagination.next`) map to `core:<group>.<key>`. These messages keep
  *   Laravel's `:placeholder` syntax, because the validator fills placeholders

@@ -15,12 +15,14 @@ const forwardedProps = useForwardProps(delegatedProps);
 </script>
 
 <template>
+    <!-- i18n-physical-ok: Reka positions the viewport with a physical left offset -->
     <div class="absolute top-full left-0 isolate z-50 flex justify-center">
         <NavigationMenuViewport
             data-slot="navigation-menu-viewport"
             v-bind="forwardedProps"
             :class="
                 cn(
+                    /* i18n-physical-ok: offset computed by Reka from the physical left edge */
                     'origin-top-center relative left-[var(--reka-navigation-menu-viewport-left)] mt-1.5 h-[var(--reka-navigation-menu-viewport-height)] w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:zoom-in-90 md:w-[var(--reka-navigation-menu-viewport-width)]',
                     props.class,
                 )

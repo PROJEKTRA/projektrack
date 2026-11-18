@@ -268,7 +268,8 @@ final class Strings
         if (! array_key_exists($key, $this->formatters)) {
             try {
                 // The constructor throws on an invalid pattern (unlike create()).
-                $this->formatters[$key] = new MessageFormatter(str_replace('-', '_', $locale), $message);
+                $formatLocale = Pseudo::isPseudo($locale) ? Pseudo::FORMAT_LOCALE : $locale;
+                $this->formatters[$key] = new MessageFormatter(str_replace('-', '_', $formatLocale), $message);
             } catch (IntlException|\ValueError) {
                 $this->formatters[$key] = false;
             }

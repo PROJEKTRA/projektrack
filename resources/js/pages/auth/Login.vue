@@ -90,7 +90,10 @@ defineProps<{
             </div>
 
             <div class="flex items-center justify-between">
-                <Label for="remember" class="flex items-center space-x-3">
+                <Label
+                    for="remember"
+                    class="flex items-center space-x-3 rtl:space-x-reverse"
+                >
                     <Checkbox id="remember" name="remember" :tabindex="3" />
                     <span>{{ $t('core:auth.login.remember') }}</span>
                 </Label>

@@ -42,7 +42,7 @@ const MISSING = 'core:string_missing';
 const bundle = shallowRef<StringBundle | null>(null);
 const formatters = new Map<string, IntlMessageFormat>();
 const reported = new Set<string>();
-const RTL_LOCALES = new Set(['ar', 'fa']);
+const RTL_LOCALES = new Set(['ar', 'fa', 'xx-rtl']);
 let loading: Promise<void> | null = null;
 let loadingUrl: string | null = null;
 
@@ -102,9 +102,16 @@ function formatter(
     }
 
     try {
-        const created = new IntlMessageFormat(message, locale, undefined, {
-            ignoreTag: true,
-        });
+        // Pseudo-locales (xx, xx-rtl) use the plural rules of en, like the server.
+        const formatLocale = locale.startsWith('xx') ? 'en' : locale;
+        const created = new IntlMessageFormat(
+            message,
+            formatLocale,
+            undefined,
+            {
+                ignoreTag: true,
+            },
+        );
         formatters.set(key, created);
 
         return created;
@@ -124,7 +131,7 @@ function report(id: string, reason: string): void {
 
 /** Wrap arguments in Unicode isolates for right-to-left locales (ADR-0005 section 8). */
 function isolate(args: StringArgs, locale: string): StringArgs {
-    if (!RTL_LOCALES.has(locale.split('-')[0])) {
+    if (!RTL_LOCALES.has(locale) && !RTL_LOCALES.has(locale.split('-')[0])) {
         return args;
     }
 

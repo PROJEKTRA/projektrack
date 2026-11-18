@@ -123,6 +123,16 @@ final class StringCatalog
      */
     private function fromSource(string $locale): array
     {
+        // Pseudo-locales are generated from the source language (S-0917).
+        if (Pseudo::isPseudo($locale)) {
+            $source = $this->load('en');
+
+            return [
+                'version' => hash('xxh128', $locale."\0".$source['version']),
+                'messages' => array_map(Pseudo::transform(...), $source['messages']),
+            ];
+        }
+
         if (! preg_match('/^[a-z]{2,3}(-[A-Z0-9]{2,4})?$/', $locale)) {
             return ['version' => hash('xxh128', $locale), 'messages' => []];
         }

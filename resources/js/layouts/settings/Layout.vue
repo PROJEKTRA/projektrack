@@ -41,10 +41,12 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
             :description="$t('core:settings.description')"
         />
 
-        <div class="flex flex-col lg:flex-row lg:space-x-12">
+        <div
+            class="flex flex-col lg:flex-row lg:space-x-12 lg:rtl:space-x-reverse"
+        >
             <aside class="w-full max-w-xl lg:w-48">
                 <nav
-                    class="flex flex-col space-y-1 space-x-0"
+                    class="flex flex-col space-y-1 space-x-0 rtl:space-x-reverse"
                     :aria-label="$t('core:settings.title')"
                 >
                     <Button

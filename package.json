@@ -10,10 +10,11 @@
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",
-        "lint": "eslint . --max-warnings=0",
-        "lint:fix": "eslint . --fix",
-        "format": "prettier --write resources/",
-        "format:check": "prettier --check resources/",
+        "lint": "eslint . --max-warnings=0 && node scripts/i18n/cli.ts",
+        "lint:i18n": "node scripts/i18n/cli.ts",
+        "lint:fix": "eslint . --fix && node scripts/i18n/cli.ts --fix",
+        "format": "prettier --write resources/ scripts/",
+        "format:check": "prettier --check resources/ scripts/",
         "typecheck": "vue-tsc --noEmit",
         "test": "vitest run"
     },
@@ -31,6 +32,7 @@
         "vue-sonner": "^2.0.0"
     },
     "devDependencies": {
+        "@formatjs/icu-messageformat-parser": "3.5.22",
         "@inertiajs/vite": "~3.11.0",
         "@laravel/vite-plugin-wayfinder": "^0.1.11",
         "@tailwindcss/vite": "~4.3.5",

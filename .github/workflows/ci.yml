@@ -79,7 +79,7 @@ jobs:
             echo "::error::En dash found"; exit 1
           fi
           # Every first-party source file carries the copyright header.
-          missing=$(grep -rL 'PROJEKTRA IT SAVJETOVANJE' app bootstrap/app.php config database routes tests resources/js resources/css resources/views \
+          missing=$(grep -rL 'PROJEKTRA IT SAVJETOVANJE' app bootstrap/app.php config database routes scripts tests resources/js resources/css resources/views \
                      --include='*.php' --include='*.ts' --include='*.vue' --include='*.css' \
                      | grep -v -E 'resources/js/(components/ui|actions|routes|wayfinder)/' || true)
           if [ -n "$missing" ]; then echo "::error::Missing copyright header:"; echo "$missing"; exit 1; fi

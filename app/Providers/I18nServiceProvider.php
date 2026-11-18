@@ -36,6 +36,7 @@ class I18nServiceProvider extends ServiceProvider
                 $config->string('i18n.source'),
                 Lists::strings($config->array('i18n.rtl')),
                 Lists::strings($config->array('i18n.refused')),
+                $config->boolean('i18n.pseudo'),
             );
         });
 

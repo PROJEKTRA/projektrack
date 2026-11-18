@@ -15,7 +15,7 @@ export default defineConfig({
     },
     test: {
         environment: 'jsdom',
-        include: ['resources/js/**/*.test.ts'],
+        include: ['resources/js/**/*.test.ts', 'scripts/**/*.test.ts'],
         passWithNoTests: false,
     },
 });

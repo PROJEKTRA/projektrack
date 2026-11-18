@@ -28,6 +28,7 @@ final class Locales
      * @param  list<string>  $available
      * @param  list<string>  $rtl
      * @param  list<string>  $refused
+     * @param  bool  $pseudo  offer the pseudo-locales xx and xx-rtl (S-0917)
      */
     public function __construct(
         array $available,
@@ -35,11 +36,12 @@ final class Locales
         public readonly string $source,
         array $rtl = [],
         array $refused = [],
+        bool $pseudo = false,
     ) {
         $this->refused = array_map(self::normalize(...), $refused);
         $this->rtl = array_map(self::normalize(...), $rtl);
         $this->available = array_values(array_unique(array_filter(
-            array_map(self::normalize(...), [...$available, $default, $source]),
+            array_map(self::normalize(...), [...$available, $default, $source, ...($pseudo ? Pseudo::LOCALES : [])]),
             fn (string $locale): bool => ! $this->isRefused($locale),
         )));
     }
@@ -64,7 +66,9 @@ final class Locales
 
     public function direction(string $locale): string
     {
-        return in_array(self::base(self::normalize($locale)), $this->rtl, true) ? 'rtl' : 'ltr';
+        $locale = self::normalize($locale);
+
+        return in_array($locale, $this->rtl, true) || in_array(self::base($locale), $this->rtl, true) ? 'rtl' : 'ltr';
     }
 
     /**
@@ -98,6 +102,11 @@ final class Locales
     /** "es_US" and "ES-us" become "es-US". */
     public static function normalize(string $locale): string
     {
+        // Pseudo-locales keep their lower-case names (xx-rtl).
+        if (Pseudo::isPseudo(strtolower(trim($locale)))) {
+            return strtolower(trim($locale));
+        }
+
         $parts = preg_split('/[-_]/', trim($locale)) ?: [];
         $language = strtolower($parts[0] ?? '');
 

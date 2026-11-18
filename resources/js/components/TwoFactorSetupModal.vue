@@ -134,7 +134,7 @@ watch(
                             <div
                                 v-for="i in 5"
                                 :key="`col-${i}`"
-                                class="border-r border-border last:border-r-0"
+                                class="border-e border-border last:border-e-0"
                             />
                         </div>
                         <div
@@ -196,7 +196,9 @@ watch(
                             </div>
                         </div>
 
-                        <div class="flex w-full items-center space-x-5">
+                        <div
+                            class="flex w-full items-center space-x-5 rtl:space-x-reverse"
+                        >
                             <Button class="w-full" @click="handleModalNextStep">
                                 {{ modalConfig.buttonText }}
                             </Button>
@@ -216,7 +218,7 @@ watch(
                         </div>
 
                         <div
-                            class="flex w-full items-center justify-center space-x-2"
+                            class="flex w-full items-center justify-center space-x-2 rtl:space-x-reverse"
                         >
                             <div
                                 class="flex w-full items-stretch overflow-hidden rounded-xl border border-border"
@@ -240,7 +242,7 @@ watch(
                                         class="h-full w-full bg-background p-3 text-foreground"
                                     />
                                     <button
-                                        class="relative block h-auto border-l border-border px-3 hover:bg-muted"
+                                        class="relative block h-auto border-s border-border px-3 hover:bg-muted"
                                         :aria-label="
                                             $t(
                                                 'core:settings.security.two_factor.setup.copy_key',
@@ -295,7 +297,9 @@ watch(
                                 <InputError :message="formErrors?.code" />
                             </div>
 
-                            <div class="flex w-full items-center space-x-5">
+                            <div
+                                class="flex w-full items-center space-x-5 rtl:space-x-reverse"
+                            >
                                 <Button
                                     type="button"
                                     variant="outline"

@@ -81,7 +81,7 @@ const rightNavItems: NavItem[] = [];
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                class="mr-2 h-9 w-9"
+                                class="me-2 h-9 w-9"
                                 :aria-label="$t('core:nav.open_menu')"
                             >
                                 <Menu class="h-5 w-5" />
@@ -91,7 +91,7 @@ const rightNavItems: NavItem[] = [];
                             <SheetTitle class="sr-only">{{
                                 $t('core:nav.menu')
                             }}</SheetTitle>
-                            <SheetHeader class="flex justify-start text-left">
+                            <SheetHeader class="flex justify-start text-start">
                                 <AppLogoIcon
                                     class="size-6 fill-current text-black dark:text-white"
                                 />
@@ -127,7 +127,7 @@ const rightNavItems: NavItem[] = [];
                                         :href="toUrl(item.href)"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        class="flex items-center space-x-2 text-sm font-medium"
+                                        class="flex items-center space-x-2 text-sm font-medium rtl:space-x-reverse"
                                     >
                                         <component
                                             :is="item.icon"
@@ -148,9 +148,9 @@ const rightNavItems: NavItem[] = [];
 
                 <!-- Desktop Menu -->
                 <div class="hidden h-full lg:flex lg:flex-1">
-                    <NavigationMenu class="ml-10 flex h-full items-stretch">
+                    <NavigationMenu class="ms-10 flex h-full items-stretch">
                         <NavigationMenuList
-                            class="flex h-full items-stretch space-x-2"
+                            class="flex h-full items-stretch space-x-2 rtl:space-x-reverse"
                         >
                             <NavigationMenuItem
                                 v-for="(item, index) in mainNavItems"
@@ -171,21 +171,25 @@ const rightNavItems: NavItem[] = [];
                                     <component
                                         :is="item.icon"
                                         v-if="item.icon"
-                                        class="mr-2 h-4 w-4"
+                                        class="me-2 h-4 w-4"
                                     />
                                     {{ item.title }}
                                 </Link>
                                 <div
                                     v-if="isCurrentUrl(item.href)"
-                                    class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-black dark:bg-white"
+                                    class="absolute start-0 bottom-0 h-0.5 w-full translate-y-px bg-black dark:bg-white"
                                 ></div>
                             </NavigationMenuItem>
                         </NavigationMenuList>
                     </NavigationMenu>
                 </div>
 
-                <div class="ml-auto flex items-center space-x-2">
-                    <div class="relative flex items-center space-x-1">
+                <div
+                    class="ms-auto flex items-center space-x-2 rtl:space-x-reverse"
+                >
+                    <div
+                        class="relative flex items-center space-x-1 rtl:space-x-reverse"
+                    >
                         <Button
                             variant="ghost"
                             size="icon"
@@ -197,7 +201,9 @@ const rightNavItems: NavItem[] = [];
                             />
                         </Button>
 
-                        <div class="hidden space-x-1 lg:flex">
+                        <div
+                            class="hidden space-x-1 lg:flex rtl:space-x-reverse"
+                        >
                             <template
                                 v-for="item in rightNavItems"
                                 :key="item.title"

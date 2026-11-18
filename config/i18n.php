@@ -26,7 +26,11 @@ return [
     'source' => 'en',
 
     // Written right to left (ADR-0005 section 7).
-    'rtl' => ['ar', 'fa'],
+    'rtl' => ['ar', 'fa', 'xx-rtl'],
+
+    // Pseudo-locales xx and xx-rtl for testers (S-0917): on in development,
+    // CI and demo instances, off in production unless an operator enables them.
+    'pseudo' => (bool) env('I18N_PSEUDO', env('APP_ENV', 'production') !== 'production'),
 
     // Never shipped, offered or accepted (ADR-0005).
     'refused' => ['he', 'iw'],
