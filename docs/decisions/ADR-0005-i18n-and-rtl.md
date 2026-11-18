@@ -187,7 +187,18 @@ The build fails if:
 - **Resolution:** `Strings::resolve()` reads the tenant's overrides for each chain locale before the shipped strings. Overrides per tenant and locale are cached under the language `revision`, which every import increments. The bundle version includes the tenant and each locale's revision. The bundle route serves a tenant's own languages only on that tenant's host.
 - **Import:** all or nothing. Every message must belong to an `en` identifier, be valid ICU for the target locale, have at most 5000 characters and use only arguments the `en` message declares (`App\I18n\MessageArguments`; the browser formatter refuses unknown arguments). Up to 20 reasons are listed. Imported strings count as translated. Import into an included language is refused; customizing included languages string by string is S-0918.
 - **Audit:** `languages.activated`, `languages.deactivated` (with the number of affected users), `languages.copied`, `languages.imported`; context holds locales and counts only.
-- **Not covered yet:** instance-wide languages and overrides (`scope` = instance), the string editor of S-0918, XLIFF, signed language packs and the "preview (machine translated)" label.
+- **Not covered yet:** instance-wide languages and overrides (`scope` = instance), XLIFF, signed language packs and the "preview (machine translated)" label.
+
+## Implementation notes (S-0918 string editor, 18.11.2026)
+
+- **Page:** Admin > Languages > Edit texts (`GET /admin/languages/{locale}/strings`, `PUT` to save, `DELETE` to remove; permission `core.strings.customize`). `App\I18n\StringEditor` searches identifier, en source, text without the tenant's change and override (case-insensitive), filters by component and by state (all, own texts, not yet translated, original changed) and pages by 50.
+- **Side by side:** each row shows the en source, the text without the tenant's change (the shipped text of the locale, or for a copied language the text of its parent) and the override.
+- **Save:** the value must be valid ICU for the locale, at most 5000 characters, and use only arguments of the en message (same checks as the import). The override stores the current en source hash and clears "needs review"; the language revision increments, so the browser bundle version and the override cache move on. Pseudo-locales cannot be edited.
+- **Survive updates:** overrides live in the database and are never touched by updates. When the en source hash differs from the stored one, the row shows "Original changed, please review"; saving again confirms the text against the new source.
+- **Remove:** deleting the override restores the shipped text (or the parent's for a copy).
+- **Safe output:** overrides are data, rendered by Vue text interpolation and escaped in Blade mail templates; a test renders a mail with HTML in an override.
+- **Legal notices:** identifiers whose key contains `legal_notice` also need `tax.legal_notice.override` (ADR-0004); without the invoices module that permission does not exist, so nobody can change them.
+- **Audit:** `strings.overridden` and `strings.reset` with locale and identifier, never the text.
 
 ## Alternatives considered
 

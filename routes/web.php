@@ -6,6 +6,7 @@
  */
 
 use App\Http\Controllers\Admin\LanguageController;
+use App\Http\Controllers\Admin\StringController;
 use App\Http\Controllers\Admin\UserTwoFactorController;
 use App\Http\Controllers\StringBundleController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -54,6 +55,18 @@ Route::middleware(['auth', 'verified', 'permission:core.strings.customize'])
         Route::patch('{locale}', 'update')->name('update');
         Route::get('{locale}/export', 'export')->name('export');
         Route::post('{locale}/import', 'import')->middleware('throttle:10,1')->name('import');
+    });
+
+// Own texts for any string of a language (S-0918).
+Route::middleware(['auth', 'verified', 'permission:core.strings.customize'])
+    ->prefix('admin/languages/{locale}/strings')
+    ->name('admin.strings.')
+    ->controller(StringController::class)
+    ->where(['locale' => '[A-Za-z]{2,3}(-[A-Za-z0-9]{2,4})?'])
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::put('/', 'update')->name('update');
+        Route::delete('/', 'destroy')->name('destroy');
     });
 
 require __DIR__.'/settings.php';

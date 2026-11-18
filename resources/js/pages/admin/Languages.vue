@@ -3,10 +3,18 @@
     SPDX-License-Identifier: AGPL-3.0-only
 -->
 <script setup lang="ts">
-import { Form, Head, router } from '@inertiajs/vue3';
-import { Copy, Download, MoreHorizontal, Power, Upload } from '@lucide/vue';
+import { Form, Head, Link, router } from '@inertiajs/vue3';
+import {
+    Copy,
+    Download,
+    MoreHorizontal,
+    Pencil,
+    Power,
+    Upload,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 import LanguageController from '@/actions/App/Http/Controllers/Admin/LanguageController';
+import StringController from '@/actions/App/Http/Controllers/Admin/StringController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
@@ -267,6 +275,25 @@ const selectClass =
                                     >
                                         <Copy class="size-4" />
                                         {{ $t('core:languages.action_copy') }}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        v-if="language.kind !== 'pseudo'"
+                                        as-child
+                                    >
+                                        <Link
+                                            :href="
+                                                StringController.index(
+                                                    language.locale,
+                                                )
+                                            "
+                                        >
+                                            <Pencil class="size-4" />
+                                            {{
+                                                $t(
+                                                    'core:languages.action_texts',
+                                                )
+                                            }}
+                                        </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem as-child>

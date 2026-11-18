@@ -444,6 +444,31 @@ final class TenantLanguages
         ];
     }
 
+    /** The tenant's row for $locale, if it differs from the shipped language. */
+    public function row(string $locale): ?TenantLanguage
+    {
+        return $this->rows()[$locale] ?? null;
+    }
+
+    /**
+     * Note a change to the tenant's strings of $locale: the bundle version
+     * and the override cache move on. Creates the row for a shipped language.
+     */
+    public function touch(string $locale, User $actor): TenantLanguage
+    {
+        $row = $this->rows()[$locale] ?? new TenantLanguage([
+            'locale' => $locale,
+            'direction' => $this->base->direction($locale),
+            'is_custom' => false,
+            'is_active' => true,
+            'revision' => 0,
+        ]);
+
+        $row->fill(['revision' => $row->revision + 1, 'changed_by' => $actor->id])->save();
+
+        return $row;
+    }
+
     /** Drop what this service remembered for the current request. */
     public function forget(): void
     {
@@ -461,7 +486,7 @@ final class TenantLanguages
      * @param  array<string, string>  $source
      * @return array{0: string, 1: array<string, string|int>}|null
      */
-    private function checkMessage(string $identifier, mixed $message, array $source, string $locale): ?array
+    public function checkMessage(string $identifier, mixed $message, array $source, string $locale): ?array
     {
         if (! isset($source[$identifier])) {
             return ['core:languages.import_unknown', ['id' => $identifier]];
@@ -519,7 +544,7 @@ final class TenantLanguages
     /**
      * @throws LanguageChangeRefused
      */
-    private function knownLocale(string $locale): string
+    public function knownLocale(string $locale): string
     {
         $locale = Locales::normalize($locale);
 
