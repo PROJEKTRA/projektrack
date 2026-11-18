@@ -19,10 +19,12 @@ import {
 } from '@/components/ui/sidebar';
 import UserInfo from '@/components/UserInfo.vue';
 import UserMenuContent from '@/components/UserMenuContent.vue';
+import { useMirroredSide } from '@/lib/direction';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const { isMobile, state } = useSidebar();
+const collapsedSide = useMirroredSide('left');
 </script>
 
 <template>
@@ -45,7 +47,7 @@ const { isMobile, state } = useSidebar();
                         isMobile
                             ? 'bottom'
                             : state === 'collapsed'
-                              ? 'left'
+                              ? collapsedSide
                               : 'bottom'
                     "
                     align="end"

@@ -129,9 +129,22 @@ function report(id: string, reason: string): void {
     }
 }
 
+/** Whether a message locale is written right to left (own RTL languages included). */
+function isRtl(locale: string, current: StringBundle): boolean {
+    if (locale === current.locale) {
+        return current.dir === 'rtl';
+    }
+
+    return RTL_LOCALES.has(locale) || RTL_LOCALES.has(locale.split('-')[0]);
+}
+
 /** Wrap arguments in Unicode isolates for right-to-left locales (ADR-0005 section 8). */
-function isolate(args: StringArgs, locale: string): StringArgs {
-    if (!RTL_LOCALES.has(locale) && !RTL_LOCALES.has(locale.split('-')[0])) {
+function isolate(
+    args: StringArgs,
+    locale: string,
+    current: StringBundle,
+): StringArgs {
+    if (!isRtl(locale, current)) {
         return args;
     }
 
@@ -171,7 +184,7 @@ export function t(id: string, args: StringArgs = {}): string {
 
     const result = compiled.format({
         ...current.reserved,
-        ...isolate(args, locale),
+        ...isolate(args, locale, current),
     });
 
     return Array.isArray(result) ? result.join('') : String(result);

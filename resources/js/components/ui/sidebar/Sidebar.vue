@@ -5,6 +5,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import SheetDescription from '@/components/ui/sheet/SheetDescription.vue';
 import SheetHeader from '@/components/ui/sheet/SheetHeader.vue';
 import SheetTitle from '@/components/ui/sheet/SheetTitle.vue';
+import { useMirroredSide } from '@/lib/direction';
 import { SIDEBAR_WIDTH_MOBILE, useSidebar } from './utils';
 
 defineOptions({
@@ -18,6 +19,9 @@ const props = withDefaults(defineProps<SidebarProps>(), {
 });
 
 const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+// The side is given for left to right; right to left languages mirror it.
+// The mobile sheet mirrors on its own.
+const physicalSide = useMirroredSide(() => props.side);
 </script>
 
 <template>
@@ -70,7 +74,7 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
         :data-state="state"
         :data-collapsible="state === 'collapsed' ? collapsible : ''"
         :data-variant="variant"
-        :data-side="side"
+        :data-side="physicalSide"
     >
         <!-- This is what handles the sidebar gap on desktop  -->
         <div
@@ -90,7 +94,7 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
                 cn(
                     'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
                     /* i18n-physical-ok-begin: follows the physical side prop */
-                    side === 'left'
+                    physicalSide === 'left'
                         ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
                         : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
                     /* i18n-physical-ok-end */

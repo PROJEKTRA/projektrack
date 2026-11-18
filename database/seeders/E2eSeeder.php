@@ -1,0 +1,77 @@
+<?php
+
+/*
+ * Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+namespace Database\Seeders;
+
+use App\Authorization\RoleManager;
+use App\I18n\TenantLanguages;
+use App\Models\Role;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Tenancy\TenantContext;
+use Illuminate\Database\Seeder;
+use RuntimeException;
+
+/**
+ * Synthetic data for the browser tests (tests/e2e, S-0920): one tenant at the
+ * host of APP_URL, one administrator per test language and an Arabic tenant
+ * language standing in for the Arabic language pack. Never run in production.
+ *
+ *   php artisan migrate:fresh --seeder=E2eSeeder
+ */
+class E2eSeeder extends Seeder
+{
+    /** Password of every test user (synthetic, tests/e2e/support.ts). */
+    public const string PASSWORD = 'e2e-password-not-secret';
+
+    /**
+     * Test users by language: e-mail and base32 TOTP secret (synthetic,
+     * tests/e2e/support.ts). One secret per user, because a code is accepted
+     * only once.
+     *
+     * @var array<string, array{email: string, secret: string}>
+     */
+    public const array USERS = [
+        'bs' => ['email' => 'e2e-bs@example.test', 'secret' => 'JBSWY3DPEHPK3PXP'],
+        'ar' => ['email' => 'e2e-ar@example.test', 'secret' => 'GEZDGNBVGY3TQOJQ'],
+    ];
+
+    public function run(): void
+    {
+        if (app()->environment('production')) {
+            throw new RuntimeException('The browser test seeder must not run in production.');
+        }
+
+        $url = config('app.url');
+        $host = (is_string($url) ? parse_url($url, PHP_URL_HOST) : null) ?: 'localhost';
+
+        $tenant = Tenant::factory()->withDomain($host)->create([
+            'slug' => 'e2e-company',
+            'name' => 'E2E Company d.o.o.',
+        ]);
+
+        app(TenantContext::class)->run($tenant, function (): void {
+            $admin = Role::query()->where('key', Role::ADMIN)->firstOrFail();
+            $users = [];
+
+            foreach (self::USERS as $locale => $user) {
+                $users[$locale] = User::factory()->create([
+                    'name' => "E2E {$locale}",
+                    'email' => $user['email'],
+                    'password' => self::PASSWORD,
+                    'locale' => $locale,
+                    'two_factor_secret' => encrypt($user['secret']),
+                    'two_factor_recovery_codes' => json_encode([]),
+                    'two_factor_confirmed_at' => now(),
+                ]);
+                app(RoleManager::class)->assign($users[$locale], $admin);
+            }
+
+            app(TenantLanguages::class)->copy('en', 'ar', 'العربية', 'rtl', $users['bs']);
+        });
+    }
+}

@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { createInertiaApp, router } from '@inertiajs/vue3';
+import { ConfigProvider } from 'reka-ui';
+import { createApp, h, ref } from 'vue';
 import { initializeTheme } from '@/composables/useAppearance';
 import { loadStrings, t } from '@/i18n/strings';
 import type { StringsMeta } from '@/i18n/strings';
@@ -12,6 +14,10 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Projektrack';
+// Writing direction of the user's language, switched together with html dir.
+const dir = ref<'ltr' | 'rtl'>(
+    document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr',
+);
 
 function initialStrings(): StringsMeta | null {
     const meta = document.querySelector<HTMLMetaElement>(
@@ -37,6 +43,7 @@ router.on('navigate', (event) => {
     if (meta) {
         document.documentElement.lang = meta.locale;
         document.documentElement.dir = meta.dir;
+        dir.value = meta.dir;
         void loadStrings(meta);
     }
 });
@@ -63,15 +70,26 @@ async function boot(): Promise<void> {
                     return AppLayout;
             }
         },
-        withApp: (app) => {
+        setup: ({ el, App, props, plugin }) => {
+            // Reka UI primitives (menus, popovers, keyboard navigation) read
+            // the writing direction of the user's language from here (S-0920).
+            const app = createApp({
+                render: () =>
+                    h(ConfigProvider, { dir: dir.value }, () => h(App, props)),
+            });
+
+            app.use(plugin);
             app.config.globalProperties.$t = t;
             app.directive('focus', {
-                mounted: (el: HTMLElement, shouldFocus) => {
+                mounted: (element: HTMLElement, shouldFocus) => {
                     if (shouldFocus.value !== false) {
-                        el.focus();
+                        element.focus();
                     }
                 },
             });
+            if (el) {
+                app.mount(el);
+            }
         },
         progress: {
             color: '#4B5563',

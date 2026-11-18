@@ -469,3 +469,71 @@ export function fixDirections(file: string, text: string): string {
 
     return lines.join('\n');
 }
+
+// ------------------------------------------------------------------- icons
+
+const ICON_EXCEPTION = 'i18n-icon-ok:';
+/** Icon names that point along the reading direction (S-0920). */
+const DIRECTIONAL_ICON =
+    /(^|-)(left|right|undo|redo|log-in|log-out|reply|forward|indent)(-|$)/;
+
+/** Lucide component name to its icon name: PanelLeftClose => panel-left-close. */
+export function iconName(component: string): string {
+    return component
+        .replace(/Icon$/, '')
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .replace(/([a-zA-Z])([0-9])/g, '$1-$2')
+        .toLowerCase();
+}
+
+/** Icon names mirrored by resources/css/rtl.css (".lucide-<name>"). */
+export function mirroredIcons(css: string): Set<string> {
+    return new Set(
+        [...css.matchAll(/\.lucide-([a-z0-9-]+)/g)].map((match) => match[1]),
+    );
+}
+
+/**
+ * Directional icons imported from @lucide/vue must be mirrored in right to
+ * left languages, so they must be listed in resources/css/rtl.css. Icons that
+ * look directional but are not (a text alignment, for example) carry
+ * "i18n-icon-ok: <reason>" on the import line or the line before.
+ */
+export function checkIcons(
+    file: string,
+    text: string,
+    mirrored: Set<string>,
+): Problem[] {
+    const problems: Problem[] = [];
+    const lines = text.split('\n');
+    const imports = /import\s*\{([^}]*)\}\s*from\s*['"]@lucide\/vue['"]/g;
+
+    for (const match of text.matchAll(imports)) {
+        const start = text.slice(0, match.index).split('\n').length;
+        const names = match[1].split(',').map((part) =>
+            part
+                .trim()
+                .split(/\s+as\s+/)[0]
+                .trim(),
+        );
+        const end = start + match[0].split('\n').length - 1;
+        const marked = lines
+            .slice(Math.max(0, start - 2), end)
+            .some((line) => line.includes(ICON_EXCEPTION));
+
+        if (marked) continue;
+
+        for (const name of names.filter(Boolean)) {
+            const icon = iconName(name);
+            if (DIRECTIONAL_ICON.test(icon) && !mirrored.has(icon)) {
+                problems.push({
+                    file,
+                    line: start,
+                    message: `directional icon "${name}" is not mirrored in right to left languages: add .lucide-${icon} to resources/css/rtl.css, or mark the import with "${ICON_EXCEPTION} <reason>"`,
+                });
+            }
+        }
+    }
+
+    return problems;
+}

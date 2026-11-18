@@ -123,7 +123,7 @@ const selectClass =
                 :href="LanguageController.index()"
                 class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
             >
-                <ArrowLeft class="size-4 rtl:rotate-180" />
+                <ArrowLeft class="size-4" />
                 {{ $t('core:strings.back') }}
             </Link>
             <Heading

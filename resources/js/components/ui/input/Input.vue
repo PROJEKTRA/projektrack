@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue';
+import { computed, useAttrs } from 'vue';
 import { useVModel } from '@vueuse/core';
 import { cn } from '@/lib/utils';
 
@@ -17,11 +18,20 @@ const modelValue = useVModel(props, 'modelValue', emits, {
     passive: true,
     defaultValue: props.defaultValue,
 });
+
+// Structured values (e-mail, URL, phone, numbers, passwords) are written left
+// to right in every language (ADR-0005 section 8). An explicit dir wins.
+const LTR_TYPES = new Set(['email', 'url', 'tel', 'number', 'password']);
+const attrs = useAttrs();
+const dir = computed(() =>
+    LTR_TYPES.has(String(attrs.type ?? '')) ? 'ltr' : undefined,
+);
 </script>
 
 <template>
     <input
         v-model="modelValue"
+        :dir="dir"
         data-slot="input"
         :class="
             cn(

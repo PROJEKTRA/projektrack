@@ -13,9 +13,11 @@ import { basename, join, relative } from 'node:path';
 import {
     checkCatalogs,
     checkDirections,
+    checkIcons,
     checkRefusedLocales,
     checkUsage,
     fixDirections,
+    mirroredIcons,
     PSEUDO_LOCALES,
 } from './check.ts';
 import type { Catalogs, Problem } from './check.ts';
@@ -121,8 +123,19 @@ const sources = [
         !/\.d\.ts$/.test(file),
 );
 
+// Directional icons mirrored in right to left languages (S-0920).
+const mirrored = mirroredIcons(
+    existsSync('resources/css/rtl.css')
+        ? readFileSync('resources/css/rtl.css', 'utf8')
+        : '',
+);
+
 for (const file of sources) {
     const text = readFileSync(file, 'utf8');
+
+    if (/\.(vue|ts)$/.test(file)) {
+        problems.push(...checkIcons(file, text, mirrored));
+    }
 
     if (/\.(php|vue|ts)$/.test(file)) {
         problems.push(...checkUsage(file, text, catalogs, components));

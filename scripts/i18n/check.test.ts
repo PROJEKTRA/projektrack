@@ -3,14 +3,18 @@
  * Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { readFileSync } from 'node:fs';
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import {
     checkCatalogs,
     checkDirections,
+    checkIcons,
     checkRefusedLocales,
     checkUsage,
     fixDirections,
+    iconName,
+    mirroredIcons,
 } from './check.ts';
 
 /* S-0917: i18n quality gates. */
@@ -211,5 +215,45 @@ describe('physical directions', () => {
         ).toBe(
             '<div class="ms-2 text-end flex space-x-1 rtl:space-x-reverse">',
         );
+    });
+});
+
+/* S-0920: directional icons mirror in right to left languages. */
+describe('directional icons', () => {
+    const registry = mirroredIcons(
+        readFileSync('resources/css/rtl.css', 'utf8'),
+    );
+
+    it('names lucide components like their icon classes', () => {
+        expect(iconName('PanelLeftClose')).toBe('panel-left-close');
+        expect(iconName('Undo2')).toBe('undo-2');
+        expect(iconName('ChevronRightIcon')).toBe('chevron-right');
+    });
+
+    it('accepts mirrored and non-directional icons', () => {
+        const file =
+            "import { ArrowLeft, ChevronRight, Clock, Search, ChevronsUpDown } from '@lucide/vue';\n";
+
+        expect(checkIcons('a.vue', file, registry)).toEqual([]);
+    });
+
+    it('fails on a directional icon missing from the registry, with file and line', () => {
+        const file =
+            "import { Pencil } from '@lucide/vue';\nimport {\n    AlignLeft,\n    Clock,\n} from '@lucide/vue';\n";
+
+        expect(checkIcons('b.vue', file, registry)).toEqual([
+            {
+                file: 'b.vue',
+                line: 2,
+                message: expect.stringContaining('.lucide-align-left'),
+            },
+        ]);
+    });
+
+    it('accepts a marked exception', () => {
+        const file =
+            "// i18n-icon-ok: aligns text, not a direction\nimport { AlignLeft } from '@lucide/vue';\n";
+
+        expect(checkIcons('c.vue', file, registry)).toEqual([]);
     });
 });

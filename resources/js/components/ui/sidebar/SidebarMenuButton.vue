@@ -8,6 +8,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import SidebarMenuButtonChild from './SidebarMenuButtonChild.vue';
+import { useMirroredSide } from '@/lib/direction';
 import { useSidebar } from './utils';
 
 defineOptions({
@@ -28,6 +29,7 @@ const props = withDefaults(
 );
 
 const { isMobile, state } = useSidebar();
+const tooltipSide = useMirroredSide('right');
 
 const delegatedProps = reactiveOmit(props, 'tooltip');
 </script>
@@ -47,7 +49,7 @@ const delegatedProps = reactiveOmit(props, 'tooltip');
             </SidebarMenuButtonChild>
         </TooltipTrigger>
         <TooltipContent
-            side="right"
+            :side="tooltipSide"
             align="center"
             :hidden="state !== 'collapsed' || isMobile"
         >

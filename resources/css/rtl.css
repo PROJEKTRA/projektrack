@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+/*
+ * Right to left layout (S-0920, ADR-0005 section 7).
+ *
+ * Directional icons: icons that point along the reading direction (arrows,
+ * chevrons, undo and redo, sign in and out, panels, reply) are mirrored in
+ * right to left languages. Icons without a direction (clock, search, play,
+ * checkmarks, up and down chevrons) are never listed here.
+ *
+ * This list is the registry: `npm run lint` fails when a component uses a
+ * left/right, undo/redo, log-in/out, reply/forward or indent icon that is not
+ * listed (or marked `i18n-icon-ok: <reason>`).
+ */
+[dir='rtl']
+    :is(
+        .lucide-arrow-left,
+        .lucide-arrow-right,
+        .lucide-arrow-big-left,
+        .lucide-arrow-big-right,
+        .lucide-arrow-left-to-line,
+        .lucide-arrow-right-to-line,
+        .lucide-arrow-left-from-line,
+        .lucide-arrow-right-from-line,
+        .lucide-chevron-left,
+        .lucide-chevron-right,
+        .lucide-chevrons-left,
+        .lucide-chevrons-right,
+        .lucide-chevron-first,
+        .lucide-chevron-last,
+        .lucide-corner-down-left,
+        .lucide-corner-down-right,
+        .lucide-corner-up-left,
+        .lucide-corner-up-right,
+        .lucide-undo,
+        .lucide-undo-2,
+        .lucide-redo,
+        .lucide-redo-2,
+        .lucide-log-in,
+        .lucide-log-out,
+        .lucide-panel-left,
+        .lucide-panel-left-open,
+        .lucide-panel-left-close,
+        .lucide-panel-right,
+        .lucide-panel-right-open,
+        .lucide-panel-right-close,
+        .lucide-reply,
+        .lucide-reply-all,
+        .lucide-forward,
+        .lucide-indent-increase,
+        .lucide-indent-decrease,
+        .lucide-list-indent-increase,
+        .lucide-list-indent-decrease
+    ) {
+    transform: scaleX(-1);
+}

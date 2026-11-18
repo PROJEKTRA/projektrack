@@ -175,3 +175,39 @@ describe('t()', () => {
         );
     });
 });
+
+/* S-0920: arguments keep their order inside right to left text. */
+describe('bidi isolation', () => {
+    function bundleOf(locale: string, dir: 'ltr' | 'rtl'): StringBundle {
+        return {
+            locale,
+            dir,
+            version: `${locale}-test`,
+            messages: {
+                'core:test.key': 'Ticket {key}',
+                'core:test.en': 'Hi {name}',
+            },
+            sources: { 'core:test.en': 'en' },
+            reserved: {},
+        };
+    }
+
+    it('wraps arguments in isolates for shipped and own right to left languages', () => {
+        for (const locale of ['ar', 'ur']) {
+            useBundle(bundleOf(locale, 'rtl'));
+
+            expect(t('core:test.key', { key: 'PTK-123' })).toBe(
+                'Ticket ⁨PTK-123⁩',
+            );
+        }
+    });
+
+    it('leaves arguments alone in left to right messages', () => {
+        useBundle(bundleOf('bs', 'ltr'));
+        expect(t('core:test.key', { key: 'PTK-123' })).toBe('Ticket PTK-123');
+
+        // A fallback message from en inside an RTL language is left to right.
+        useBundle(bundleOf('ur', 'rtl'));
+        expect(t('core:test.en', { name: 'Ana' })).toBe('Hi Ana');
+    });
+});
