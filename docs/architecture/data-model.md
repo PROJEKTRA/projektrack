@@ -399,6 +399,18 @@ erDiagram
         string direction
         datetime installed_at
     }
+    tenant_languages {
+        ulid id PK
+        ulid tenant_id FK
+        string locale
+        string name
+        string direction
+        string based_on
+        bool is_custom
+        bool is_active
+        int revision
+        ulid changed_by
+    }
     string_overrides {
         ulid id PK
         string scope
@@ -476,6 +488,7 @@ erDiagram
     modules ||--o{ feature_flags : declares
     feature_flags ||--o{ feature_flag_overrides : "overridden by"
     language_packs ||--o{ string_overrides : "customized by"
+    tenants ||--o{ tenant_languages : "offers"
     audit_chain_heads ||--o{ audit_log : chains
     audit_log ||--o{ audit_checkpoints : "anchored by"
     notification_preferences }o--o{ notifications : governs
@@ -488,6 +501,7 @@ erDiagram
 | feature_flags, feature_flag_overrides | Flags instance-scoped; overrides layered (tenant or user). | 0.9 |
 | settings | Layered. Unique `(tenant_id, scope_type, scope_id, key)`; `scope_type` = tenant, user, project, module. Values validated against the module settings schema. | 0.9 |
 | language_packs | Instance-scoped. | 0.9 |
+| tenant_languages | Tenant-owned. A row only where the tenant differs from the shipped languages: a deactivated language (`is_active` false) or its own language copied from `based_on` (`is_custom`). Unique `(tenant_id, locale)`; `revision` increments with every change to the language's strings and is part of the browser bundle version (S-0921). | 0.9 |
 | string_overrides | Layered (`scope` = instance or tenant, ADR-0005). Unique `(scope, tenant_id, locale, identifier)`; `source_hash` flags overrides whose English source changed after an update. Legal notice strings need a dedicated permission to override. | 0.9 |
 | audit_log | Unique `(tenant_id, seq)`; index `(tenant_id, subject_type, subject_id)`, `(tenant_id, actor_id, occurred_at)`. Append-only. | 0.9 |
 | audit_chain_heads, audit_checkpoints | One head per tenant; checkpoint daily and on demand. | 0.9 |

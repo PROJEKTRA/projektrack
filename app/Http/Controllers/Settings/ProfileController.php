@@ -11,8 +11,8 @@ use App\Audit\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
-use App\I18n\Locales;
 use App\I18n\Strings;
+use App\I18n\TenantLanguages;
 use App\Tenancy\TenantContext;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -22,13 +22,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Locale;
 
 class ProfileController extends Controller
 {
     public function __construct(
         private readonly AuditLog $audit,
-        private readonly Locales $locales,
+        private readonly TenantLanguages $languages,
         private readonly Strings $strings,
     ) {}
 
@@ -42,10 +41,8 @@ class ProfileController extends Controller
             'status' => $request->session()->get('status'),
             'locale' => $this->currentUser($request)->locale,
             // Each language under its own name, so it is found in any interface language.
-            'locales' => array_map(fn (string $locale): array => [
-                'value' => $locale,
-                'label' => mb_convert_case(Locale::getDisplayName($locale, $locale) ?: $locale, MB_CASE_TITLE),
-            ], $this->locales->available()),
+            // A language the tenant deactivated is no longer offered (S-0921).
+            'locales' => $this->languages->options(),
         ]);
     }
 

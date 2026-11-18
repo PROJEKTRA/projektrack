@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\UserTwoFactorController;
 use App\Http\Controllers\StringBundleController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -40,5 +41,19 @@ Route::middleware(['auth', 'verified', 'permission:core.users.manage'])->group(f
         ->middleware(RequirePassword::class)
         ->name('users.two-factor.reset');
 });
+
+// Languages of the tenant (S-0921): offer or withdraw, copy into an own language, export and import.
+Route::middleware(['auth', 'verified', 'permission:core.strings.customize'])
+    ->prefix('admin/languages')
+    ->name('admin.languages.')
+    ->controller(LanguageController::class)
+    ->where(['locale' => '[A-Za-z]{2,3}(-[A-Za-z0-9]{2,4})?'])
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+        Route::patch('{locale}', 'update')->name('update');
+        Route::get('{locale}/export', 'export')->name('export');
+        Route::post('{locale}/import', 'import')->middleware('throttle:10,1')->name('import');
+    });
 
 require __DIR__.'/settings.php';

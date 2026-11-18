@@ -3,9 +3,10 @@
     SPDX-License-Identifier: AGPL-3.0-only
 -->
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { LayoutGrid } from '@lucide/vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { Languages, LayoutGrid } from '@lucide/vue';
 import { computed } from 'vue';
+import LanguageController from '@/actions/App/Http/Controllers/Admin/LanguageController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -22,13 +23,29 @@ import { t } from '@/i18n/strings';
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
-const mainNavItems = computed<NavItem[]>(() => [
-    {
-        title: t('core:nav.dashboard'),
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-]);
+const page = usePage();
+
+// Entries the user may open; the server checks every action again.
+const mainNavItems = computed<NavItem[]>(() => {
+    const permissions = page.props.auth.permissions ?? [];
+
+    return [
+        {
+            title: t('core:nav.dashboard'),
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+        ...(permissions.includes('core.strings.customize')
+            ? [
+                  {
+                      title: t('core:nav.languages'),
+                      href: LanguageController.index(),
+                      icon: Languages,
+                  },
+              ]
+            : []),
+    ];
+});
 </script>
 
 <template>

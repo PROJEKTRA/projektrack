@@ -7,10 +7,12 @@
 
 namespace App\Providers;
 
+use App\Audit\AuditLog;
 use App\I18n\Locales;
 use App\I18n\StringCatalog;
 use App\I18n\Strings;
 use App\I18n\StringTranslator;
+use App\I18n\TenantLanguages;
 use App\Modules\ModuleRegistry;
 use App\Support\Lists;
 use App\Tenancy\TenantContext;
@@ -47,8 +49,17 @@ class I18nServiceProvider extends ServiceProvider
             $app->make(LoggerInterface::class),
         ));
 
-        $this->app->scoped(Strings::class, fn (Application $app): Strings => new Strings(
+        // Per request: the languages of the current tenant (S-0921).
+        $this->app->scoped(TenantLanguages::class, fn (Application $app): TenantLanguages => new TenantLanguages(
             $app->make(Locales::class),
+            $app->make(StringCatalog::class),
+            $app->make(TenantContext::class),
+            $app->make(AuditLog::class),
+            $app->make('cache.store'),
+        ));
+
+        $this->app->scoped(Strings::class, fn (Application $app): Strings => new Strings(
+            $app->make(TenantLanguages::class),
             $app->make(StringCatalog::class),
             $app->make(TenantContext::class),
             $app,

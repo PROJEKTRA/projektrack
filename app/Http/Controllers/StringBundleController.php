@@ -9,6 +9,7 @@ namespace App\Http\Controllers;
 
 use App\I18n\Locales;
 use App\I18n\Strings;
+use App\I18n\TenantLanguages;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -18,16 +19,18 @@ use Illuminate\Http\JsonResponse;
  * must not be cached.
  *
  * Shipped strings are not secret: the route is public so sign-in pages can use
- * it, and it runs without a session.
+ * it, and it runs without a session. The tenant comes from the host, so a
+ * tenant's own languages (S-0921) are served on its own address only.
  */
 final class StringBundleController
 {
-    public function __invoke(string $chain, string $version, Locales $locales, Strings $strings): JsonResponse
+    public function __invoke(string $chain, string $version, TenantLanguages $languages, Strings $strings): JsonResponse
     {
+        $locales = $languages->locales();
         $requested = explode('.', $chain);
 
         foreach ($requested as $locale) {
-            abort_unless($locales->isAvailable($locale) && Locales::normalize($locale) === $locale, 404);
+            abort_unless($locales->isKnown($locale) && Locales::normalize($locale) === $locale, 404);
         }
 
         $canonical = $locales->chain(...$requested);

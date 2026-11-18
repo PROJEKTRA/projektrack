@@ -26,8 +26,9 @@ use Throwable;
  * logged once per identifier, locale and day. A raw identifier is never
  * returned: if a string is missing everywhere, the "text missing" message is.
  *
- * Overrides per instance and tenant (S-0918) and installed language packs
- * (S-0921) slot in as further layers in {@see resolve()}.
+ * The tenant's own strings (copied languages, S-0921; overrides, S-0918) come
+ * before the shipped ones in every chain language; installed language packs
+ * (S-0921) slot in as a further layer in {@see resolve()}.
  */
 final class Strings
 {
@@ -55,7 +56,7 @@ final class Strings
     private array $reported = [];
 
     public function __construct(
-        private readonly Locales $locales,
+        private readonly TenantLanguages $languages,
         private readonly StringCatalog $catalog,
         private readonly TenantContext $tenants,
         private readonly Application $app,
@@ -74,7 +75,7 @@ final class Strings
     {
         $tenantLocale = $this->tenants->has() ? $this->tenants->current()->default_locale : null;
 
-        return $this->locales->chain($locale ?? $this->app->getLocale(), $tenantLocale);
+        return $this->languages->locales()->chain($locale ?? $this->app->getLocale(), $tenantLocale);
     }
 
     /**
@@ -104,7 +105,7 @@ final class Strings
     /** True when the identifier exists in the source language. */
     public function has(string $identifier): bool
     {
-        return $this->catalog->message($this->locales->source, $identifier) !== null;
+        return $this->catalog->message($this->languages->locales()->source, $identifier) !== null;
     }
 
     /**
@@ -115,8 +116,11 @@ final class Strings
      */
     public function resolve(string $identifier, array $chain, bool $logMisses = true): ?array
     {
+        $tenant = $this->tenants->has();
+
         foreach ($chain as $locale) {
-            $message = $this->catalog->message($locale, $identifier);
+            $message = ($tenant ? ($this->languages->overrides($locale)[$identifier] ?? null) : null)
+                ?? $this->catalog->message($locale, $identifier);
 
             if ($message !== null) {
                 return [$message, $locale];
@@ -144,7 +148,7 @@ final class Strings
             return null;
         }
 
-        $rtl = $this->locales->direction($locale) === 'rtl';
+        $rtl = $this->languages->locales()->direction($locale) === 'rtl';
         $values = ['brand' => $this->brand];
 
         foreach ($args as $name => $value) {
@@ -196,7 +200,7 @@ final class Strings
         $messages = [];
         $sources = [];
 
-        foreach (array_keys($this->catalog->messages($this->locales->source)) as $identifier) {
+        foreach (array_keys($this->catalog->messages($this->languages->locales()->source)) as $identifier) {
             if ($this->isServerOnly($identifier)) {
                 continue;
             }
@@ -214,7 +218,7 @@ final class Strings
 
         return [
             'locale' => $chain[0],
-            'dir' => $this->locales->direction($chain[0]),
+            'dir' => $this->languages->locales()->direction($chain[0]),
             'version' => $this->bundleVersion($chain),
             'messages' => $messages,
             'sources' => $sources,
@@ -227,9 +231,10 @@ final class Strings
      */
     public function bundleVersion(array $chain): string
     {
-        $parts = [$this->brand];
+        // The tenant is part of the version: two tenants' own strings never share one.
+        $parts = [$this->brand, $this->tenants->has() ? $this->tenants->id() : ''];
         foreach ($chain as $locale) {
-            $parts[] = $locale.'='.$this->catalog->version($locale);
+            $parts[] = $locale.'='.$this->catalog->version($locale).':'.$this->languages->revision($locale);
         }
 
         return substr(hash('xxh128', implode("\0", $parts)), 0, 16);
@@ -237,7 +242,7 @@ final class Strings
 
     public function direction(string $locale): string
     {
-        return $this->locales->direction($locale);
+        return $this->languages->locales()->direction($locale);
     }
 
     /**
