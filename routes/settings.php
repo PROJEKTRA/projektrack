@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use App\Http\Controllers\Settings\NotificationSettingsController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\SessionController;
@@ -36,6 +37,10 @@ Route::middleware(['auth', 'verified', 'access:self'])->group(function () {
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');
+
+    // E-mail per notification type (S-0912).
+    Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('notification-settings.edit');
+    Route::put('settings/notifications', [NotificationSettingsController::class, 'update'])->name('notification-settings.update');
 
     Route::get('settings/appearance', fn (): Response => Inertia::render('settings/Appearance'))->name('appearance.edit');
 });

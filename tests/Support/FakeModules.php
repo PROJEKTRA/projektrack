@@ -19,8 +19,9 @@ final class FakeModules
 {
     /**
      * @param  array<string, array<string, mixed>>  $modules  key => manifest fields (key, name and version are filled in)
+     * @param  array<string, array<string, string>>  $files  key => file name => content, next to module.json
      */
-    public static function install(array $modules): void
+    public static function install(array $modules, array $files = []): void
     {
         $root = sys_get_temp_dir().'/ptk-mod-'.bin2hex(random_bytes(6));
 
@@ -36,6 +37,10 @@ final class FakeModules
                 'permissions' => [],
                 ...$manifest,
             ]));
+
+            foreach ($files[$key] ?? [] as $name => $content) {
+                file_put_contents("{$root}/{$key}/{$name}", $content);
+            }
         }
 
         app()->instance(ModuleRegistry::class, new ModuleRegistry([$root], new NullLogger));

@@ -455,6 +455,8 @@ Scenario: Notifications
   And emails contain no tracking pixels and no rewritten links
 ```
 
+Implementation note (19.11.2026): Admin > Settings renders one form per component from `settings.schema.json` (core: organization language, regional format, time zone, e-mail notifications on or off). Notifications: bell with unread count, Notifications page, Settings > Notifications with e-mail per type; security notices are always e-mailed. The mail header shows the name as text and never loads an image from another server. The approval scenario is tested with a stand-in notification until time tracking exists; `emailed_at` and digest frequencies follow. Format and API: `docs/architecture/modules.md` sections 3 and 4.
+
 ---
 
 ### S-0913 REST API foundation with OpenAPI

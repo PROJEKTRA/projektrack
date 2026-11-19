@@ -8,6 +8,7 @@
 namespace App\Providers;
 
 use App\Auth\NotCommonPassword;
+use App\Settings\Settings;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Settings of the current tenant, read once per request (S-0912).
+        $this->app->scoped(Settings::class);
     }
 
     /**

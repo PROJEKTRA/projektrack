@@ -4,9 +4,10 @@
 -->
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Languages, LayoutGrid } from '@lucide/vue';
+import { Languages, LayoutGrid, Settings } from '@lucide/vue';
 import { computed } from 'vue';
 import LanguageController from '@/actions/App/Http/Controllers/Admin/LanguageController';
+import SettingsController from '@/actions/App/Http/Controllers/Admin/SettingsController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -41,6 +42,15 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('core:nav.languages'),
                       href: LanguageController.index(),
                       icon: Languages,
+                  },
+              ]
+            : []),
+        ...(permissions.includes('core.settings.manage')
+            ? [
+                  {
+                      title: t('core:nav.admin_settings'),
+                      href: SettingsController.index(),
+                      icon: Settings,
                   },
               ]
             : []),

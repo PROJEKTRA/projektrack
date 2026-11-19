@@ -12,6 +12,7 @@ import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { t } from '@/i18n/strings';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { edit as editNotifications } from '@/routes/notification-settings';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
@@ -24,6 +25,10 @@ const sidebarNavItems = computed<NavItem[]>(() => [
     {
         title: t('core:nav.settings_security'),
         href: editSecurity(),
+    },
+    {
+        title: t('core:nav.settings_notifications'),
+        href: editNotifications(),
     },
     {
         title: t('core:nav.settings_appearance'),

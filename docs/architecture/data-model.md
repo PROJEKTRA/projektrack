@@ -500,7 +500,7 @@ erDiagram
 | modules | Instance-scoped registry. `signature_status` = verified, unsigned, invalid. | 0.9 |
 | tenant_modules | Unique `(tenant_id, module_key)`. Disabling keeps data. | 0.9 |
 | feature_flags, feature_flag_overrides | Flags instance-scoped; overrides layered (tenant or user). | 0.9 |
-| settings | Layered. Unique `(tenant_id, scope_type, scope_id, key)`; `scope_type` = tenant, user, project, module. Values validated against the module settings schema. | 0.9 |
+| settings | Layered. Unique `(tenant_id, scope_type, scope_id, key)`; `scope_type` = tenant, user, project, module. Values validated against the module settings schema. `scope_id` is an empty string for tenant scope (not null, so the unique key holds on every database); only values that differ from the schema default are stored (S-0912). | 0.9 |
 | language_packs | Instance-scoped. | 0.9 |
 | tenant_languages | Tenant-owned. A row only where the tenant differs from the shipped languages: a deactivated language (`is_active` false) or its own language copied from `based_on` (`is_custom`). Unique `(tenant_id, locale)`; `revision` increments with every change to the language's strings and is part of the browser bundle version (S-0921). | 0.9 |
 | string_overrides | Layered (`scope` = instance or tenant, ADR-0005). Unique `(scope, tenant_id, locale, identifier)`; `source_hash` flags overrides whose English source changed after an update. Legal notice strings need a dedicated permission to override. | 0.9 |

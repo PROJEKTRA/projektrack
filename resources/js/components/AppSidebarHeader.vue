@@ -3,9 +3,16 @@
     SPDX-License-Identifier: AGPL-3.0-only
 -->
 <script setup lang="ts">
+import { Link, usePage } from '@inertiajs/vue3';
+import { Bell } from '@lucide/vue';
+import { computed } from 'vue';
+import NotificationController from '@/actions/App/Http/Controllers/NotificationController';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem } from '@/types';
+
+// Unread notifications (S-0912), refreshed with every visit.
+const unread = computed(() => Number(usePage().props.unreadNotifications ?? 0));
 
 withDefaults(
     defineProps<{
@@ -27,5 +34,19 @@ withDefaults(
                 <Breadcrumbs :breadcrumbs="breadcrumbs" />
             </template>
         </div>
+        <Link
+            :href="NotificationController.index()"
+            class="relative ms-auto inline-flex size-9 items-center justify-center rounded-md hover:bg-accent"
+            :aria-label="$t('core:notifications.bell', { count: unread })"
+            data-test="notification-bell"
+        >
+            <Bell class="size-5" />
+            <span
+                v-if="unread > 0"
+                class="absolute -end-0.5 -top-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 text-primary-foreground tabular-nums"
+                aria-hidden="true"
+                >{{ unread > 99 ? '99+' : unread }}</span
+            >
+        </Link>
     </header>
 </template>

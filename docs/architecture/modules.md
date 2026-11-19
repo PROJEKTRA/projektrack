@@ -185,7 +185,21 @@ JSON Schema (draft 2020-12):
         }
       }
     },
-    "settings_schema": { "type": "string", "description": "Relative path to a JSON Schema for module settings." },
+    "settings_schema": { "type": "string", "description": "Relative path to a JSON Schema for module settings (section 3)." },
+    "notifications": {
+      "type": "array",
+      "description": "Notification types of the module (section 4).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "label_string"],
+        "properties": {
+          "type": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,40}\\.[a-z][a-z0-9_.]{0,79}$" },
+          "label_string": { "$ref": "#/$defs/stringId" },
+          "mandatory": { "type": "boolean", "default": false }
+        }
+      }
+    },
     "capabilities_required": {
       "type": "array",
       "uniqueItems": true,
@@ -271,3 +285,34 @@ Validation rules beyond the schema (enforced by the registry):
 - Every string identifier used in the manifest must exist in the module's `lang/en` and `lang/bs` files.
 - A module with `edition` other than `community` loads only when the installed license covers it; otherwise it is installed but not enableable.
 - Third-party modules (`vendor` not `projektra`) display their `capabilities_required` to the admin, who must approve them before enabling; the approval is stored in `tenant_modules.approved_capabilities` and audited.
+
+## 3. settings.schema.json (S-0912)
+
+A module's settings are a JSON Schema (draft 2020-12) object; Admin > Settings renders one form per module from it, validates input against it and shows the defaults. The core declares its own in `resources/settings/settings.schema.json`.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "week_start": {
+      "type": "string",
+      "default": "monday",
+      "enum": ["monday", "sunday"],
+      "x-enum-labels": ["timesheets:settings.week_start.monday", "timesheets:settings.week_start.sunday"],
+      "x-label": "timesheets:settings.week_start.label",
+      "x-help": "timesheets:settings.week_start.help"
+    },
+    "max_hours_per_day": { "type": "integer", "default": 12, "minimum": 1, "maximum": 24, "x-label": "timesheets:settings.max_hours.label" }
+  }
+}
+```
+
+- Supported keywords: `type` (`string`, `integer`, `number`, `boolean`, each optionally with `null`), `default`, `enum`, `minimum`, `maximum`, `maxLength`, `pattern`, `description`. Extensions: `x-label` and `x-help` (string identifiers, required label), `x-enum-labels` (one identifier per enum value), `x-null-label`, `x-options` (`languages`, `formats`, `timezones`: lists the application provides) and, for the core only, `x-tenant-attribute` (`default_locale`, `timezone`: the value lives on the tenant record).
+- A schema with any other keyword or type is refused when it is read, so a setting never shows or validates wrongly.
+- Values are read with `app(App\Settings\Settings::class)->get('<module>.<name>')`. Only values that differ from the default are stored (`settings`, scope `tenant`), so a changed default in a module update applies to every tenant that kept it. Changes are audited as `settings.changed` with the changed names, never the values.
+
+## 4. Notifications (S-0912)
+
+- A module declares its types in `module.json` (`notifications`), each under its own key (`timesheets.week_submitted`); types under another key are ignored. `mandatory` types (security notices) are always e-mailed.
+- A notification extends `App\Notifications\AppNotice`: `type()`, `message()` (a string identifier), optional `arguments()`, `url()` (a path inside the application) and `subject()`. It is stored in-app for the bell and Notifications page and e-mailed unless the user turned the type off in Settings > Notifications or the organization turned e-mail off (`core.email_notifications`).
+- Texts are written in the recipient's language: in-app when shown, e-mail when sent. E-mails contain no images from other servers, no tracking pixels and links exactly as given.

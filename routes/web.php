@@ -6,8 +6,10 @@
  */
 
 use App\Http\Controllers\Admin\LanguageController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StringController;
 use App\Http\Controllers\Admin\UserTwoFactorController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StringBundleController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Http\RedirectResponse;
@@ -67,6 +69,28 @@ Route::middleware(['auth', 'verified', 'permission:core.strings.customize'])
         Route::get('/', 'index')->name('index');
         Route::put('/', 'update')->name('update');
         Route::delete('/', 'destroy')->name('destroy');
+    });
+
+// Settings declared by the core and enabled modules (S-0912).
+Route::middleware(['auth', 'verified', 'permission:core.settings.manage'])
+    ->prefix('admin/settings')
+    ->name('admin.settings.')
+    ->controller(SettingsController::class)
+    ->where(['component' => '[a-z][a-z0-9_]{1,40}'])
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::put('{component}', 'update')->name('update');
+    });
+
+// The signed-in user's notifications (S-0912).
+Route::middleware(['auth', 'verified', 'access:self'])
+    ->prefix('notifications')
+    ->name('notifications.')
+    ->controller(NotificationController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('read', 'readAll')->name('read-all');
+        Route::post('{notification}/open', 'open')->whereUlid('notification')->name('open');
     });
 
 require __DIR__.'/settings.php';

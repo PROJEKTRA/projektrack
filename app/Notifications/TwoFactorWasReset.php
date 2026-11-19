@@ -10,20 +10,26 @@ namespace App\Notifications;
 use App\I18n\Strings;
 use App\Models\User;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Notifications\Notification;
 
 /**
  * Tells a user that an admin removed their two-factor setup, so an unexpected
- * reset is noticed at once.
+ * reset is noticed at once. A security notice: always e-mailed (S-0912).
  */
-class TwoFactorWasReset extends Notification
+class TwoFactorWasReset extends AppNotice
 {
-    /**
-     * @return list<string>
-     */
-    public function via(User $notifiable): array
+    public function type(): string
     {
-        return ['mail'];
+        return 'core.two_factor_reset';
+    }
+
+    public function message(): string
+    {
+        return 'core:two_factor.reset_notice';
+    }
+
+    public function url(): ?string
+    {
+        return '/settings/security';
     }
 
     /**

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import type { Directive } from 'vue';
+import type { FormatsMeta } from '@/i18n/formats';
 import type { StringsMeta, t } from '@/i18n/strings';
 import type { Auth } from '@/types/auth';
 
@@ -29,6 +30,8 @@ declare module '@inertiajs/core' {
             auditWarning: string | null;
             /** Current string bundle (S-0916). */
             strings: StringsMeta;
+            formats: FormatsMeta;
+            unreadNotifications: number;
             [key: string]: unknown;
         };
     }

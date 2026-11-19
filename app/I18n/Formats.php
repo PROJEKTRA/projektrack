@@ -8,6 +8,7 @@
 namespace App\I18n;
 
 use App\Models\User;
+use App\Settings\Settings;
 use App\Tenancy\TenantContext;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -15,8 +16,9 @@ use Locale;
 
 /**
  * Picks the regional format and time zone (S-0919):
- * - format: the user's choice, else the usual format of the language they
- *   see (config i18n.default_formats), else that language itself;
+ * - format: the user's choice, else the organization's (setting
+ *   core.format_locale), else the usual format of the language they see
+ *   (config i18n.default_formats), else that language itself;
  * - time zone: the user's, else the tenant's, else UTC.
  */
 final class Formats
@@ -38,9 +40,10 @@ final class Formats
     {
         $tenant = $this->tenants->has() ? $this->tenants->current() : null;
         $language = $this->strings->chain($user->locale ?? $tenant?->default_locale)[0];
-        $locale = $user?->format_locale !== null && self::isOffered($user->format_locale)
-            ? $user->format_locale
-            : self::defaultFor($language);
+        // The user's choice, else the organization's (Admin > Settings, S-0912),
+        // else the usual format of the language.
+        $chosen = $user->format_locale ?? ($tenant !== null ? app(Settings::class)->get('core.format_locale') : null);
+        $locale = is_string($chosen) && self::isOffered($chosen) ? $chosen : self::defaultFor($language);
 
         $timezone = $user->timezone ?? $tenant->timezone ?? 'UTC';
         $timezone = self::isTimezone($timezone) ? $timezone : 'UTC';

@@ -1,0 +1,37 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$comment": "Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net. SPDX-License-Identifier: AGPL-3.0-only. Settings of the core (S-0912); modules declare theirs in the file their module.json names under settings_schema. x-label and x-help are string identifiers; x-options names a list the application provides (languages, formats, timezones); x-tenant-attribute keeps the value on the tenant record.",
+    "title": "core",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "default_locale": {
+            "type": "string",
+            "x-options": "languages",
+            "x-tenant-attribute": "default_locale",
+            "x-label": "core:admin_settings.default_locale.label",
+            "x-help": "core:admin_settings.default_locale.help"
+        },
+        "format_locale": {
+            "type": ["string", "null"],
+            "default": null,
+            "x-options": "formats",
+            "x-label": "core:admin_settings.format_locale.label",
+            "x-help": "core:admin_settings.format_locale.help",
+            "x-null-label": "core:admin_settings.format_locale.default"
+        },
+        "timezone": {
+            "type": "string",
+            "x-options": "timezones",
+            "x-tenant-attribute": "timezone",
+            "x-label": "core:admin_settings.timezone.label",
+            "x-help": "core:admin_settings.timezone.help"
+        },
+        "email_notifications": {
+            "type": "boolean",
+            "default": true,
+            "x-label": "core:admin_settings.email_notifications.label",
+            "x-help": "core:admin_settings.email_notifications.help"
+        }
+    }
+}

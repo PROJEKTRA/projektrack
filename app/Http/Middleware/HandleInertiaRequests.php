@@ -10,6 +10,7 @@ namespace App\Http\Middleware;
 use App\Authorization\Permissions;
 use App\I18n\Formats;
 use App\I18n\Strings;
+use App\Models\AppNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,10 @@ class HandleInertiaRequests extends Middleware
             'strings' => $this->strings(),
             // Regional format and time zone for dates and amounts (S-0919).
             'formats' => app(Formats::class)->current()->toArray(),
+            // Unread notifications for the bell (S-0912).
+            'unreadNotifications' => fn (): int => $user instanceof User
+                ? AppNotification::query()->where('user_id', $user->id)->whereNull('read_at')->count()
+                : 0,
             // Integrity warning for those who may read the audit log (S-0907).
             'auditWarning' => fn (): ?string => $this->auditWarning($user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
