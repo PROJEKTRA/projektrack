@@ -4,6 +4,7 @@ import type { OTPInputEmits, OTPInputProps } from 'vue-input-otp';
 import { reactiveOmit } from '@vueuse/core';
 import { useForwardPropsEmits } from 'reka-ui';
 import { OTPInput } from 'vue-input-otp';
+import { cspNonce } from '@/lib/csp';
 import { cn } from '@/lib/utils';
 
 defineOptions({ inheritAttrs: false });
@@ -26,6 +27,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
         <OTPInput
             v-slot="slotProps"
             v-bind="{ ...$attrs, ...forwarded }"
+            :nonce="cspNonce()"
             :container-class="
                 cn(
                     'flex items-center gap-2 has-disabled:opacity-50',

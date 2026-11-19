@@ -16,6 +16,8 @@ use App\Modules\ModuleRegistry;
 use App\Modules\TenantModules;
 use App\Tenancy\TenantContext;
 use DateTimeZone;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -106,7 +108,11 @@ final class Settings
 
         $stored = $this->stored();
 
-        return array_key_exists($key, $stored) ? $stored[$key] : $definition->default;
+        if (! array_key_exists($key, $stored)) {
+            return $definition->default;
+        }
+
+        return $definition->secret ? $this->reveal($key, $stored[$key]) : $stored[$key];
     }
 
     /** @return array<string, mixed> name => value of one component */
@@ -146,6 +152,11 @@ final class Settings
 
         DB::transaction(function () use ($component, $definitions, $valid, $actor, &$changed, &$changes): void {
             foreach ($definitions as $definition) {
+                // An empty secret field keeps the stored secret; it is never shown again.
+                if ($definition->secret && ($valid[$definition->name] ?? '') === '') {
+                    continue;
+                }
+
                 $value = $definition->cast($valid[$definition->name] ?? null);
                 $before = $this->get($definition->key());
 
@@ -154,11 +165,13 @@ final class Settings
                 }
 
                 $changed[] = $definition->name;
-                $changes[$definition->name] = ['from' => $before, 'to' => $value];
+                if (! $definition->secret) {
+                    $changes[$definition->name] = ['from' => $before, 'to' => $value];
+                }
                 $this->write($definition, $value, $actor);
             }
 
-            // Settings hold no personal data or secrets, so the values make a change traceable.
+            // Values make a change traceable; secrets are recorded by name only.
             if ($changed !== []) {
                 $this->audit->record('settings.changed', null, ['component' => $component, 'keys' => $changed, 'changes' => $changes], $actor);
             }
@@ -208,10 +221,30 @@ final class Settings
         }
 
         $row->fill([
-            'value' => $value,
+            // Secrets: encrypted with the application key, which never lives in the database.
+            'value' => $definition->secret && is_string($value) ? Crypt::encryptString($value) : $value,
             'lock_version' => $row->exists ? $row->lock_version + 1 : 1,
             'updated_by' => $actor->id,
         ])->save();
+    }
+
+    /** Whether a secret setting holds a value (the value itself is never shown). */
+    public function isSet(string $key): bool
+    {
+        // A secret that no longer decrypts (other key) counts as not set: enter it again.
+        return array_key_exists($key, $this->stored()) && $this->get($key) !== null;
+    }
+
+    private function reveal(string $key, mixed $encrypted): ?string
+    {
+        try {
+            return is_string($encrypted) ? Crypt::decryptString($encrypted) : null;
+        } catch (DecryptException) {
+            // Another application key: the secret must be entered again.
+            Log::warning('Secret setting cannot be decrypted', ['key' => $key]);
+
+            return null;
+        }
     }
 
     /** @return array<string, mixed> */

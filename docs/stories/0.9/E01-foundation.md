@@ -358,6 +358,8 @@ Scenario: CSRF and output encoding
   And user input rendered in pages, PDFs and emails is encoded
 ```
 
+Implementation note (19.11.2026): headers were in place; runtime `<style>` elements of libraries now carry the CSP nonce. Uploads (`POST /files`, `App\Files\FileStore`): type from the bytes against an allowlist per context, matching file name ending, size limit, random key on the private disk, images re-encoded; downloads through signed links bound to one user, valid 5 minutes, as attachment with a sandbox policy. Secret settings (`x-secret`) are stored encrypted with the application key and never sent to the browser. Tests cover CSRF on every write route, no raw Blade output, no `v-html` (one reviewed exception) and no unprotected secret-looking column. PDFs do not exist yet; their encoding follows with the first PDF. Details: security baseline, implementation notes S-0909.
+
 ---
 
 ### S-0910 Brand theme, light/dark mode and app shell

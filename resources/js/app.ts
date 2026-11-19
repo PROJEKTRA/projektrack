@@ -13,6 +13,7 @@ import type { StringsMeta } from '@/i18n/strings';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { cspNonce } from '@/lib/csp';
 import { initializeFlashToast } from '@/lib/flashToast';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Projektrack';
@@ -99,6 +100,8 @@ async function boot(): Promise<void> {
                 app.mount(el);
             }
         },
+        // Runtime <style> elements of Inertia carry the CSP nonce (S-0909).
+        nonce: cspNonce(),
         progress: {
             color: '#4B5563',
         },

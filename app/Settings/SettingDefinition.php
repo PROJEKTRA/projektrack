@@ -12,7 +12,8 @@ namespace App\Settings;
  * keywords: type (string, integer, number, boolean, optionally with "null"),
  * default, enum, minimum, maximum, maxLength, pattern; and the extensions
  * x-label, x-help, x-options, x-enum-labels, x-null-label,
- * x-tenant-attribute.
+ * x-tenant-attribute, x-secret (S-0909: stored encrypted, never sent to the
+ * browser; an empty input keeps the stored value).
  */
 final readonly class SettingDefinition
 {
@@ -37,6 +38,7 @@ final readonly class SettingDefinition
         public ?int $maxLength = null,
         public ?string $pattern = null,
         public ?string $tenantAttribute = null,
+        public bool $secret = false,
     ) {}
 
     /** Key as used in code: core.timezone, timesheets.week_start. */
@@ -53,7 +55,7 @@ final readonly class SettingDefinition
      */
     public function rules(?array $allowed): array
     {
-        $rules = [$this->nullable ? 'nullable' : 'required'];
+        $rules = [$this->nullable || $this->secret ? 'nullable' : 'required'];
 
         $rules[] = match ($this->type) {
             'boolean' => 'boolean',

@@ -16,6 +16,7 @@ use App\Modules\TenantModules;
 use App\Settings\Settings;
 use App\Settings\SettingsSchema;
 use App\Tenancy\TenantContext;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Testing\AssertableInertia;
 use Tests\Support\FakeModules;
@@ -192,5 +193,67 @@ describe('security review findings', function () {
         $definition = $schema('^a/b#c$')[0];
         expect(Validator::make(['code' => 'a/b#c'], ['code' => $definition->rules(null)])->passes())->toBeTrue()
             ->and(fn () => $schema('([unclosed'))->toThrow(InvalidArgumentException::class);
+    });
+});
+
+describe('secret settings (S-0909)', function () {
+    function mailModule(): void
+    {
+        FakeModules::install(
+            ['mailer' => ['settings_schema' => 'settings.schema.json']],
+            ['mailer' => ['settings.schema.json' => (string) json_encode([
+                'type' => 'object',
+                'properties' => [
+                    'smtp_host' => ['type' => 'string', 'default' => 'localhost', 'x-label' => 'core:common.save'],
+                    'smtp_password' => ['type' => 'string', 'x-secret' => true, 'x-label' => 'core:common.save'],
+                ],
+            ])]],
+        );
+        app(TenantModules::class)->enable('mailer');
+        app()->forgetScopedInstances();
+    }
+
+    it('stores a secret encrypted, never sends it to the browser and keeps it when left empty', function () {
+        mailModule();
+        $admin = settingsAdmin();
+
+        $this->actingAs($admin)->put('/admin/settings/mailer', ['smtp_host' => 'mail.example.test', 'smtp_password' => 'S3cret-Mail-Pass'])
+            ->assertSessionHasNoErrors();
+
+        $raw = DB::table('settings')->where('key', 'mailer.smtp_password')->value('value');
+        expect($raw)->not->toContain('S3cret-Mail-Pass');
+        app()->forgetScopedInstances();
+        expect(app(Settings::class)->get('mailer.smtp_password'))->toBe('S3cret-Mail-Pass');
+
+        $page = $this->actingAs($admin)->get('/admin/settings');
+        expect($page->getContent())->not->toContain('S3cret-Mail-Pass');
+        $page->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('groups.1.fields.1.value', null)
+            ->where('groups.1.fields.1.isSet', true));
+
+        // Empty keeps the stored secret.
+        $this->actingAs($admin)->put('/admin/settings/mailer', ['smtp_host' => 'mail.example.test', 'smtp_password' => '']);
+        app()->forgetScopedInstances();
+        expect(app(Settings::class)->get('mailer.smtp_password'))->toBe('S3cret-Mail-Pass');
+
+        // The audit names the setting, never its value.
+        $audit = AuditEntry::query()->where('action', 'settings.changed')->get()->map->contextData();
+        expect(json_encode($audit))->not->toContain('S3cret-Mail-Pass')->toContain('smtp_password');
+    });
+
+    it('never keeps a secret in the session when another field fails', function () {
+        mailModule();
+
+        $this->actingAs(settingsAdmin())
+            ->put('/admin/settings/mailer', ['smtp_host' => ['not', 'a', 'string'], 'smtp_password' => 'S3cret-Mail-Pass'])
+            ->assertSessionHasErrors('smtp_host');
+
+        expect(json_encode(session()->all()))->not->toContain('S3cret-Mail-Pass');
+    });
+
+    it('refuses x-secret on settings that are not plain strings', function () {
+        expect(fn () => SettingsSchema::fromArray('mailer', ['type' => 'object', 'properties' => [
+            'pin' => ['type' => 'integer', 'x-secret' => true, 'x-label' => 'core:common.save'],
+        ]]))->toThrow(InvalidArgumentException::class);
     });
 });

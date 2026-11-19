@@ -29,6 +29,8 @@ export default defineConfigWithVueTs(
     {
         rules: {
             'vue/multi-word-component-names': 'off',
+            // Output is escaped by Vue; raw HTML would bypass it (S-0909, security baseline).
+            'vue/no-v-html': 'error',
             '@typescript-eslint/consistent-type-imports': 'error',
             // No user-facing text in templates: use $t('<component>:<key>') (S-0917).
             'vue/no-bare-strings-in-template': [

@@ -19,3 +19,6 @@ Rules:
 | BL-006 | Settings > Security: list each session with device and last activity and sign out one at a time. | Internal review (S-0903) | 19.11.2026 | 0.9.2 |
 | BL-007 | Larger bundled list of common passwords (open-licensed source, 12 characters and more). | Internal review (S-0903) | 19.11.2026 | 0.9.1 |
 | BL-008 | Soft lockout: a device with an earlier successful sign-in (signed device cookie) is not locked by failures from elsewhere, so attackers cannot lock owners out (ASVS 2.2.1). | Security review (S-0903) | 19.11.2026 | 0.9.1 |
+| BL-009 | Encrypted cast with XChaCha20-Poly1305 (libsodium), key IDs and `projektrack key:rotate` as in the security baseline section 4; today Laravel's encrypter with `APP_KEY` and `APP_PREVIOUS_KEYS`. | Implementation (S-0909) | 19.11.2026 | 0.9.1 |
+| BL-010 | Malware scan of uploads (ClamAV when available) with quarantine; today `scan_status` = skipped. | Implementation (S-0909) | 19.11.2026 | 0.9.2 |
+| BL-011 | Delete stored file content with its record and with the tenant; clean orphaned blobs. | Security review (S-0909) | 19.11.2026 | 0.9.1 |

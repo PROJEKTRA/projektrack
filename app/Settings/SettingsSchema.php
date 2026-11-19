@@ -20,7 +20,7 @@ final class SettingsSchema
 
     private const array KEYWORDS = [
         'type', 'default', 'enum', 'minimum', 'maximum', 'maxLength', 'pattern', 'description',
-        'x-label', 'x-help', 'x-options', 'x-enum-labels', 'x-null-label', 'x-tenant-attribute',
+        'x-label', 'x-help', 'x-options', 'x-enum-labels', 'x-null-label', 'x-tenant-attribute', 'x-secret',
     ];
 
     /** Lists the application provides for x-options. */
@@ -102,6 +102,11 @@ final class SettingsSchema
             throw new InvalidArgumentException("{$where}: x-tenant-attribute is for core settings on known tenant columns only.");
         }
 
+        $secret = ($property['x-secret'] ?? false) === true;
+        if ($secret && ($types[0] !== 'string' || $attribute !== null || isset($property['default']) || isset($property['enum']) || $options !== null)) {
+            throw new InvalidArgumentException("{$where}: x-secret is for plain string settings without default, enum or options.");
+        }
+
         $pattern = $property['pattern'] ?? null;
         if ($pattern !== null && (! is_string($pattern) || @preg_match(SettingDefinition::regex($pattern), '') === false)) {
             throw new InvalidArgumentException("{$where}: pattern is not a valid regular expression.");
@@ -132,6 +137,7 @@ final class SettingsSchema
             maxLength: is_int($property['maxLength'] ?? null) ? $property['maxLength'] : null,
             pattern: is_string($property['pattern'] ?? null) ? $property['pattern'] : null,
             tenantAttribute: is_string($attribute) ? $attribute : null,
+            secret: $secret,
         );
     }
 }

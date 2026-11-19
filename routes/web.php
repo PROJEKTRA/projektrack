@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StringController;
 use App\Http\Controllers\Admin\UserTwoFactorController;
+use App\Http\Controllers\FileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StringBundleController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -81,6 +82,18 @@ Route::middleware(['auth', 'verified', 'permission:core.settings.manage'])
         Route::get('/', 'index')->name('index');
         Route::put('{component}', 'update')->name('update');
     });
+
+// Uploads and signed downloads (S-0909). A download link is signed, expires and
+// is bound to the user it was made for (FileController::download).
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('files', [FileController::class, 'store'])
+        ->middleware(['permission:core.files.upload', 'throttle:30,1'])
+        ->name('files.store');
+    Route::get('files/{file}', [FileController::class, 'download'])
+        ->middleware(['access:self', 'signed'])
+        ->whereUlid('file')
+        ->name('files.download');
+});
 
 // The signed-in user's notifications (S-0912).
 Route::middleware(['auth', 'verified', 'access:self'])

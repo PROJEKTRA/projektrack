@@ -40,7 +40,11 @@ class SetSecurityHeaders
         $headers->set('Cross-Origin-Opener-Policy', 'same-origin');
         $headers->set('Cross-Origin-Resource-Policy', 'same-origin');
         $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()');
-        $headers->set('Content-Security-Policy', $this->contentSecurityPolicy());
+        // Only a sandboxed, default-deny policy (file downloads) may replace the page policy.
+        $own = (string) $headers->get('Content-Security-Policy', '');
+        if (! (str_contains($own, 'sandbox') && str_contains($own, "default-src 'none'"))) {
+            $headers->set('Content-Security-Policy', $this->contentSecurityPolicy());
+        }
 
         if ($request->isSecure()) {
             $headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

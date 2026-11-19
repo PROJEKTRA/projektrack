@@ -525,6 +525,7 @@ erDiagram
         bigint size_bytes
         hash sha256
         string scan_status
+        string context
         date retain_until
         ulid uploaded_by
     }
@@ -688,7 +689,7 @@ erDiagram
 
 | Table | Key constraints and indexes | First release |
 |---|---|---|
-| files | Index `(tenant_id, sha256)` for deduplication; `scan_status` = pending, clean, infected, skipped. Storage key under `tenants/{tenant_id}/`. Downloads only through signed URLs. | 0.9 |
+| files | Index `(tenant_id, sha256)` for deduplication; `scan_status` = pending, clean, infected, skipped. Storage key under `tenants/{tenant_id}/`, random, without file name ending. `context` names the upload rules used (`config/uploads.php`, S-0909). Downloads only through signed URLs. | 0.9 |
 | file_attachments | Index `(tenant_id, attachable_type, attachable_id)`. | 0.9 |
 | document_templates | Layered (instance defaults). `kind` = service_report, quote, invoice, credit_note, dunning, email, costing_sheet. `engine` = docx, html. | 0.9 |
 | document_template_assignments | Resolution: company plus locale, then locale, then default, by `priority`. | 0.9 |

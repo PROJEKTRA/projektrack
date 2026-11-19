@@ -22,6 +22,9 @@ type Field = {
     nullable: boolean;
     nullLabel: string | null;
     value: Value;
+    /** Stored encrypted; the form only learns whether one is set (S-0909). */
+    secret: boolean;
+    isSet: boolean;
     minimum: number | null;
     maximum: number | null;
     maxLength: number | null;
@@ -138,7 +141,25 @@ const inputClass =
                             forms[group.component][field.name] as
                                 string | number
                         "
-                        :type="field.type === 'string' ? 'text' : 'number'"
+                        :type="
+                            field.secret
+                                ? 'password'
+                                : field.type === 'string'
+                                  ? 'text'
+                                  : 'number'
+                        "
+                        :autocomplete="
+                            field.secret ? 'new-password' : undefined
+                        "
+                        :placeholder="
+                            field.secret
+                                ? $t(
+                                      field.isSet
+                                          ? 'core:admin_settings.secret_set'
+                                          : 'core:admin_settings.secret_unset',
+                                  )
+                                : undefined
+                        "
                         :min="field.minimum ?? undefined"
                         :max="field.maximum ?? undefined"
                         :maxlength="field.maxLength ?? undefined"

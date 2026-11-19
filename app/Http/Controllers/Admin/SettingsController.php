@@ -16,6 +16,7 @@ use App\Settings\Settings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -48,7 +49,17 @@ class SettingsController extends Controller
 
         /** @var array<string, mixed> $input */
         $input = $request->except(['_token', '_method']);
-        $settings->save($component, $input, $this->currentUser($request));
+        try {
+            $settings->save($component, $input, $this->currentUser($request));
+        } catch (ValidationException $e) {
+            // Never flash a secret into the session with the other old input.
+            $secrets = array_map(
+                fn (SettingDefinition $definition): string => $definition->name,
+                array_filter($settings->definitions()[$component], fn (SettingDefinition $definition): bool => $definition->secret),
+            );
+
+            return back()->withErrors($e->errors())->withInput($request->except([...$secrets, '_token', '_method']));
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('core:flash.settings_saved')]);
 
@@ -67,7 +78,10 @@ class SettingsController extends Controller
             'help' => $definition->help !== null ? __($definition->help) : null,
             'nullable' => $definition->nullable,
             'nullLabel' => $definition->nullLabel !== null ? __($definition->nullLabel) : null,
-            'value' => $settings->get($definition->key()),
+            // A secret never leaves the server; the form only learns whether one is set.
+            'value' => $definition->secret ? null : $settings->get($definition->key()),
+            'secret' => $definition->secret,
+            'isSet' => $definition->secret && $settings->isSet($definition->key()),
             'minimum' => $definition->minimum,
             'maximum' => $definition->maximum,
             'maxLength' => $definition->maxLength,

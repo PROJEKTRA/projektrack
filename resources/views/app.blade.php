@@ -7,6 +7,8 @@
 <html lang="{{ $strings['locale'] ?? str_replace('_', '-', app()->getLocale()) }}" dir="{{ $strings['dir'] ?? 'ltr' }}" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
     <head>
         <meta charset="utf-8">
+        {{-- CSP nonce for runtime <style> elements of libraries (S-0909); readable only through the nonce property --}}
+        <meta property="csp-nonce" nonce="{{ Vite::cspNonce() }}">
         @if ($strings)
             {{-- String bundle of the user's language chain (S-0916), fetched in parallel with the scripts --}}
             <meta name="strings-bundle" content="{{ $strings['url'] }}" data-version="{{ $strings['version'] }}" data-locale="{{ $strings['locale'] }}" data-dir="{{ $strings['dir'] }}">
