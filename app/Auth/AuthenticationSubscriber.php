@@ -26,7 +26,6 @@ final class AuthenticationSubscriber
     public function __construct(
         private readonly LoginThrottle $throttle,
         private readonly Sessions $sessions,
-        private readonly ApiTokens $tokens,
     ) {}
 
     /** @return array<class-string, string> */
@@ -89,7 +88,9 @@ final class AuthenticationSubscriber
             : $event->user;
 
         if ($user instanceof User) {
-            $this->tokens->revokeAll($user, 'two_factor_removed');
+            // Resolved here, not in the constructor: subscribers are built at boot,
+            // where the audit log (and its key) may not be available yet.
+            app(ApiTokens::class)->revokeAll($user, 'two_factor_removed');
         }
     }
 
