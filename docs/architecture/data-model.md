@@ -696,7 +696,7 @@ erDiagram
 | text_blocks | Used by quotes, invoices, emails. | 0.10 |
 | document_deliveries | Index `(tenant_id, document_type, document_id)`. | 0.9 |
 | shared_links | Token at least 128 bits, only the hash is stored. Default expiry 30 days. `purpose` = report_signoff, quote_acceptance, roadmap, portal_invite, download, csat. | 0.9 |
-| api_tokens | Personal access tokens with scopes. | 0.9 |
+| api_tokens | Personal access tokens with scopes. 0.9 uses the token library's column names: `token` (SHA-256 of the secret, unique), `abilities` (scopes), `tokenable` (the user); revoking deletes the row (audited), so there is no `revoked_at` (S-0913). | 0.9 |
 | oauth_clients, oauth_grants | Apps, ecosystem plugins, MCP clients. | 1.0 |
 | webhooks, webhook_deliveries | HMAC-signed; SSRF-checked target; exponential retry; disabled after repeated failure. | 1.0 |
 | saved_views | `view_type` = list, board, table, timeline, calendar, gantt, roadmap, workload. | 1.0 |

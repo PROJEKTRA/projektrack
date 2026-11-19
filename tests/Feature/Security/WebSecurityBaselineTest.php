@@ -133,6 +133,9 @@ describe('secrets at rest', function () {
         'users.remember_token' => 'random token compared by the framework; renewed when sessions end',
         'users.two_factor_secret' => 'encrypted with the application key by the sign-in package',
         'users.two_factor_recovery_codes' => 'hashes of the codes (S-0904)',
+        'api_tokens.token' => 'SHA-256 of the token secret; the secret is shown once (S-0913)',
+        'api_tokens.tokenable_type' => 'the owner of a token, not a secret',
+        'api_tokens.tokenable_id' => 'the owner of a token, not a secret',
     ];
 
     it('stores no secret-looking column unprotected', function () use ($reviewed) {

@@ -12,6 +12,7 @@ use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireModule;
 use App\Http\Middleware\RequirePermission;
+use App\Http\Middleware\RequireTokenScope;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\RouteAccess;
 use App\Http\Middleware\SetLocale;
@@ -24,10 +25,12 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -40,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'module' => RequireModule::class,
             'permission' => RequirePermission::class,
             'access' => RouteAccess::class,
+            'scope' => RequireTokenScope::class,
         ]);
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
@@ -61,6 +65,15 @@ return Application::configure(basePath: dirname(__DIR__))
             if (app(TenantContext::class)->has()) {
                 app(AuditLog::class)->record('security.cross_tenant_write', null, ['refused' => $e->getMessage()]);
             }
+        });
+
+        // API errors never name models or internals (S-0913, invisible by default).
+        $exceptions->render(function (NotFoundHttpException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => __('core:api.not_found')], 404);
+            }
+
+            return null;
         });
 
         $exceptions->shouldRenderJsonWhen(

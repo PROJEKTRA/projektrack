@@ -22,3 +22,4 @@ Rules:
 | BL-009 | Encrypted cast with XChaCha20-Poly1305 (libsodium), key IDs and `projektrack key:rotate` as in the security baseline section 4; today Laravel's encrypter with `APP_KEY` and `APP_PREVIOUS_KEYS`. | Implementation (S-0909) | 19.11.2026 | 0.9.1 |
 | BL-010 | Malware scan of uploads (ClamAV when available) with quarantine; today `scan_status` = skipped. | Implementation (S-0909) | 19.11.2026 | 0.9.2 |
 | BL-011 | Delete stored file content with its record and with the tenant; clean orphaned blobs. | Security review (S-0909) | 19.11.2026 | 0.9.1 |
+| BL-012 | API tokens: daily pruning of expired tokens inside each tenant, `last_used_at` written at most once a minute, optional audit of token use. | Security review (S-0913) | 19.11.2026 | 0.9.1 |

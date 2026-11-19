@@ -7,6 +7,7 @@
 
 namespace App\Auth;
 
+use App\Api\ApiTokens;
 use App\Models\User;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Database\Query\Builder;
@@ -59,6 +60,7 @@ final class Sessions
     public function endOthers(User $user, Session $current): ?int
     {
         $this->moveOn($user);
+        app(ApiTokens::class)->revokeAll($user, 'sessions_ended');
         $this->keepRememberMe($user);
         $current->put(self::VERSION, $user->session_version);
         $current->migrate(true);
@@ -77,6 +79,7 @@ final class Sessions
     public function endAll(User $user): void
     {
         $this->moveOn($user);
+        app(ApiTokens::class)->revokeAll($user, 'sessions_ended');
     }
 
     /** Other sessions in the session table (database driver only, else null). */

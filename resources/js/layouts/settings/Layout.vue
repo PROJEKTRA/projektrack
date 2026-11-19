@@ -12,6 +12,8 @@ import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { t } from '@/i18n/strings';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { usePage } from '@inertiajs/vue3';
+import { index as apiTokens } from '@/routes/api-tokens';
 import { edit as editNotifications } from '@/routes/notification-settings';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
@@ -30,6 +32,12 @@ const sidebarNavItems = computed<NavItem[]>(() => [
         title: t('core:nav.settings_notifications'),
         href: editNotifications(),
     },
+    // Only for users who may create API tokens (S-0913).
+    ...((usePage().props.auth.permissions ?? []).includes(
+        'core.api_tokens.manage',
+    )
+        ? [{ title: t('core:nav.settings_api_tokens'), href: apiTokens() }]
+        : []),
     {
         title: t('core:nav.settings_appearance'),
         href: editAppearance(),

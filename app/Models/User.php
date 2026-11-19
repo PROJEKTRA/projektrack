@@ -25,6 +25,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * A person's account in one tenant (ADR-0006, decision 5).
@@ -52,7 +53,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use BelongsToTenant, HasFactory, HasUlids, Notifiable, TwoFactorAuthenticatable;
+    use BelongsToTenant, HasApiTokens, HasFactory, HasUlids, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * Internal users start as Light; the type follows their permissions.

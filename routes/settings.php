@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Settings\NotificationSettingsController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
@@ -37,6 +38,18 @@ Route::middleware(['auth', 'verified', 'access:self'])->group(function () {
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');
+
+    // Personal access tokens for the REST API (S-0913).
+    Route::middleware('permission:core.api_tokens.manage')->group(function () {
+        // no-store: the page may show a new token's secret once.
+        Route::get('settings/api-tokens', [ApiTokenController::class, 'index'])->middleware('cache.headers:no_store;private')->name('api-tokens.index');
+        Route::post('settings/api-tokens', [ApiTokenController::class, 'store'])
+            ->middleware([RequirePassword::class, 'throttle:10,1'])
+            ->name('api-tokens.store');
+        Route::delete('settings/api-tokens/{token}', [ApiTokenController::class, 'destroy'])
+            ->whereUlid('token')
+            ->name('api-tokens.destroy');
+    });
 
     // E-mail per notification type (S-0912).
     Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('notification-settings.edit');

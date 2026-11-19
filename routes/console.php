@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use App\Api\OpenApiDocument;
 use App\Audit\AuditLog;
 use App\Audit\ChainVerifier;
 use App\Auth\LoginThrottle;
@@ -74,6 +75,37 @@ Artisan::command('projektrack:auth:unlock {tenant : Slug of the tenant} {email :
 
     return 0;
 })->purpose('Lift the sign-in lock of an account after failed attempts');
+
+Artisan::command('projektrack:api:openapi {--check : Fail if the committed document is out of date or a route is undocumented}', function (OpenApiDocument $document) {
+    $missing = $document->undocumented();
+
+    if ($missing !== []) {
+        $this->error('API routes without #[ApiOperation]: '.implode(', ', $missing));
+
+        return 1;
+    }
+
+    $path = base_path(OpenApiDocument::PATH);
+    $json = $document->json();
+
+    if ($this->option('check')) {
+        if (! is_file($path) || file_get_contents($path) !== $json) {
+            $this->error(OpenApiDocument::PATH.' is out of date: run php artisan projektrack:api:openapi and commit it.');
+
+            return 1;
+        }
+
+        $this->info(OpenApiDocument::PATH.' is current.');
+
+        return 0;
+    }
+
+    @mkdir(dirname($path), 0775, true);
+    file_put_contents($path, $json);
+    $this->info('Written '.OpenApiDocument::PATH.'.');
+
+    return 0;
+})->purpose('Write the OpenAPI 3.1 document of /api/v1 (S-0913)');
 
 // Security baseline 8.2: weekly verification; failures are logged as critical.
 Schedule::command('projektrack:audit:verify')->weekly()->sundays()->at('03:00');

@@ -492,6 +492,8 @@ Scenario: Same permissions and tenant scope as the UI
   Then API requests are subject to the same policies, field permissions and tenant scope as the UI
 ```
 
+Implementation note (19.11.2026): Settings > API tokens (`core.api_tokens.manage`, recent confirmation) creates a token with scopes and a validity of 1 to 365 days (default 90); the secret is shown once, only its SHA-256 is stored, the prefix is `ptk_`. `/api/v1` accepts tokens only (no session cookies) and needs the scope of the route and the user's own permissions, inside the tenant of the host; 60 requests a minute per token. First endpoints: `me`, notifications, settings of a component, file upload and download. Every route carries `#[ApiOperation]`; `php artisan projektrack:api:openapi` writes `docs/api/openapi.json` (OpenAPI 3.1) and CI fails when a route is undocumented or the document is out of date. Tokens end with every account recovery step (password reset or change, other sessions signed out, two-factor reset or removal). A token works only while its user may use tokens and has two-factor authentication where required; a route without a declared scope is refused. Limits: 120 requests a minute per IP before the token is checked, 60 per token and 120 per user. No CORS. Time entries and the `timesheets:read` scope arrive with time tracking; modules declare scopes in `module.json` (`api_scopes`).
+
 ---
 
 ### S-0914 Command palette and global search

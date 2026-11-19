@@ -84,6 +84,13 @@ Release gate: a release cannot be tagged unless all automated checks above are g
 - **Secrets at rest:** secret settings (`x-secret`) are never flashed into the session with old input, and a secret that no longer decrypts counts as not set; they and the TOTP secrets are encrypted with Laravel's encrypter (AES-256-CBC with HMAC-SHA256) under `APP_KEY`, which lives in the environment, never in the database; `APP_PREVIOUS_KEYS` allows key rotation. The XChaCha20-Poly1305 cast with key IDs described above is not built (backlog BL-009). A test lists every secret-looking column and fails on one that is neither hashed, encrypted nor reviewed.
 - **CSRF and encoding:** Laravel's `PreventRequestForgery` (`Sec-Fetch-Site` same-origin, else the session token) is in the web group; a test proves every state-changing web route uses it and that nothing is exempt. Vue escapes output; ESLint forbids `v-html` (one reviewed exception: the server-made QR code of the two-factor setup); a test forbids `{!! !!}` in Blade templates; e-mails escape user data (S-0912).
 
+### Implementation notes (S-0913, 19.11.2026)
+
+- **Tokens:** Settings > API tokens (`core.api_tokens.manage`, by default admins only; recent confirmation). Scopes `<module>:<access>`, validity 1 to 365 days (default 90). The secret `<id>|ptk_...` is shown once through the encrypted session flash on a `no-store` page; only its SHA-256 is stored (`api_tokens.token`). A wildcard scope grants nothing. Creation and revocation are audited without the secret.
+- **Every request:** tokens only (no session cookies, no Sanctum routes, no CORS); the token is looked up inside the tenant of the host. `App\Http\Middleware\GuardApiRequest` refuses a route without a declared scope, a user who may no longer use tokens and a user without required two-factor authentication; routes add `scope:` and the same `permission:` as the UI. Limits: 120 a minute per IP before authentication, 60 per token and 120 per user. Errors name no models (generic 404).
+- **Recovery:** a password reset or change, signing out other sessions, and a two-factor reset or removal revoke every token of the user (`api_tokens.revoked_all`).
+- **Not covered yet:** pruning expired tokens, a throttled `last_used_at` write, and auditing successful token use (backlog BL-012).
+
 ## 3. Authorization
 
 - **Deny by default**: no route, API endpoint, job, export, automation action, MCP tool or AI action executes without an explicit permission check. Public routes (login, shared link resolver, health) carry an explicit `public` marker that the architecture test allowlists.

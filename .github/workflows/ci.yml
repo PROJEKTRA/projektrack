@@ -68,6 +68,9 @@ jobs:
           npm run format:check
           npm run typecheck
 
+      - name: OpenAPI document current (S-0913)
+        run: php artisan projektrack:api:openapi --check
+
       - name: Frontend unit tests (Vitest)
         run: npm test
 

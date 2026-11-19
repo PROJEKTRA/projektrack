@@ -7,12 +7,15 @@
 
 namespace App\Auth;
 
+use App\Api\ApiTokens;
+use App\Auth\TwoFactor\TwoFactorReset;
 use App\Models\User;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Events\Dispatcher;
+use Laravel\Fortify\Events\TwoFactorAuthenticationDisabled;
 use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
 
 /**
@@ -23,6 +26,7 @@ final class AuthenticationSubscriber
     public function __construct(
         private readonly LoginThrottle $throttle,
         private readonly Sessions $sessions,
+        private readonly ApiTokens $tokens,
     ) {}
 
     /** @return array<class-string, string> */
@@ -33,6 +37,8 @@ final class AuthenticationSubscriber
             TwoFactorAuthenticationFailed::class => 'twoFactorFailed',
             Login::class => 'login',
             PasswordReset::class => 'passwordReset',
+            TwoFactorReset::class => 'twoFactorRemoved',
+            TwoFactorAuthenticationDisabled::class => 'twoFactorRemoved',
         ];
     }
 
@@ -72,6 +78,18 @@ final class AuthenticationSubscriber
             $this->sessions->endAll($event->user);
             // Proof of the mailbox: the owner gets in again at once.
             $this->throttle->clear($event->user->email);
+        }
+    }
+
+    /** A removed second factor ends the user's API tokens (S-0913). */
+    public function twoFactorRemoved(TwoFactorReset|TwoFactorAuthenticationDisabled $event): void
+    {
+        $user = $event instanceof TwoFactorReset
+            ? User::query()->withoutGlobalScopes()->find($event->userId)
+            : $event->user;
+
+        if ($user instanceof User) {
+            $this->tokens->revokeAll($user, 'two_factor_removed');
         }
     }
 
