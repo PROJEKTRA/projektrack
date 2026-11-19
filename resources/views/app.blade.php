@@ -45,7 +45,13 @@
             <style nonce="{{ Vite::cspNonce() }}">{{ $brandCss }}</style>
         @endif
 
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+        {{-- The tenant's logo as icon (S-0911), else the shipped one --}}
+        @php($brandIcon = app(\App\Branding\Brand::class)->logoUrl())
+        @if ($brandIcon)
+            <link rel="icon" href="{{ $brandIcon }}">
+        @else
+            <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+        @endif
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
         <x-inertia::head>

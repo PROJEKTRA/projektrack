@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\StoredFile;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Notifications\ResetPasswordLink;
 use App\Notifications\TwoFactorWasReset;
 use App\Tenancy\TenantContext;
 use Illuminate\Http\UploadedFile;
@@ -257,5 +258,28 @@ describe('security review findings', function () {
         $this->actingAs($admin)->post('/admin/brand', ['product_name' => 'Acme Projects']);
 
         expect(AuditEntry::query()->where('action', 'branding.changed')->count())->toBe($count);
+    });
+});
+
+describe('links and icon of the tenant', function () {
+    it('roots e-mail links at the recipient tenant host, also without a request', function () {
+        $foreign = Tenant::factory()->withDomain('acme.test')->create();
+        $user = app(TenantContext::class)->run($foreign, fn () => User::factory()->create());
+        // As in a queue worker: no tenant context, no request host.
+        app(TenantContext::class)->forget();
+
+        $reset = (new ResetPasswordLink('token-1'))->toMail($user);
+
+        expect(parse_url((string) $reset->actionUrl, PHP_URL_HOST))->toBe('acme.test')
+            ->and(url('/'))->not->toContain('acme.test');
+    });
+
+    it('uses the tenant logo as page icon', function () {
+        Storage::fake('local');
+        $this->actingAs(brandAdmin())->post('/admin/brand', ['logo' => UploadedFile::fake()->createWithContent('logo.png', onePixelPng())]);
+        app()->forgetScopedInstances();
+        auth()->logout();
+
+        expect((string) $this->get('/login')->getContent())->toContain('<link rel="icon" href="'.app(Brand::class)->logoUrl().'">');
     });
 });

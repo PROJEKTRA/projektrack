@@ -38,7 +38,7 @@ class TwoFactorWasReset extends AppNotice
      */
     public function toMail(User $notifiable): MailMessage
     {
-        return self::asRecipient($notifiable, fn (): MailMessage => $this->resetMail($notifiable));
+        return self::mailAs($notifiable, fn (): MailMessage => $this->resetMail($notifiable));
     }
 
     private function resetMail(User $notifiable): MailMessage

@@ -10,6 +10,7 @@ namespace App\Notifications;
 use App\I18n\Strings;
 use App\Models\User;
 use App\Tenancy\TenantContext;
+use App\Tenancy\TenantUrls;
 use Closure;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -80,6 +81,20 @@ abstract class AppNotice extends Notification
         return $tenants->run($notifiable->tenant()->firstOrFail(), fn (): mixed => $callback());
     }
 
+    /**
+     * Build an e-mail in the recipient's tenant, with links to its host.
+     *
+     * @param  Closure(): MailMessage  $build
+     */
+    public static function mailAs(User $notifiable, Closure $build): MailMessage
+    {
+        return self::asRecipient($notifiable, fn (): MailMessage => app(TenantUrls::class)->within(
+            $notifiable->tenant()->firstOrFail(),
+            // Action links are built here, while the tenant's host is the root.
+            fn (): MailMessage => $build(),
+        ));
+    }
+
     /** @return array{message: string, args: array<string, scalar>, url: string|null} */
     public function toInApp(User $notifiable): array
     {
@@ -88,7 +103,7 @@ abstract class AppNotice extends Notification
 
     public function toMail(User $notifiable): MailMessage
     {
-        return self::asRecipient($notifiable, fn (): MailMessage => $this->buildMail($notifiable));
+        return self::mailAs($notifiable, fn (): MailMessage => $this->buildMail($notifiable));
     }
 
     private function buildMail(User $notifiable): MailMessage
