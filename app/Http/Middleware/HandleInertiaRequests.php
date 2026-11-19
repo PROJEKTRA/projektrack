@@ -8,6 +8,7 @@
 namespace App\Http\Middleware;
 
 use App\Authorization\Permissions;
+use App\Branding\Brand;
 use App\I18n\Formats;
 use App\I18n\Strings;
 use App\Models\AppNotification;
@@ -50,7 +51,9 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
-            'name' => config('app.name'),
+            // Brand of the tenant (S-0911); never the product name from configuration.
+            'name' => app(Brand::class)->nameForRequest(),
+            'brand' => app(Brand::class)->toArray(),
             'auth' => [
                 'user' => $user,
                 // For showing or hiding UI only; the server checks every action again.

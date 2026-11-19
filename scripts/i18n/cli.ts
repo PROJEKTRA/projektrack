@@ -11,6 +11,7 @@ import {
 } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import {
+    checkBrandNames,
     checkCatalogs,
     checkDirections,
     checkIcons,
@@ -104,6 +105,10 @@ for (const dir of moduleDirs) {
 
 const problems: Problem[] = [
     ...checkRefusedLocales([...langFiles, ...moduleLangFiles]),
+    // No product name in any string (S-0911).
+    ...[...langFiles, ...moduleLangFiles]
+        .filter((file) => file.endsWith('.json'))
+        .flatMap((file) => checkBrandNames(file, readFileSync(file, 'utf8'))),
     ...checkCatalogs(
         catalogs,
         (locale, identifier) =>
@@ -135,6 +140,14 @@ for (const file of sources) {
 
     if (/\.(vue|ts)$/.test(file)) {
         problems.push(...checkIcons(file, text, mirrored));
+    }
+
+    // No product name in templates (S-0911).
+    if (
+        /^(resources|modules|ee)\//.test(file) &&
+        /\.(vue|ts|blade\.php)$/.test(file)
+    ) {
+        problems.push(...checkBrandNames(file, text));
     }
 
     if (/\.(php|vue|ts)$/.test(file)) {

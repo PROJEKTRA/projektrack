@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import {
+    checkBrandNames,
     checkCatalogs,
     checkDirections,
     checkIcons,
@@ -255,5 +256,31 @@ describe('directional icons', () => {
             "// i18n-icon-ok: aligns text, not a direction\nimport { AlignLeft } from '@lucide/vue';\n";
 
         expect(checkIcons('c.vue', file, registry)).toEqual([]);
+    });
+});
+
+/* S-0911: no product name hard-coded in strings and templates. */
+describe('brand names', () => {
+    it('fails on the product or licensor name in a string or template, with file and line', () => {
+        expect(
+            checkBrandNames(
+                'lang/en/core.json',
+                '{\n  "welcome": "Welcome to Projektrack"\n}',
+            ),
+        ).toEqual([
+            {
+                file: 'lang/en/core.json',
+                line: 2,
+                message: expect.stringContaining('{brand}'),
+            },
+        ]);
+        expect(checkBrandNames('a.vue', '<p>PROJEKTRA</p>')).toHaveLength(1);
+    });
+
+    it('accepts {brand}, lower-case technical names and copyright headers', () => {
+        const text =
+            '/*\n * Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o.\n */\n"welcome": "Welcome to {brand}"\nprojektrack:strings:cache';
+
+        expect(checkBrandNames('a.ts', text)).toEqual([]);
     });
 });

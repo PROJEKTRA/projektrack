@@ -20,6 +20,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // Release version, shown to signed-in users only (About, S-0911); set by the release build.
+    'version' => env('APP_VERSION', '0.9.0-dev'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

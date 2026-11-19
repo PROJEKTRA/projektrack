@@ -8,6 +8,7 @@
 namespace App\I18n;
 
 use App\Tenancy\TenantContext;
+use Closure;
 use DateTimeInterface;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Foundation\Application;
@@ -62,7 +63,10 @@ final class Strings
         private readonly Application $app,
         private readonly Cache $cache,
         private readonly LoggerInterface $logger,
-        private readonly string $brand,
+        /** @var Closure(): string the current brand name for {brand} (S-0911) */
+        private readonly Closure $brand,
+        /** @var Closure(): string|null {brand} in the public bundle: never the shipped product name */
+        private readonly ?Closure $publicBrand = null,
     ) {}
 
     /**
@@ -149,7 +153,7 @@ final class Strings
         }
 
         $rtl = $this->languages->locales()->direction($locale) === 'rtl';
-        $values = ['brand' => $this->brand];
+        $values = ['brand' => ($this->brand)()];
 
         foreach ($args as $name => $value) {
             $value = match (true) {
@@ -222,7 +226,8 @@ final class Strings
             'version' => $this->bundleVersion($chain),
             'messages' => $messages,
             'sources' => $sources,
-            'reserved' => ['brand' => $this->brand],
+            // The bundle is public; the browser sets the signed-in brand from the page (S-0911).
+            'reserved' => ['brand' => ($this->publicBrand ?? $this->brand)()],
         ];
     }
 
@@ -232,7 +237,7 @@ final class Strings
     public function bundleVersion(array $chain): string
     {
         // The tenant is part of the version: two tenants' own strings never share one.
-        $parts = [$this->brand, $this->tenants->has() ? $this->tenants->id() : ''];
+        $parts = [($this->publicBrand ?? $this->brand)(), $this->tenants->has() ? $this->tenants->id() : ''];
         foreach ($chain as $locale) {
             $parts[] = $locale.'='.$this->catalog->version($locale).':'.$this->languages->revision($locale);
         }

@@ -41,6 +41,17 @@ return [
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => ['docx'],
             ],
         ],
+        // Brand logo (S-0911): small raster images; SVG is never accepted.
+        'logos' => [
+            'max_kb' => 1024,
+            // Public before sign-in: only re-encoded images, so no metadata (EXIF) is published.
+            'require_reencode' => true,
+            'types' => [
+                'image/png' => ['png'],
+                'image/jpeg' => ['jpg', 'jpeg'],
+                'image/webp' => ['webp'],
+            ],
+        ],
         'images' => [
             'max_kb' => 5 * 1024,
             'types' => [

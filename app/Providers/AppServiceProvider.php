@@ -8,10 +8,14 @@
 namespace App\Providers;
 
 use App\Auth\NotCommonPassword;
+use App\Branding\Brand;
+use App\Branding\SetMailSender;
 use App\Settings\Settings;
 use Carbon\CarbonImmutable;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -24,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Settings of the current tenant, read once per request (S-0912).
         $this->app->scoped(Settings::class);
+        // Brand of the current tenant (S-0911).
+        $this->app->scoped(Brand::class);
     }
 
     /**
@@ -32,6 +38,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Sender name of the tenant's brand on every e-mail (S-0911).
+        Event::listen(MessageSending::class, SetMailSender::class);
     }
 
     /**

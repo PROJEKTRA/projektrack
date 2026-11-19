@@ -4,7 +4,7 @@
 -->
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { LogOut, Settings } from '@lucide/vue';
+import { Info, LogOut, Settings } from '@lucide/vue';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -39,6 +39,12 @@ defineProps<Props>();
             <Link class="block w-full cursor-pointer" :href="edit()" prefetch>
                 <Settings class="me-2 h-4 w-4" />
                 {{ $t('core:nav.settings') }}
+            </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem :as-child="true">
+            <Link class="block w-full cursor-pointer" href="/about">
+                <Info class="me-2 h-4 w-4" />
+                {{ $t('core:nav.about') }}
             </Link>
         </DropdownMenuItem>
     </DropdownMenuGroup>

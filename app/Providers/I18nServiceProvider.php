@@ -8,6 +8,7 @@
 namespace App\Providers;
 
 use App\Audit\AuditLog;
+use App\Branding\Brand;
 use App\I18n\Locales;
 use App\I18n\StringCatalog;
 use App\I18n\Strings;
@@ -65,7 +66,9 @@ class I18nServiceProvider extends ServiceProvider
             $app,
             $app->make('cache.store'),
             $app->make(LoggerInterface::class),
-            $app->make(Repository::class)->string('app.name'),
+            // {brand}: the tenant's brand, else the instance brand (S-0911).
+            fn (): string => $app->make(Brand::class)->name(),
+            fn (): string => $app->make(Brand::class)->publicName(),
         ));
 
         // Laravel's translator (validation, Fortify, mail) reads from the same layer.

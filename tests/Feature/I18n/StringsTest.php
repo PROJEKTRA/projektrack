@@ -120,7 +120,7 @@ describe('one layer for backend and frontend', function () {
         $mail = (new TwoFactorWasReset)->toMail($user);
 
         expect($user->preferredLocale())->toBe('en')
-            ->and($mail->subject)->toBe('Your two-factor authentication for '.config('app.name').' was reset')
+            ->and($mail->subject)->toBe('Your two-factor authentication for '.config('brand.name').' was reset')
             ->and(User::factory()->create(['locale' => null])->preferredLocale())->toBe('bs');
     });
 });

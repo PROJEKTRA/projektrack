@@ -39,11 +39,17 @@
             }
         </style>
 
+        {{-- Brand color of the tenant (S-0911): only a validated #rrggbb reaches this block --}}
+        @php($brandCss = app(\App\Branding\Brand::class)->themeCss())
+        @if ($brandCss)
+            <style nonce="{{ Vite::cspNonce() }}">{{ $brandCss }}</style>
+        @endif
+
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
         <x-inertia::head>
-            <title>{{ config('app.name') }}</title>
+            <title>{{ app(\App\Branding\Brand::class)->nameForRequest() ?: __('core:auth.login.page_title') }}</title>
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

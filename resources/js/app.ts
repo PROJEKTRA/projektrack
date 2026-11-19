@@ -8,7 +8,7 @@ import { createApp, h, ref } from 'vue';
 import { initializeTheme } from '@/composables/useAppearance';
 import { setFormats } from '@/i18n/formats';
 import type { FormatsMeta } from '@/i18n/formats';
-import { loadStrings, t } from '@/i18n/strings';
+import { loadStrings, setBrand, t } from '@/i18n/strings';
 import type { StringsMeta } from '@/i18n/strings';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
@@ -16,7 +16,8 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { cspNonce } from '@/lib/csp';
 import { initializeFlashToast } from '@/lib/flashToast';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Projektrack';
+// Brand of the tenant for page titles (S-0911), updated with every visit.
+const brandName = ref('');
 // Writing direction of the user's language, switched together with html dir.
 const dir = ref<'ltr' | 'rtl'>(
     document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr',
@@ -51,6 +52,8 @@ router.on('navigate', (event) => {
     }
 
     setFormats(event.detail.page.props.formats as FormatsMeta | undefined);
+    brandName.value = String(event.detail.page.props.name ?? '');
+    setBrand(brandName.value);
 });
 
 async function boot(): Promise<void> {
@@ -62,7 +65,8 @@ async function boot(): Promise<void> {
     }
 
     await createInertiaApp({
-        title: (title) => (title ? `${title} - ${appName}` : appName),
+        title: (title) =>
+            title ? `${title} - ${brandName.value}` : brandName.value,
         layout: (name) => {
             switch (true) {
                 case name === 'Welcome':
@@ -79,6 +83,8 @@ async function boot(): Promise<void> {
             setFormats(
                 props.initialPage.props.formats as FormatsMeta | undefined,
             );
+            brandName.value = String(props.initialPage.props.name ?? '');
+            setBrand(brandName.value);
 
             // Reka UI primitives (menus, popovers, keyboard navigation) read
             // the writing direction of the user's language from here (S-0920).

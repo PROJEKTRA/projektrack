@@ -5,10 +5,13 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use App\Http\Controllers\AboutController;
+use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StringController;
 use App\Http\Controllers\Admin\UserTwoFactorController;
+use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StringBundleController;
@@ -82,6 +85,17 @@ Route::middleware(['auth', 'verified', 'permission:core.settings.manage'])
         Route::get('/', 'index')->name('index');
         Route::put('{component}', 'update')->name('update');
     });
+
+// Brand (S-0911): the tenant's brand profile, its logo (also before sign-in) and About.
+Route::middleware(['auth', 'verified', 'permission:core.branding.manage'])->group(function () {
+    Route::get('admin/brand', [BrandController::class, 'edit'])->name('admin.brand.edit');
+    Route::post('admin/brand', [BrandController::class, 'update'])->middleware('throttle:20,1')->name('admin.brand.update');
+});
+Route::get('brand/logo/{version}', BrandLogoController::class)
+    ->middleware(['access:public', 'throttle:120,1'])
+    ->whereUlid('version')
+    ->name('brand.logo');
+Route::get('about', AboutController::class)->middleware(['auth', 'verified', 'access:self'])->name('about');
 
 // Uploads and signed downloads (S-0909). A download link is signed, expires and
 // is bound to the user it was made for (FileController::download).

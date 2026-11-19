@@ -10,7 +10,6 @@ import type { Auth } from '@/types/auth';
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {
     interface ImportMetaEnv {
-        readonly VITE_APP_NAME: string;
         [key: string]: string | boolean | undefined;
     }
 
@@ -32,6 +31,8 @@ declare module '@inertiajs/core' {
             strings: StringsMeta;
             formats: FormatsMeta;
             unreadNotifications: number;
+            /** Brand of the tenant (S-0911). */
+            brand: { name: string; logoUrl: string | null; poweredBy: boolean };
             [key: string]: unknown;
         };
     }

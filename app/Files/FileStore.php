@@ -78,6 +78,10 @@ final class FileStore
         }
 
         $contents = (string) file_get_contents($path);
+        if (($rules['require_reencode'] ?? false) === true && ! function_exists('imagecreatefromstring')) {
+            throw ValidationException::withMessages([$field => __('core:files.error_type')]);
+        }
+
         $contents = $this->clean($mime, $contents, $field);
 
         $id = (string) Str::ulid();
@@ -120,12 +124,12 @@ final class FileStore
         return $file->uploaded_by !== null && $file->uploaded_by === $user->id;
     }
 
-    public function download(StoredFile $file, bool $inline): StreamedResponse
+    public function download(StoredFile $file, bool $inline, ?string $name = null): StreamedResponse
     {
         $inline = $inline && $file->isImage();
         $response = Storage::disk($file->disk)->response(
             $file->storage_key,
-            $file->original_name,
+            $name ?? $file->original_name,
             [
                 'Content-Type' => $file->mime_type,
                 // A file can never run script or load anything, even if a browser misreads it.
@@ -136,6 +140,14 @@ final class FileStore
         );
 
         return $response;
+    }
+
+    /** Delete a file: content and record (audited without the name). */
+    public function delete(StoredFile $file, User $actor): void
+    {
+        Storage::disk($file->disk)->delete($file->storage_key);
+        $this->audit->record('files.deleted', $file, ['context' => $file->context], $actor);
+        $file->delete();
     }
 
     /** Re-encode images, so EXIF data and anything appended to them is gone. */

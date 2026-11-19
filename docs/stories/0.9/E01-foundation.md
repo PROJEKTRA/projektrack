@@ -428,6 +428,8 @@ Scenario: Legal entity of the licensor
   And it is used by the About screen, license documents and license invoices
 ```
 
+Implementation note (19.11.2026): Admin > Brand sets the tenant's product name, logo (PNG, JPEG or WebP; also on the sign-in page), primary color (text on it black or white by contrast) and e-mail sender name; empty values use the instance brand in `config/brand.php`. `{brand}`, page titles, the app logo, mail layouts and the mail sender name read `App\Branding\Brand`. Before sign-in only the tenant's own product name is shown, never the shipped one (invisible by default); names refuse markup, Markdown and control characters because they go into e-mails; a replaced logo is deleted. A lint gate fails on `Projektrack` or `PROJEKTRA` in strings and templates (copyright headers allowed). The licensor is stored once in `config/licensor.php` and shown on About; license documents and invoices read it with licensing. Address, JIB and MBS are still empty there until the register data is provided. Removing "Powered by" waits for the license entitlement.
+
 ---
 
 ### S-0912 Settings framework and notifications

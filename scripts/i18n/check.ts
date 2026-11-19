@@ -537,3 +537,34 @@ export function checkIcons(
 
     return problems;
 }
+
+// ------------------------------------------------------------------- brand
+
+/** Names that only config/brand.php and config/licensor.php may contain (S-0911). */
+const BRAND_NAMES = /\b(Projektrack|PROJEKTRA)\b/;
+
+/**
+ * No product or licensor name in strings and templates: strings use {brand},
+ * templates read the brand of the tenant (App\Branding\Brand). Copyright
+ * headers are allowed.
+ */
+export function checkBrandNames(file: string, text: string): Problem[] {
+    const problems: Problem[] = [];
+
+    text.split('\n').forEach((line, index) => {
+        if (/Copyright|SPDX-License-Identifier/.test(line)) {
+            return;
+        }
+
+        const match = line.match(BRAND_NAMES);
+        if (match) {
+            problems.push({
+                file,
+                line: index + 1,
+                message: `product name "${match[1]}" written into ${file.endsWith('.json') ? 'a string' : 'a template'}: use {brand} in strings, the brand prop or App\\Branding\\Brand in templates`,
+            });
+        }
+    });
+
+    return problems;
+}

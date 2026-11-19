@@ -4,9 +4,10 @@
 -->
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Languages, LayoutGrid, Settings } from '@lucide/vue';
+import { Languages, LayoutGrid, Palette, Settings } from '@lucide/vue';
 import { computed } from 'vue';
 import LanguageController from '@/actions/App/Http/Controllers/Admin/LanguageController';
+import BrandController from '@/actions/App/Http/Controllers/Admin/BrandController';
 import SettingsController from '@/actions/App/Http/Controllers/Admin/SettingsController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -42,6 +43,15 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('core:nav.languages'),
                       href: LanguageController.index(),
                       icon: Languages,
+                  },
+              ]
+            : []),
+        ...(permissions.includes('core.branding.manage')
+            ? [
+                  {
+                      title: t('core:nav.brand'),
+                      href: BrandController.edit(),
+                      icon: Palette,
                   },
               ]
             : []),

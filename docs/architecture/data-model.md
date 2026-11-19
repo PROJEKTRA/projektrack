@@ -335,7 +335,7 @@ erDiagram
 |---|---|---|
 | tenants | Instance-scoped. `slug` unique; `region` and `isolation_mode` (shared, dedicated_db) drive routing (ADR-0006). | 0.9 |
 | tenant_domains | Instance-scoped lookup table (host to tenant) with `tenant_id`. `host` unique across the instance; `kind` = random, alias, custom. | 0.9 |
-| brand_profiles | Layered: `tenant_id` NULL = instance brand. Unique `(tenant_id)`. | 0.9 |
+| brand_profiles | Layered: `tenant_id` NULL = instance brand. Unique `(tenant_id)`. 0.9 stores tenant profiles only; the instance brand comes from `config/brand.php`. `tokens` is `primary_color` (#rrggbb) for now; the favicon follows (S-0911). | 0.9 |
 | users | Unique `(tenant_id, email_normalized)`; index `(tenant_id, status, user_type)` for license counting. `user_type` = full, light, portal, service. Soft delete plus anonymization. `session_version` (S-0903) moves on when other sessions are signed out or the password is changed or reset; sessions of an older version end. | 0.9 |
 | auth_factors | `kind` = totp, recovery_codes. Secrets encrypted. | 0.9 |
 | webauthn_credentials | `credential_id` unique per instance. | 0.9 |

@@ -40,6 +40,13 @@ export type StringBundle = {
 const MISSING = 'core:string_missing';
 
 const bundle = shallowRef<StringBundle | null>(null);
+// {brand} for signed-in users, from the page (S-0911); the public bundle never carries the product name.
+const brandName = shallowRef<string | null>(null);
+
+/** Use the brand of the current page for {brand}. */
+export function setBrand(name: string | null | undefined): void {
+    brandName.value = name || null;
+}
 const formatters = new Map<string, IntlMessageFormat>();
 const reported = new Set<string>();
 const RTL_LOCALES = new Set(['ar', 'fa', 'xx-rtl']);
@@ -184,6 +191,7 @@ export function t(id: string, args: StringArgs = {}): string {
 
     const result = compiled.format({
         ...current.reserved,
+        ...(brandName.value ? { brand: brandName.value } : {}),
         ...isolate(args, locale, current),
     });
 

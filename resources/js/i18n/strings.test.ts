@@ -7,7 +7,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { IntlMessageFormat } from 'intl-messageformat';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { t, useBundle } from './strings';
+import { setBrand, t, useBundle } from './strings';
 import type { StringBundle } from './strings';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -209,5 +209,25 @@ describe('bidi isolation', () => {
         // A fallback message from en inside an RTL language is left to right.
         useBundle(bundleOf('ur', 'rtl'));
         expect(t('core:test.en', { name: 'Ana' })).toBe('Hi Ana');
+    });
+});
+
+/* S-0911: the public bundle never carries the product name; the page sets it. */
+describe('brand', () => {
+    it('uses the brand of the page for {brand}, else the bundle value', () => {
+        useBundle({
+            locale: 'en',
+            dir: 'ltr',
+            version: 'brand-test',
+            messages: { 'core:test.brand': 'Welcome to {brand}' },
+            sources: {},
+            reserved: { brand: '' },
+        });
+
+        setBrand('Acme Projects');
+        expect(t('core:test.brand')).toBe('Welcome to Acme Projects');
+
+        setBrand(null);
+        expect(t('core:test.brand')).toBe('Welcome to ');
     });
 });
