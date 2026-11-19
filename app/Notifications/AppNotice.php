@@ -9,6 +9,8 @@ namespace App\Notifications;
 
 use App\I18n\Strings;
 use App\Models\User;
+use App\Tenancy\TenantContext;
+use Closure;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -47,13 +49,35 @@ abstract class AppNotice extends Notification
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        $channels = [InAppChannel::class];
+        // The recipient's tenant decides: its modules, its e-mail switch, the user's choices.
+        return self::asRecipient($notifiable, function () use ($notifiable): array {
+            $channels = [InAppChannel::class];
 
-        if (app(NotificationPreferences::class)->wantsMail($notifiable, $this->type())) {
-            $channels[] = 'mail';
+            if (app(NotificationPreferences::class)->wantsMail($notifiable, $this->type())) {
+                $channels[] = 'mail';
+            }
+
+            return $channels;
+        });
+    }
+
+    /**
+     * Run in the recipient's tenant, also when a job or another tenant sends.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $callback
+     * @return T
+     */
+    public static function asRecipient(User $notifiable, Closure $callback): mixed
+    {
+        $tenants = app(TenantContext::class);
+
+        if ($tenants->has() && $tenants->id() === $notifiable->tenant_id) {
+            return $callback();
         }
 
-        return $channels;
+        return $tenants->run($notifiable->tenant()->firstOrFail(), fn (): mixed => $callback());
     }
 
     /** @return array{message: string, args: array<string, scalar>, url: string|null} */
@@ -64,12 +88,17 @@ abstract class AppNotice extends Notification
 
     public function toMail(User $notifiable): MailMessage
     {
+        return self::asRecipient($notifiable, fn (): MailMessage => $this->buildMail($notifiable));
+    }
+
+    private function buildMail(User $notifiable): MailMessage
+    {
         $strings = app(Strings::class);
         $locale = $notifiable->preferredLocale();
         $mail = (new MailMessage)
             ->subject($strings->get('core:notifications.mail.subject', ['type' => $strings->get($this->label(), [], $locale)], $locale))
             ->greeting($strings->get('core:notifications.mail.greeting', ['name' => $notifiable->name], $locale))
-            ->line($strings->get($this->message(), $this->arguments(), $locale));
+            ->line($strings->get($this->message(), self::escapeMarkdown($this->arguments()), $locale));
 
         if ($this->url() !== null) {
             $mail->action($strings->get('core:notifications.mail.open', [], $locale), url($this->url()));
@@ -78,6 +107,21 @@ abstract class AppNotice extends Notification
         return $mail
             ->line($strings->get('core:notifications.mail.settings', [], $locale))
             ->salutation($strings->get('core:notifications.mail.salutation', [], $locale));
+    }
+
+    /**
+     * Arguments are user data (names, titles); e-mail lines are Markdown, so a
+     * name like "[Verify](https://evil.example)" must stay text, not a link.
+     *
+     * @param  array<string, scalar>  $arguments
+     * @return array<string, scalar>
+     */
+    public static function escapeMarkdown(array $arguments): array
+    {
+        return array_map(
+            fn (mixed $value): mixed => is_string($value) ? (string) preg_replace('/([\\\\`*_{}\[\]()#+\-.!|<>~])/', '\\\\$1', $value) : $value,
+            $arguments,
+        );
     }
 
     /** Label of the type, from its declaration. */

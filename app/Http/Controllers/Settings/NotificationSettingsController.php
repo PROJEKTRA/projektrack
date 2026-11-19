@@ -7,6 +7,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Audit\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Notifications\NotificationPreferences;
 use App\Settings\Settings;
@@ -31,7 +32,7 @@ class NotificationSettingsController extends Controller
         ]);
     }
 
-    public function update(Request $request, NotificationPreferences $preferences): RedirectResponse
+    public function update(Request $request, NotificationPreferences $preferences, AuditLog $audit): RedirectResponse
     {
         /** @var array{mail: array<string, mixed>} $valid */
         $valid = $request->validate([
@@ -43,7 +44,11 @@ class NotificationSettingsController extends Controller
         foreach ($valid['mail'] as $type => $on) {
             $mail[(string) $type] = filter_var($on, FILTER_VALIDATE_BOOLEAN);
         }
-        $preferences->save($this->currentUser($request), $mail);
+        $user = $this->currentUser($request);
+        $preferences->save($user, $mail);
+
+        // Which types the user now gets by e-mail; types only, no content.
+        $audit->record('notifications.preferences_changed', $user, ['mail_off' => array_column(array_values(array_filter($preferences->of($user), fn (array $type): bool => ! $type['mail'])), 'type')]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('core:flash.settings_saved')]);
 

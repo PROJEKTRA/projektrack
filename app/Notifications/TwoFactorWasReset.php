@@ -38,6 +38,11 @@ class TwoFactorWasReset extends AppNotice
      */
     public function toMail(User $notifiable): MailMessage
     {
+        return self::asRecipient($notifiable, fn (): MailMessage => $this->resetMail($notifiable));
+    }
+
+    private function resetMail(User $notifiable): MailMessage
+    {
         $strings = app(Strings::class);
         $locale = $notifiable->preferredLocale();
 

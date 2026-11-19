@@ -13,9 +13,9 @@ use App\Modules\TenantModules;
 /**
  * Notification types users can see and choose e-mail for (S-0912): the
  * core's, and those of every enabled module (module.json "notifications":
- * [{"type": "timesheets.submitted", "label_string": "timesheets:...",
- * "mandatory": false}]). Mandatory types (security notices) always send
- * e-mail.
+ * [{"type": "timesheets.submitted", "label_string": "timesheets:..."}]).
+ * Only core types can be mandatory (security notices, always e-mailed); a
+ * module's "mandatory" flag is ignored, so no module can force e-mail.
  */
 final class NotificationTypes
 {
@@ -44,7 +44,8 @@ final class NotificationTypes
                     $types[] = [
                         'type' => $declared['type'],
                         'label' => $declared['label_string'],
-                        'mandatory' => ($declared['mandatory'] ?? false) === true,
+                        // Only core security notices override a user's or the organization's choice.
+                        'mandatory' => false,
                     ];
                 }
             }

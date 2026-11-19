@@ -102,6 +102,11 @@ final class SettingsSchema
             throw new InvalidArgumentException("{$where}: x-tenant-attribute is for core settings on known tenant columns only.");
         }
 
+        $pattern = $property['pattern'] ?? null;
+        if ($pattern !== null && (! is_string($pattern) || @preg_match(SettingDefinition::regex($pattern), '') === false)) {
+            throw new InvalidArgumentException("{$where}: pattern is not a valid regular expression.");
+        }
+
         $enum = isset($property['enum']) && is_array($property['enum']) ? array_values($property['enum']) : null;
         $enumLabels = isset($property['x-enum-labels']) && is_array($property['x-enum-labels']) ? array_values(array_map(fn (mixed $label): string => is_scalar($label) ? (string) $label : '', $property['x-enum-labels'])) : null;
 

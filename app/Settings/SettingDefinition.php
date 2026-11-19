@@ -72,7 +72,7 @@ final readonly class SettingDefinition
             $rules[] = 'max:'.$this->maxLength;
         }
         if ($this->pattern !== null) {
-            $rules[] = 'regex:/'.str_replace('/', '\/', $this->pattern).'/u';
+            $rules[] = 'regex:'.self::regex($this->pattern);
         }
 
         $choices = $allowed ?? $this->enum;
@@ -81,6 +81,12 @@ final readonly class SettingDefinition
         }
 
         return $rules;
+    }
+
+    /** The pattern as a PHP regular expression (# delimited). */
+    public static function regex(string $pattern): string
+    {
+        return '#'.str_replace('#', '\#', $pattern).'#u';
     }
 
     /** Bring a validated input to the declared type. */

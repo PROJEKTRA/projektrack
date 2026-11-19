@@ -100,5 +100,19 @@ for (const locale of ['bs', 'ar'] as TestLocale[]) {
         await expect(
             page.locator('[data-test="string-core:common.save"] bdi').first(),
         ).toHaveText('core:common.save');
+
+        // Admin > Settings (S-0912): the core form renders and saves.
+        await page.goto('/admin/settings');
+        const core = page.getByTestId('settings-core');
+        await expect(core.locator('select')).toHaveCount(3);
+        await core.getByTestId('save-settings-core').click();
+        await expect(page.getByTestId('save-settings-core')).toBeEnabled();
+        await expect(
+            core.locator('p.text-destructive, [role="alert"]'),
+        ).toHaveCount(0);
+
+        // The bell leads to the notification list.
+        await page.getByTestId('notification-bell').click();
+        await page.waitForURL('**/notifications');
     });
 }

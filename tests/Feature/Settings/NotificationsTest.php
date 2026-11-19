@@ -6,11 +6,13 @@
  */
 
 use App\Models\AppNotification;
+use App\Models\AuditEntry;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Modules\TenantModules;
 use App\Notifications\AppNotice;
 use App\Notifications\InAppChannel;
+use App\Notifications\NotificationTypes;
 use App\Notifications\TwoFactorWasReset;
 use App\Settings\Settings;
 use App\Tenancy\TenantContext;
@@ -178,4 +180,72 @@ it('stores a notification in the recipient tenant', function () {
     Notification::sendNow($recipient, new TwoFactorWasReset);
 
     expect(AppNotification::query()->withoutGlobalScopes()->where('user_id', $recipient->id)->value('tenant_id'))->toBe($foreign->id);
+});
+
+describe('security review findings', function () {
+    it('decides about e-mail in the recipient tenant, whoever sends', function () {
+        timesheetsModule();
+        $foreign = Tenant::factory()->create();
+        $recipient = app(TenantContext::class)->run($foreign, function () {
+            app(TenantModules::class)->enable('timesheets');
+            app(Settings::class)->save('core', ['default_locale' => 'bs', 'format_locale' => null, 'timezone' => 'UTC', 'email_notifications' => false], User::factory()->create());
+
+            return User::factory()->create();
+        });
+
+        // Sent while the current tenant (e-mail on) is active.
+        expect((new WeekSubmitted('Ana'))->via($recipient))->toBe([InAppChannel::class]);
+    });
+
+    it('lets no module force e-mail with a mandatory flag', function () {
+        FakeModules::install(['pushy' => ['notifications' => [
+            ['type' => 'pushy.news', 'label_string' => 'core:nav.dashboard', 'mandatory' => true],
+        ]]]);
+        app(TenantModules::class)->enable('pushy');
+        app()->forgetScopedInstances();
+
+        expect(app(NotificationTypes::class)->get('pushy.news')['mandatory'])->toBeFalse();
+    });
+
+    it('keeps user data in e-mails as text, never as a link', function () {
+        timesheetsModule();
+        $html = (string) (new WeekSubmitted('[Verify account](https://evil.example)'))->toMail(User::factory()->create())->render();
+
+        expect($html)->not->toContain('href="https://evil.example')
+            ->toContain('[Verify account](https://evil.example)');
+    });
+
+    it('marks only the own notifications as read', function () {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $user->notify(new TwoFactorWasReset);
+        $other->notify(new TwoFactorWasReset);
+
+        $this->actingAs($user)->post('/notifications/read');
+
+        expect(AppNotification::query()->where('user_id', $other->id)->whereNull('read_at')->count())->toBe(1);
+    });
+
+    it('never opens a notification of another tenant', function () {
+        $foreign = Tenant::factory()->create();
+        $theirs = app(TenantContext::class)->run($foreign, function () {
+            $owner = User::factory()->create();
+            $owner->notify(new TwoFactorWasReset);
+
+            return AppNotification::query()->sole();
+        });
+
+        $this->actingAs(User::factory()->create())->post("/notifications/{$theirs->id}/open")->assertNotFound();
+        expect($theirs->refresh()->read_at)->toBeNull();
+    });
+
+    it('audits changed e-mail choices by type', function () {
+        timesheetsModule();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->put('/settings/notifications', ['mail' => ['timesheets.week_submitted' => false]]);
+
+        expect(AuditEntry::query()->where('action', 'notifications.preferences_changed')->latest('seq')->first()?->contextData())
+            ->toBe(['mail_off' => ['timesheets.week_submitted']]);
+    });
 });

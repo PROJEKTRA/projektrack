@@ -17,6 +17,7 @@ use App\Modules\TenantModules;
 use App\Tenancy\TenantContext;
 use DateTimeZone;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -29,11 +30,18 @@ use InvalidArgumentException;
  */
 final class Settings
 {
-    /** @var array<string, list<SettingDefinition>>|null */
-    private ?array $definitions = null;
+    /** @var list<SettingDefinition>|null core definitions, the same for every tenant */
+    private ?array $core = null;
 
-    /** @var array<string, mixed>|null */
-    private ?array $stored = null;
+    /**
+     * Per tenant, because TenantContext::run() may switch within one request or job.
+     *
+     * @var array<string, array<string, list<SettingDefinition>>>
+     */
+    private array $definitions = [];
+
+    /** @var array<string, array<string, mixed>> */
+    private array $stored = [];
 
     public function __construct(
         private readonly TenantContext $tenants,
@@ -49,34 +57,36 @@ final class Settings
      */
     public function definitions(): array
     {
-        if ($this->definitions !== null) {
-            return $this->definitions;
+        $tenant = $this->tenants->id();
+
+        if (isset($this->definitions[$tenant])) {
+            return $this->definitions[$tenant];
         }
 
-        $definitions = ['core' => SettingsSchema::fromFile('core', resource_path('settings/settings.schema.json'))];
+        $definitions = ['core' => $this->core()];
 
         foreach ($this->modules->enabled() as $key) {
             if ($key === 'core' || ! $this->registry->has($key)) {
                 continue;
             }
 
-            $manifest = $this->registry->get($key);
-            $schema = $manifest->raw['settings_schema'] ?? null;
-
-            if (is_string($schema)) {
-                $dir = is_dir($manifest->path) ? $manifest->path : dirname($manifest->path);
-                $definitions[$key] = SettingsSchema::fromFile($key, $dir.DIRECTORY_SEPARATOR.$schema);
+            $module = $this->moduleDefinitions($key);
+            if ($module !== null) {
+                $definitions[$key] = $module;
             }
         }
 
-        return $this->definitions = $definitions;
+        return $this->definitions[$tenant] = $definitions;
     }
 
     public function definition(string $key): SettingDefinition
     {
         [$component, $name] = array_pad(explode('.', $key, 2), 2, '');
 
-        foreach ($this->definitions()[$component] ?? [] as $definition) {
+        // Core settings are read on every page; they never wait for module schemas.
+        $candidates = $component === 'core' ? $this->core() : ($this->definitions()[$component] ?? []);
+
+        foreach ($candidates as $definition) {
             if ($definition->name === $name) {
                 return $definition;
             }
@@ -132,24 +142,29 @@ final class Settings
         $valid = Validator::make($input, $rules)->validate();
         $changed = [];
 
-        DB::transaction(function () use ($component, $definitions, $valid, $actor, &$changed): void {
+        $changes = [];
+
+        DB::transaction(function () use ($component, $definitions, $valid, $actor, &$changed, &$changes): void {
             foreach ($definitions as $definition) {
                 $value = $definition->cast($valid[$definition->name] ?? null);
+                $before = $this->get($definition->key());
 
-                if ($value === $this->get($definition->key())) {
+                if ($value === $before) {
                     continue;
                 }
 
                 $changed[] = $definition->name;
+                $changes[$definition->name] = ['from' => $before, 'to' => $value];
                 $this->write($definition, $value, $actor);
             }
 
+            // Settings hold no personal data or secrets, so the values make a change traceable.
             if ($changed !== []) {
-                $this->audit->record('settings.changed', null, ['component' => $component, 'keys' => $changed], $actor);
+                $this->audit->record('settings.changed', null, ['component' => $component, 'keys' => $changed, 'changes' => $changes], $actor);
             }
         });
 
-        $this->stored = null;
+        unset($this->stored[$this->tenants->id()]);
 
         return $changed;
     }
@@ -202,14 +217,55 @@ final class Settings
     /** @return array<string, mixed> */
     private function stored(): array
     {
-        if ($this->stored === null) {
-            $this->stored = [];
+        $tenant = $this->tenants->id();
+
+        if (! isset($this->stored[$tenant])) {
+            $this->stored[$tenant] = [];
 
             foreach (Setting::query()->where('scope_type', 'tenant')->where('scope_id', '')->get(['key', 'value']) as $row) {
-                $this->stored[$row->key] = $row->value;
+                $this->stored[$tenant][$row->key] = $row->value;
             }
         }
 
-        return $this->stored;
+        return $this->stored[$tenant];
+    }
+
+    /** @return list<SettingDefinition> */
+    private function core(): array
+    {
+        return $this->core ??= SettingsSchema::fromFile('core', resource_path('settings/settings.schema.json'));
+    }
+
+    /**
+     * Definitions of one module, or null when it declares none or its schema
+     * is unusable. A broken schema hides only that module's settings and is
+     * logged; it never breaks the pages of the tenant. The file must lie
+     * inside the module's directory.
+     *
+     * @return list<SettingDefinition>|null
+     */
+    private function moduleDefinitions(string $key): ?array
+    {
+        $manifest = $this->registry->get($key);
+        $schema = $manifest->raw['settings_schema'] ?? null;
+
+        if (! is_string($schema)) {
+            return null;
+        }
+
+        $dir = realpath(is_dir($manifest->path) ? $manifest->path : dirname($manifest->path));
+        $file = realpath(($dir ?: '').DIRECTORY_SEPARATOR.$schema);
+
+        try {
+            if ($dir === false || $file === false || ! str_starts_with($file, $dir.DIRECTORY_SEPARATOR) || ! is_file($file)) {
+                throw new InvalidArgumentException('settings_schema must name a file inside the module directory.');
+            }
+
+            return SettingsSchema::fromFile($key, $file);
+        } catch (InvalidArgumentException $e) {
+            Log::error('Module settings schema refused', ['module' => $key, 'reason' => $e->getMessage()]);
+
+            return null;
+        }
     }
 }

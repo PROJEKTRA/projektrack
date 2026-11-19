@@ -16,6 +16,7 @@ use App\Modules\TenantModules;
 use App\Settings\Settings;
 use App\Settings\SettingsSchema;
 use App\Tenancy\TenantContext;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Testing\AssertableInertia;
 use Tests\Support\FakeModules;
 
@@ -78,7 +79,7 @@ it('stores only values that differ from the default, validated against the schem
     expect(app(Settings::class)->get('reminders.lead_days'))->toBe(7)
         ->and(Setting::query()->pluck('key')->all())->toBe(['reminders.lead_days'])
         ->and(AuditEntry::query()->where('action', 'settings.changed')->latest('seq')->first()?->contextData())
-        ->toBe(['component' => 'reminders', 'keys' => ['lead_days']]);
+        ->toEqual(['component' => 'reminders', 'keys' => ['lead_days'], 'changes' => ['lead_days' => ['from' => 3, 'to' => 7]]]);
 
     // Back to the default: the row goes, so a changed default applies later.
     $this->actingAs($admin)->put('/admin/settings/reminders', ['lead_days' => 3, 'channel' => 'mail']);
@@ -140,3 +141,56 @@ it('refuses schemas it cannot render or validate correctly', function (array $pr
     'module writing a tenant column' => [['type' => 'string', 'x-tenant-attribute' => 'timezone', 'x-label' => 'core:common.save']],
     'unknown option list' => [['type' => 'string', 'x-options' => 'users', 'x-label' => 'core:common.save']],
 ]);
+
+describe('security review findings', function () {
+    it('reads each tenant its own values when a job switches tenants', function () {
+        app(Settings::class)->save('core', ['default_locale' => 'bs', 'format_locale' => 'en-US', 'timezone' => 'UTC', 'email_notifications' => false], settingsAdmin());
+        $settings = app(Settings::class);
+        expect($settings->get('core.format_locale'))->toBe('en-US');
+
+        app(TenantContext::class)->run(Tenant::factory()->create(), function () use ($settings) {
+            // The same instance, no reset in between.
+            expect($settings->get('core.format_locale'))->toBeNull()
+                ->and($settings->get('core.email_notifications'))->toBeTrue();
+        });
+    });
+
+    it('drops a module with a broken or escaping schema and keeps every page working', function (string $schema, array $files) {
+        FakeModules::install(['broken' => ['settings_schema' => $schema]], ['broken' => $files]);
+        app(TenantModules::class)->enable('broken');
+        app()->forgetScopedInstances();
+        $admin = settingsAdmin();
+
+        $this->actingAs($admin)->get('/dashboard')->assertOk();
+        $this->actingAs($admin)->get('/admin/settings')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->has('groups', 1)->where('groups.0.component', 'core'));
+    })->with([
+        'invalid JSON' => ['settings.schema.json', ['settings.schema.json' => '{not json']],
+        'unsupported keyword' => ['settings.schema.json', ['settings.schema.json' => '{"type":"object","properties":{"x":{"type":"string","format":"uri","x-label":"core:common.save"}}}']],
+        'missing file' => ['missing.json', []],
+        'outside the module' => ['../../../composer.json', []],
+    ]);
+
+    it('ignores input keys the schema does not declare', function () {
+        $slug = $this->tenant->slug;
+
+        $this->actingAs(settingsAdmin())->put('/admin/settings/core', [
+            'default_locale' => 'bs', 'format_locale' => '', 'timezone' => 'UTC', 'email_notifications' => '1',
+            'slug' => 'taken-over', 'status' => 'suspended', 'edition' => 'enterprise',
+        ])->assertSessionHasNoErrors();
+
+        expect($this->tenant->refresh()->slug)->toBe($slug)
+            ->and(Setting::query()->where('key', 'like', '%slug%')->exists())->toBeFalse();
+    });
+
+    it('accepts patterns with delimiters and refuses broken ones', function () {
+        $schema = fn (string $pattern) => SettingsSchema::fromArray('reminders', ['type' => 'object', 'properties' => [
+            'code' => ['type' => 'string', 'pattern' => $pattern, 'x-label' => 'core:common.save'],
+        ]]);
+
+        $definition = $schema('^a/b#c$')[0];
+        expect(Validator::make(['code' => 'a/b#c'], ['code' => $definition->rules(null)])->passes())->toBeTrue()
+            ->and(fn () => $schema('([unclosed'))->toThrow(InvalidArgumentException::class);
+    });
+});
