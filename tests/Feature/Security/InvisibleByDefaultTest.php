@@ -19,7 +19,7 @@ dataset('responses', [
     'redirect to login' => fn () => test()->get('/dashboard'),
     'unknown url (404)' => fn () => test()->get('/does-not-exist'),
     'json error' => fn () => test()->getJson('/does-not-exist'),
-    'health check' => fn () => test()->get('/up'),
+    'health check' => fn () => test()->get('/health'),
     'signed-in page' => fn () => test()->actingAs(User::factory()->create())->get('/dashboard'),
 ]);
 

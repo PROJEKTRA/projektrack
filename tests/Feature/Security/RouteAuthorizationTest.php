@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Route;
 
 const REVIEWED_PACKAGE_ROUTES = [
     // Health check: answers "up", reveals nothing, needs no tenant.
-    'GET up' => 'public',
     // Sign-in, password reset and e-mail verification (Fortify): guest or own account.
     'GET login' => 'public',
     'POST login' => 'public',

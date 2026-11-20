@@ -76,6 +76,8 @@ Scenario: Error pages
   Then 403, 404 and 500 pages and API errors never contain internal URLs, hostnames, paths or stack traces
 ```
 
+Implementation note (20.11.2026): own error pages in the visitor's language (403, 404, 419, 429, 503, other 4xx and 5xx; also the maintenance page); every JSON error on any path is one plain sentence per status. A wrong method and OPTIONS answer like an unknown path. `GET /health` answers `OK` without session or cookies, `HEALTH_ALLOWED_IPS` limits it; the framework's `/up` page (which loaded fonts and scripts from other servers) is gone. Assets are named by content hash only, the favicon and logo are a neutral mark, the title before sign-in is the tenant's name or `BRAND_LOGIN_TITLE`, the version shows to administrators only, and `APP_DEBUG` is off in production whatever the environment says. Remaining by design: the page object of the sign-in page names its view (for example `auth/Login`), as every single-page client does.
+
 ---
 
 ### S-0987 Secure shared links

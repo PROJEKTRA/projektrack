@@ -91,6 +91,13 @@ Release gate: a release cannot be tagged unless all automated checks above are g
 - **Recovery:** a password reset or change, signing out other sessions, and a two-factor reset or removal revoke every token of the user (`api_tokens.revoked_all`).
 - **Not covered yet:** pruning expired tokens, a throttled `last_used_at` write, and auditing successful token use (backlog BL-012).
 
+### Implementation notes (S-0986, 20.11.2026)
+
+- **INV-08:** `resources/views/errors/page.blade.php` (403, 404, 419, 429, 503, 4xx, 5xx): status, title and one sentence from the strings, robots meta, nonce styles, nothing else. JSON errors on every path come from one handler: one sentence per status, no route, model or exception text; `ModelNotFound`, `Authorization` and `TokenMismatch` exceptions become plain HTTP errors first. Method not allowed and every `OPTIONS` request answer 404 without an `Allow` header.
+- **INV-09:** `X-Powered-By` removed in PHP and in `public/.htaccess`; set `ServerTokens Prod` in the web server configuration (`Server` cannot be removed from PHP). Built assets are named `assets/<hash>.js|css`. Favicon and app mark are neutral; the title before sign-in is the tenant's product name or `BRAND_LOGIN_TITLE`. `APP_NAME` is technical only. Accepted residual: the Inertia page object of anonymous pages names the view (`auth/Login`).
+- **INV-10:** `GET /health` returns `OK` or `Unavailable` (database check), no session or cookies, tenantless; `HEALTH_ALLOWED_IPS` restricts it and refused callers get the normal 404. Behind a reverse proxy the trusted proxies must be configured, or the allowlist sees only the proxy. The version shows on About for administrators only.
+- **Debug:** `config/app.php` sets `debug` to false whenever `APP_ENV` is production, before any provider or route runs.
+
 ## 3. Authorization
 
 - **Deny by default**: no route, API endpoint, job, export, automation action, MCP tool or AI action executes without an explicit permission check. Public routes (login, shared link resolver, health) carry an explicit `public` marker that the architecture test allowlists.

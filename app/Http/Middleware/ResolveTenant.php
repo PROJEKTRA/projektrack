@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
 class ResolveTenant
 {
     /** Paths that work without a tenant (load balancer health check). */
-    private const array TENANTLESS_PATHS = ['up'];
+    private const array TENANTLESS_PATHS = ['health'];
 
     public function __construct(private readonly TenantResolver $resolver, private readonly TenantContext $context) {}
 

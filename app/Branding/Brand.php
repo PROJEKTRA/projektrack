@@ -48,7 +48,9 @@ final class Brand
      */
     public function publicName(): string
     {
-        return $this->profile()->product_name ?? '';
+        $title = config('brand.login_title');
+
+        return $this->profile()->product_name ?? (is_string($title) ? $title : '');
     }
 
     /** The name for the current request: full when signed in, public otherwise. */

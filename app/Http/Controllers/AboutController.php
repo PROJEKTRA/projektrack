@@ -7,6 +7,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Authorization\Permissions;
 use App\Branding\Brand;
 use App\Branding\Licensor;
 use Inertia\Inertia;
@@ -22,7 +23,8 @@ class AboutController extends Controller
     {
         return Inertia::render('About', [
             'product' => $brand->name(),
-            'version' => config('app.version'),
+            // The version only for administrators (INV-10).
+            'version' => app(Permissions::class)->allows($this->currentUser(request()), 'core.admin') ? config('app.version') : null,
             // The endorsement line names the shipped product and its licensor (docs/ux/brand.md).
             'poweredBy' => $brand->current()['poweredBy']
                 ? ['product' => config()->string('brand.name'), 'licensor' => config()->string('licensor.short_name')]

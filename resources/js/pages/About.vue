@@ -15,7 +15,7 @@ defineOptions({
 
 defineProps<{
     product: string;
-    version: string;
+    version: string | null;
     poweredBy: { product: string; licensor: string } | null;
     licensor: Record<string, string>;
 }>();
@@ -39,7 +39,9 @@ const fields = [
     <div class="max-w-2xl space-y-8 px-4 py-6">
         <Heading
             :title="product"
-            :description="$t('core:about.version', { version })"
+            :description="
+                version ? $t('core:about.version', { version }) : undefined
+            "
         />
 
         <p v-if="poweredBy" class="text-sm text-muted-foreground">

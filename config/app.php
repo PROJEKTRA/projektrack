@@ -47,7 +47,9 @@ return [
     |
     */
 
-    'debug' => (bool) env('APP_DEBUG', false),
+    // Never on in production, whatever APP_DEBUG says (S-0986, security baseline V13):
+    // checked here, before any provider or route can fail with a debug page.
+    'debug' => env('APP_ENV', 'production') === 'production' ? false : (bool) env('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------

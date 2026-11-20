@@ -50,7 +50,10 @@ class SetSecurityHeaders
             $headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
-        // Do not reveal the platform.
+        // Do not reveal the platform (S-0986): PHP adds X-Powered-By below the response object.
+        if (! headers_sent()) {
+            header_remove('X-Powered-By');
+        }
         $headers->remove('X-Powered-By');
         $headers->remove('Server');
 

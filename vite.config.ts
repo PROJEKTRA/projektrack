@@ -29,6 +29,17 @@ export default defineConfig({
             formVariants: true,
         }),
     ],
+    build: {
+        // Asset names are content hashes only, never component or library
+        // names, so nothing about the software shows in its URLs (S-0986, INV-09).
+        rolldownOptions: {
+            output: {
+                entryFileNames: 'assets/[hash].js',
+                chunkFileNames: 'assets/[hash].js',
+                assetFileNames: 'assets/[hash][extname]',
+            },
+        },
+    },
     server: {
         watch: {
             ignored: ['**/vendor/**', '**/docs/**', '**/.*/**'],

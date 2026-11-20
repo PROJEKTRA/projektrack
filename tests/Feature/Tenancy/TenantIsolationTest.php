@@ -77,7 +77,7 @@ it('answers hosts of suspended tenants like unknown hosts', function () {
 });
 
 it('keeps the health check reachable without a tenant', function () {
-    $this->get('http://unknown.test/up')->assertOk();
+    $this->get('http://unknown.test/health')->assertOk();
 });
 
 it('lets the same e-mail address exist once per tenant', function () {

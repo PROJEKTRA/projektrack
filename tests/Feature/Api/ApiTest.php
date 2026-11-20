@@ -267,7 +267,7 @@ describe('security review findings', function () {
     it('answers unknown records without naming models', function () {
         $response = $this->withToken(tokenFor(apiUser(), ['core:read']))->getJson('/api/v1/files/'.Str::ulid())->assertNotFound();
 
-        expect($response->json('message'))->toBe(__('core:api.not_found'))
+        expect($response->json('message'))->toBe(__('core:errors.404.title'))
             ->and((string) $response->getContent())->not->toContain('App\\Models');
     });
 
