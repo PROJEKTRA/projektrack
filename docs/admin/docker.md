@@ -118,11 +118,11 @@ If the new version is healthy but a service does not start afterwards, there is 
 Exit code 2 means the rollback failed too: the proxy stays stopped and the snapshot is kept. A power loss leaves the file `.update-state` with the previous image. The command refuses further updates until this is resolved:
 
 1. Stop everything that writes: `docker compose stop proxy app worker scheduler backup`, and remove leftovers with `docker rm -f projektrack-update-snapshot projektrack-update-migrate`.
-2. If the new version was already open to users (the log says "Updated to", or it ran normally), keep its data: skip to step 5.
+2. If `.update-state` contains `committed=1`, the new version was healthy and may already hold new data: keep it and skip to step 5.
 3. Set `PROJEKTRACK_IMAGE` in `.env` to `previous` from `.update-state`.
-4. Restore: `docker compose --profile update run --rm snapshot projektrack-snapshot restore`. If it says that there is no complete snapshot, the database was not touched yet. If it says that the snapshot is damaged, restore the encrypted backup on a new host.
-5. Start: `docker compose up -d`, then `docker compose exec app php artisan up`, and check the instance.
-6. Only when it is fine: `docker compose --profile update run --rm snapshot projektrack-snapshot drop` and delete `.update-state`.
+4. Restore: `docker compose --profile update run --rm snapshot projektrack-snapshot restore`. If it says that there is no complete snapshot, the database was not touched yet (without `committed=1`). If it says that the snapshot is damaged, restore the encrypted backup on a new host.
+5. Start only the application, with the proxy still stopped: `docker compose up -d --no-deps app`, `docker compose exec app php artisan up`, and check `docker compose exec app wget -q -O - http://127.0.0.1:8080/health` answers `OK`.
+6. Only when it is fine: `docker compose --profile update run --rm snapshot projektrack-snapshot drop`, delete `.update-state` and open the instance with `docker compose up -d`.
 
 The snapshot holds unencrypted data, like the database volume. Exclude the volume `projektrack_snapshot` from host backups.
 

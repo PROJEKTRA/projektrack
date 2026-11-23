@@ -230,10 +230,9 @@ docker compose --profile update run --rm -T snapshot sh -c 'mv /snapshot/good /s
 docker compose stop proxy app worker scheduler backup >/dev/null 2>&1
 sed -i "s|^PROJEKTRACK_IMAGE=.*|PROJEKTRACK_IMAGE=$(sed -n 's/^previous=//p' .update-state)|" .env
 docker compose --profile update run --rm -T snapshot projektrack-snapshot restore
-docker compose up -d >/dev/null 2>&1
+docker compose up -d --no-deps app >/dev/null 2>&1
 for _ in $(seq 1 30); do docker compose exec -T app php artisan up >/dev/null 2>&1 && break; sleep 2; done
-check 'online again' eventually_online
-quiet
+check 'healthy behind the closed proxy' test "$(docker compose exec -T app wget -q -O - http://127.0.0.1:8080/health)" = OK
 check 'database is the same' test "$(data)" = "${before_data}"
 check 'files are the same' test "$(files)" = "${before_files}"
 docker compose --profile update run --rm -T snapshot projektrack-snapshot drop
