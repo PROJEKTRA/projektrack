@@ -82,6 +82,19 @@ final class Permissions
         ]));
     }
 
+    /**
+     * Permissions the user holds everywhere or in at least one project.
+     *
+     * @return list<string>
+     */
+    public function anywhere(User $user): array
+    {
+        return array_values(array_unique([
+            ...$this->of($user),
+            ...$this->effective($user, $this->grantedTo($this->memberships->allProjectRoleIds($user), 'project_role_permissions', 'project_role_id')),
+        ]));
+    }
+
     public function allows(User $user, string $permission, ?string $projectId = null): bool
     {
         if ($user->tenant_id !== $this->tenant->id()) {

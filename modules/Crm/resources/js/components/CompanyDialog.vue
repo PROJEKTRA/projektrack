@@ -19,8 +19,8 @@ import {
 } from '@/components/ui/dialog';
 import { t } from '@/i18n/strings';
 import AddressFields from './AddressFields.vue';
-import SelectField from './SelectField.vue';
-import TextField from './TextField.vue';
+import SelectField from '@/components/SelectField.vue';
+import TextField from '@/components/TextField.vue';
 import type {
     AddressData,
     CompanyData,

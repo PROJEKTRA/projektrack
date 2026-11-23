@@ -3,7 +3,7 @@
     SPDX-License-Identifier: AGPL-3.0-only
 -->
 <script setup lang="ts">
-import TextField from './TextField.vue';
+import TextField from '@/components/TextField.vue';
 import type { AddressData } from '../types';
 
 defineProps<{

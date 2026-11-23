@@ -61,6 +61,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 // For showing or hiding UI only; the server checks every action again.
                 'permissions' => $user instanceof User ? app(Permissions::class)->of($user) : [],
+                // Also what project roles give in at least one project (navigation).
+                'permissionsAnywhere' => $user instanceof User ? app(Permissions::class)->anywhere($user) : [],
             ],
             // Which string bundle the page needs (S-0916).
             'strings' => $this->strings(),

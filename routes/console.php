@@ -35,7 +35,6 @@ Artisan::command('projektrack:permissions:sync', function (PermissionCatalog $ca
 
 // A module that arrived with an update, for one existing company (S-0939). New companies start with all of them.
 Artisan::command('projektrack:modules:enable {tenant : Slug of the tenant} {module : Key of the module, for example crm}', function (TenantContext $context, ModuleRegistry $registry) {
-    /** @var ClosureCommand $this */
     $tenant = Tenant::query()->where('slug', $this->argument('tenant'))->first();
     $key = $this->argument('module');
     if ($tenant === null || ! is_string($key) || ! $registry->has($key)) {

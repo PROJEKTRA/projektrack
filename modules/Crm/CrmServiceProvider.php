@@ -8,12 +8,19 @@
 namespace Modules\Crm;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\Crm\Contracts\CompanyDirectory;
+use Modules\Crm\Domain\Directory;
 
 /**
  * Customers and contacts (S-0939).
  */
 class CrmServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        $this->app->bind(CompanyDirectory::class, Directory::class);
+    }
+
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');

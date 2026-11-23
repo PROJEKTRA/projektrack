@@ -6,6 +6,7 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
     Building2,
+    FolderKanban,
     KeyRound,
     Languages,
     LayoutGrid,
@@ -20,6 +21,7 @@ import DoctorController from '@/actions/App/Http/Controllers/Admin/DoctorControl
 import LicenseController from '@/actions/App/Http/Controllers/Admin/LicenseController';
 import SettingsController from '@/actions/App/Http/Controllers/Admin/SettingsController';
 import CompanyController from '@/actions/Modules/Crm/Http/CompanyController';
+import ProjectController from '@/actions/Modules/Projects/Http/ProjectController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -41,6 +43,7 @@ const page = usePage();
 // Entries the user may open; the server checks every action again.
 const mainNavItems = computed<NavItem[]>(() => {
     const permissions = page.props.auth.permissions ?? [];
+    const anywhere = page.props.auth.permissionsAnywhere ?? [];
 
     return [
         {
@@ -54,6 +57,16 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('crm:title'),
                       href: CompanyController.index(),
                       icon: Building2,
+                  },
+              ]
+            : []),
+        ...(anywhere.includes('projects.view') ||
+        permissions.includes('projects.create')
+            ? [
+                  {
+                      title: t('projects:title'),
+                      href: ProjectController.index(),
+                      icon: FolderKanban,
                   },
               ]
             : []),
