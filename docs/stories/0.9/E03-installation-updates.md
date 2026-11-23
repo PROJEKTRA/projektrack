@@ -92,7 +92,8 @@ Implementation note (23.11.2026): `.github/workflows/release.yml` runs on a tag 
 - **For S-0927 and S-0928:** the updater uses this check and must also refuse a version that is not newer than the running one. The CI job "Release ZIP and signature (dry run)" builds the ZIP, signs it with a throwaway key and checks that the verification accepts it and refuses a changed ZIP or checksum list.
 - **Version:** set by the build in `VERSION`.
 - **Guide:** `docs/admin/releases.md`.
-- **Open, for the product owner:** generate the release key, commit its public key, and create the `release` environment with reviewers and the secret. Until then every release stops at signing.
+- **Offline approval (decision of 23.11.2026):** GitHub cannot enforce an approval on this repository's plan, so no key exists there. `deploy/release/approve.sh` signs the artifact of the build on a maintainer's machine. The image is covered by its digest in the signed `SHA256SUMS`; cosign is no longer used, which differs from the criterion above. The notes above on the `release` environment, cosign, attestation and tagging no longer apply.
+- **Open, for the product owner:** generate the release key and commit its public key. Until then no release can be approved.
 - **Not in this story:** base images pinned by digest and `npm ci --ignore-scripts` (BL-018).
 
 ---
@@ -188,7 +189,7 @@ Scenario: CLI update with rollback
   And if any step fails the backup is restored automatically and the previous version runs again
 ```
 
-Implementation note (23.11.2026): `deploy/docker/projektrack` (install, backup, restore, update) for Docker instances, run on the host. An update accepts only an image by digest that the release workflow signed and that is newer than the running version. The automatic rollback uses a local snapshot instead of the encrypted backup, whose private key is off the host. CI (`tests/docker/update.sh`) updates, checks refusals, and forces a failing migration and a failing health check; both must end with the same data and the previous version. Plain hosting (AMP) gets its update and backup with S-0925 and S-0928. Guide: `docs/admin/docker.md`.
+Implementation note (23.11.2026): `deploy/docker/projektrack` (install, backup, restore, update) for Docker instances, run on the host. An update accepts only a signed release whose image is newer than the running version. The automatic rollback uses a local snapshot instead of the encrypted backup, whose private key is off the host. CI (`tests/docker/update.sh`) updates, checks refusals, and forces a failing migration and a failing health check; both must end with the same data and the previous version. Plain hosting (AMP) gets its update and backup with S-0925 and S-0928. Guide: `docs/admin/docker.md`.
 
 ---
 

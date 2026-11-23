@@ -4,7 +4,7 @@ How releases are built and signed (S-0924, security baseline section 9), how ope
 
 ## What a release contains
 
-A tag `vX.Y.Z` on a commit of `main` whose CI is green starts `.github/workflows/release.yml`. The GitHub release then holds:
+A tag `vX.Y.Z` on a commit of `main` whose CI is green starts `.github/workflows/release.yml`, which builds but signs nothing. A maintainer approves the build by signing it offline. The GitHub release then holds:
 
 | File | Content |
 |---|---|
@@ -14,9 +14,8 @@ A tag `vX.Y.Z` on a commit of `main` whose CI is green starts `.github/workflows
 | `projektrack-X.Y.Z.image.txt` | The image reference with its digest, for example `ghcr.io/projektra/projektrack@sha256:...`. |
 | `SHA256SUMS` | SHA-256 of every file above. |
 | `SHA256SUMS.sig` | Ed25519 signature of `SHA256SUMS` with the release key. |
-| `SHA256SUMS.cosign.bundle` | A second, keyless signature of `SHA256SUMS` by the release workflow. |
 
-The image is pushed by digest, scanned in exactly that form (the release stops on a fixable critical vulnerability) and carries a build provenance attestation. Only after a reviewer approved the release is it signed with cosign, given an SBOM attestation and tagged `ghcr.io/projektra/projektrack:X.Y.Z`.
+The image is pushed by digest and scanned in exactly that form (the build stops on a fixable critical vulnerability). It has no tag: its digest is in `projektrack-X.Y.Z.image.txt`, which the signed `SHA256SUMS` covers, so the one signature covers the image too.
 
 ## Verify a ZIP for a new installation
 
@@ -30,13 +29,7 @@ openssl pkeyutl -verify -pubin -inkey release.pub -rawin -in SHA256SUMS -sigfile
 sha256sum -c --ignore-missing SHA256SUMS
 ```
 
-Both must succeed (`Signature Verified Successfully` and `OK` for the ZIP). The keyless second signature can be checked too:
-
-```
-cosign verify-blob SHA256SUMS --bundle SHA256SUMS.cosign.bundle \
-  --certificate-identity-regexp '^https://github.com/PROJEKTRA/projektrack/\.github/workflows/release\.yml@refs/tags/v' \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com
-```
+Both must succeed (`Signature Verified Successfully` and `OK` for the ZIP).
 
 ## Verify a ZIP for an update
 
@@ -50,16 +43,7 @@ It checks the signature with the release keys shipped with the running release, 
 
 ## Verify an image before running it
 
-```
-cosign verify ghcr.io/projektra/projektrack@sha256:<digest> \
-  --certificate-identity-regexp '^https://github.com/PROJEKTRA/projektrack/\.github/workflows/release\.yml@refs/tags/v' \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com
-cosign verify-attestation --type cyclonedx ghcr.io/projektra/projektrack@sha256:<digest> \
-  --certificate-identity-regexp '^https://github.com/PROJEKTRA/projektrack/\.github/workflows/release\.yml@refs/tags/v' \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com
-```
-
-The digest is in `projektrack-X.Y.Z.image.txt`, which `SHA256SUMS` covers. Run images by digest, not by tag. `docs/admin/docker.md` describes the stack.
+Verify `projektrack-X.Y.Z.image.txt` as above (`sha256sum -c` then names it), and run the image by the digest in that file. An update does both: `./projektrack update <folder>` (`docs/admin/docker.md`).
 
 ## Release key (maintainers)
 
@@ -73,18 +57,16 @@ The Ed25519 release key is separate from the license key and never exists on an 
    ```
 
 2. Add the printed public key as a line to `resources/release/public-keys.txt` and commit it.
-3. In the repository settings:
-   - create the environment `release` with required reviewers, "Prevent self-review" on, and deployments limited to tags matching `v*`;
-   - store the private key as its secret: `gh secret set RELEASE_SIGNING_KEY --env release < release-signing.pem`;
-   - add a tag ruleset so only maintainers can create, move or delete tags matching `v*`.
-4. Keep the PEM file in the password vault only, then delete it from the machine.
+3. Keep the PEM file encrypted, offline (for example on a USB drive) with a copy in the password vault. It never goes to GitHub, not even as a secret.
 
-Rotation: add the new public key next to the old one, ship a release signed with the old key, switch the secret to the new key, and remove the old public key only after a release signed with the new key has shipped. The release workflow enforces the order: it verifies each release also with the keys of the previous release. After a suspected compromise, remove the old key at once and publish a security advisory.
+Rotation: add the new public key next to the old one, ship a release signed with the old key, switch the secret to the new key, and remove the old public key only after a release signed with the new key has shipped. `approve.sh` enforces the order: it checks each release also with the keys of the previous release. After a suspected compromise, remove the old key at once and publish a security advisory.
 
 ## Cutting a release
 
 1. Make sure CI is green on the `main` commit.
 2. `git tag -s vX.Y.Z <commit>` and `git push origin vX.Y.Z`.
-3. Approve the `release` environment when the workflow asks.
+3. When the build is green, check what is in it, and sign it from a clean clone of `main`: `deploy/release/approve.sh vX.Y.Z /path/to/release-signing.pem`. It shows tag, commit, changes, build and image, and publishes only after you type the tag.
 
-The workflow refuses a tag that is not a version, a commit that is not on `main` or whose CI on `main` is not green, a missing SBOM, a missing release key, and a ZIP that the verification with this or the previous release's keys rejects. Nothing is signed or tagged before the approval.
+The workflow refuses a tag that is not a version, a commit that is not on `main` or whose CI on `main` is not green, and a missing SBOM. `approve.sh` checks tag, commit and CI again on the maintainer's machine, takes the files from the artifact of the build and not from anything that can be replaced later, and refuses a key that this or the previous release does not trust.
+
+GitHub cannot enforce branch or tag rules on this repository's plan, so the offline key is what protects a release. Anyone with write access can push a tag and start a build; nobody can publish a release that instances accept without the key.

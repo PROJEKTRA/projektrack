@@ -96,15 +96,15 @@ Containers log to Docker (`docker compose logs`), rotated at 10 x 10 MB per cont
 
 ## Updates
 
-On the host, with [cosign](https://docs.sigstore.dev/) installed, in `deploy/docker/`:
+Download `SHA256SUMS`, `SHA256SUMS.sig` and `projektrack-X.Y.Z.image.txt` of the release into an empty folder on the host, then in `deploy/docker/`:
 
 ```
-./projektrack update ghcr.io/projektra/projektrack@sha256:<digest>
+./projektrack update /path/to/folder
 ```
 
-The digest is in `projektrack-X.Y.Z.image.txt` of the release (`docs/admin/releases.md`). The command:
+The command:
 
-1. verifies that the release workflow signed the image, and refuses a version that is not newer than the running one;
+1. verifies the signature with the release keys of the running version (`docs/admin/releases.md`), takes the image digest from the verified file, and refuses a version that is not newer than the running one;
 2. checks the health and the disk space, takes an encrypted backup, enables maintenance mode, ends running requests and jobs and stops the background services;
 3. takes a local snapshot of database and files, then runs the migrations of the new version (visitors see the maintenance page);
 4. stops the proxy, starts the new version, checks its health and opens it again.
@@ -136,4 +136,4 @@ The command does not update the files in `deploy/docker/` themselves; take those
 | `./projektrack install --domain ... --email ... --image ...` | Writes the secrets (`setup.sh`) |
 | `./projektrack backup` | One encrypted backup now |
 | `./projektrack restore <backup>` | Restores a backup into an empty instance and starts it |
-| `./projektrack update <image>@sha256:<digest>` | Update with automatic rollback |
+| `./projektrack update <folder>` | Update with automatic rollback |

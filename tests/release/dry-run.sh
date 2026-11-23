@@ -69,5 +69,18 @@ check 'the restored ZIP is accepted again' accepts "${public}" "${zip}"
 printf '%064d  extra.zip\n' 0 >> "${dist}/SHA256SUMS"
 check 'a changed checksum list is refused' refuses "${public}" "${zip}"
 
+# The same folder with OpenSSL only, as the offline approval checks it.
+deploy/release/sign.sh "${dist}" "${work}/key.pem" >/dev/null
+printf '# comment\n%s\n' "${public}" > "${work}/keys"
+openssl_verify() { deploy/release/verify.sh "${dist}" "$1" >/dev/null 2>&1; }
+openssl_refuses() { ! openssl_verify "$1"; }
+check 'OpenSSL accepts the genuine folder' openssl_verify "${work}/keys"
+printf '%s\n' "${other}" > "${work}/other"
+check 'OpenSSL refuses another key' openssl_refuses "${work}/other"
+printf '# none\n' > "${work}/none"
+check 'OpenSSL refuses without keys' openssl_refuses "${work}/none"
+printf 'x' >> "${zip}"
+check 'OpenSSL refuses a changed file' openssl_refuses "${work}/keys"
+
 printf '\nResult: %s failed\n' "${failures}"
 [[ ${failures} -eq 0 ]]
