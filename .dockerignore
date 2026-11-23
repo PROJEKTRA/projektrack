@@ -20,6 +20,8 @@ bootstrap/cache/strings
 storage
 database/*.sqlite
 deploy/docker/.env
+deploy/docker/.lock
+deploy/docker/.update-state
 deploy/docker/backups
 deploy/docker/backup-identity.txt
 docs

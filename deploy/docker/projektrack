@@ -20,11 +20,10 @@ cd "$(dirname "$0")"
 IDENTITY='^https://github\.com/PROJEKTRA/projektrack/\.github/workflows/release\.yml@refs/tags/v[0-9]'
 ISSUER='https://token.actions.githubusercontent.com'
 
-log() { printf '%s projektrack: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2; }
+log() { printf '%s projektrack: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2 || true; }
 fail() { log "$*"; exit 1; }
 env_value() { sed -n "s/^$1=//p" .env | tail -n 1; }
 dc() { docker compose "$@"; }
-snapshot() { dc --profile update run --rm -T snapshot projektrack-snapshot "$1"; }
 
 require_stack() { [[ -f .env ]] || fail 'There is no .env here; run "./projektrack install" first.'; }
 
@@ -81,25 +80,57 @@ restore() {
     log 'Restored.'
 }
 
-# Runs on every failure once the instance has been touched.
+# Named one-off containers: if this script or its terminal dies, they keep
+# running and would work against a rollback.
+one_off() { docker rm -f "${project}-update-snapshot" "${project}-update-migrate" >/dev/null 2>&1; }
+no_one_off() { [[ -z "$(docker ps -aq --filter "name=^${project}-update-")" ]]; }
+snapshot() { dc --profile update run --rm -T --name "${project}-update-snapshot" snapshot projektrack-snapshot "$1"; }
+
+drop_snapshot() {
+    snapshot drop && rm -f .update-state && return 0
+    log 'WARNING: the snapshot could not be removed. It holds unencrypted data. See docs/admin/docker.md.'
+}
+
+maintenance_page() {
+    local _
+    for _ in $(seq 1 60); do
+        dc exec -T app php -r '$h = @get_headers("http://127.0.0.1:8080/health"); exit($h && str_contains($h[0], " 503") ? 0 : 1);' 2>/dev/null && return 0
+        sleep 1
+    done
+    return 1
+}
+
+# Runs on every failure between maintenance mode and the new version being
+# healthy. From here on nothing may interrupt it, not even a closed terminal.
 rollback() {
-    trap - ERR INT TERM HUP
+    trap - ERR
+    trap '' INT TERM HUP PIPE
     set +e
-    log 'FAILED. Rolling back to the previous version.'
-    dc stop proxy app worker scheduler backup >/dev/null 2>&1
-    set_image "${old}"
     local ok=1
-    if [[ "${restore_needed}" == 1 ]]; then
+    log 'FAILED. Rolling back to the previous version.'
+    one_off
+    no_one_off || ok=0
+    dc stop proxy app worker scheduler backup >/dev/null 2>&1 || ok=0
+    set_image "${old}"
+    [[ "$(env_value PROJEKTRACK_IMAGE)" == "${old}" ]] || ok=0
+    if [[ "${ok}" == 1 && "${restore_needed}" == 1 ]]; then
         snapshot restore || ok=0
     fi
     if [[ "${ok}" == 1 ]]; then
-        dc up -d --no-deps app && artisan_up && healthy && dc up -d || ok=0
+        { dc up -d --no-build --no-deps app && artisan_up && healthy; } || ok=0
     fi
     if [[ "${ok}" != 1 ]]; then
         log 'ROLLBACK FAILED. The proxy is stopped and the snapshot is kept. See docs/admin/docker.md.'
         exit 2
     fi
-    snapshot drop
+    # What the new version cached must not survive it.
+    dc exec -T app php artisan cache:clear >/dev/null 2>&1
+    # Only a snapshot of this update, never one left by an earlier one.
+    if [[ "${snapshot_started}" == 1 ]]; then drop_snapshot; else rm -f .update-state; fi
+    if ! dc up -d --no-build; then
+        log 'Rolled back: the previous version is healthy with its data, but not every service started. Run "docker compose up -d".'
+        exit 1
+    fi
     log 'Rolled back: the previous version runs again with its data.'
     exit 1
 }
@@ -109,7 +140,10 @@ update() {
     lock
     new="${1:-}"
     old="$(env_value PROJEKTRACK_IMAGE)"
+    project="$(env_value COMPOSE_PROJECT_NAME)"
+    project="${COMPOSE_PROJECT_NAME:-${project:-projektrack}}"
     restore_needed=0
+    snapshot_started=0
     local repository
     repository="$(env_value PROJEKTRACK_REPOSITORY)"
     repository="${repository:-ghcr.io/projektra/projektrack}"
@@ -117,6 +151,7 @@ update() {
     [[ "${new}" == "${repository}@sha256:"* && "${new##*@sha256:}" =~ ^[0-9a-f]{64}$ ]] \
         || fail "Give the image by digest: ${repository}@sha256:<digest>."
     [[ -z "${PROJEKTRACK_IMAGE:-}" ]] || fail 'Unset PROJEKTRACK_IMAGE in your shell; it would override .env.'
+    [[ ! -e .update-state ]] || fail 'An earlier update did not finish (.update-state). See docs/admin/docker.md.'
     command -v cosign >/dev/null || fail 'cosign is not installed; the image cannot be verified.'
 
     log 'verifying the signature'
@@ -132,31 +167,49 @@ update() {
         'exit(version_compare($argv[1], $argv[2], ">") ? 0 : 1);' "${to}" "${from}" \
         || fail "Version ${to} is not newer than ${from}. Nothing was changed."
     healthy || fail 'The instance is not healthy; fix that before an update.'
+    one_off || true
+    snapshot check || fail 'The check before the update failed. Nothing was changed.'
 
-    log "updating ${from} to ${to}"
+    log "updating ${from} to ${to}; previous image ${old}"
     dc exec -T backup projektrack-backup run
 
+    # For a recovery by hand after a power loss; removed at the end.
+    printf 'previous=%s\nnew=%s\nversion=%s\n' "${old}" "${new}" "${from}" > .update-state
+    trap '' PIPE
     trap rollback ERR INT TERM HUP
     dc exec -T app php artisan down --retry=60
-    dc stop worker scheduler backup
+    # Ends requests that began before maintenance mode, and running jobs, so
+    # nothing writes while the snapshot is taken.
+    dc stop -t 120 worker scheduler backup
+    dc restart app
+    maintenance_page
+    snapshot_started=1
     snapshot create
     restore_needed=1
 
     # The app container keeps showing the maintenance page during migrations.
-    PROJEKTRACK_IMAGE="${new}" dc run --rm -T migrate
+    PROJEKTRACK_IMAGE="${new}" dc run --rm -T --name "${project}-update-migrate" migrate
 
     # Nobody writes before the new version is healthy: the proxy is stopped.
     dc stop proxy
     set_image "${new}"
-    dc up -d --no-deps app
+    [[ "$(env_value PROJEKTRACK_IMAGE)" == "${new}" ]]
+    dc up -d --no-build --no-deps app
     artisan_up
     healthy
-    dc up -d
-    trap - ERR INT TERM HUP
-    snapshot drop
+
+    # From here on users may write, so there is no way back to the snapshot.
+    trap - ERR
+    trap '' INT TERM HUP
+    drop_snapshot
+    dc up -d --no-build || fail "Version ${to} is healthy, but not every service started. Run \"docker compose up -d\"."
+    sleep 10
+    local service
+    for service in proxy worker scheduler backup; do
+        [[ "$(dc ps --format '{{.State}}' "${service}")" == 'running' ]] || log "WARNING: ${service} does not run."
+    done
     log "Updated to ${to}."
 }
-
 case "${1:-}" in
     install) shift; install_stack "$@" ;;
     backup) backup ;;
