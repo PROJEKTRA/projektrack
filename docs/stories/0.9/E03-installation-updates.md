@@ -188,6 +188,8 @@ Scenario: CLI update with rollback
   And if any step fails the backup is restored automatically and the previous version runs again
 ```
 
+Implementation note (23.11.2026): `deploy/docker/projektrack` (install, backup, restore, update) for Docker instances, run on the host. An update accepts only an image by digest that the release workflow signed and that is newer than the running version. The automatic rollback uses a local snapshot instead of the encrypted backup, whose private key is off the host. CI (`tests/docker/update.sh`) updates, checks refusals, and forces a failing migration and a failing health check; both must end with the same data and the previous version. Plain hosting (AMP) gets its update and backup with S-0925 and S-0928. Guide: `docs/admin/docker.md`.
+
 ---
 
 ### S-0928 One-click update with pre-update check, backup and rollback

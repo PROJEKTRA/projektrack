@@ -96,4 +96,30 @@ Containers log to Docker (`docker compose logs`), rotated at 10 x 10 MB per cont
 
 ## Updates
 
-Until the update command exists (S-0927), update by pulling or building the new image, changing `PROJEKTRACK_IMAGE` in `.env` if the tag changes, taking a backup and running `docker compose up -d`. `migrate` runs before the application starts.
+On the host, with [cosign](https://docs.sigstore.dev/) installed, in `deploy/docker/`:
+
+```
+./projektrack update ghcr.io/projektra/projektrack@sha256:<digest>
+```
+
+The digest is in `projektrack-X.Y.Z.image.txt` of the release (`docs/admin/releases.md`). The command:
+
+1. verifies that the release workflow signed the image, and refuses a version that is not newer than the running one;
+2. takes an encrypted backup, enables maintenance mode and stops the background services;
+3. takes a local snapshot of database and files, then runs the migrations of the new version (visitors see the maintenance page);
+4. stops the proxy, starts the new version, checks its health and opens it again.
+
+If a step fails, it restores the snapshot, starts the previous version, checks its health and ends with exit code 1. The snapshot is needed because the private key of the backups is off the host; it sits in its own Docker volume only while an update runs.
+
+Exit code 2 means the rollback failed too. The proxy stays stopped and the snapshot is kept. Look at `docker compose logs`, then repeat the restore by hand: `docker compose --profile update run --rm snapshot projektrack-snapshot restore`, `docker compose up -d`, `docker compose exec app php artisan up`, and only when the instance is fine `docker compose --profile update run --rm snapshot projektrack-snapshot drop`. Do the same after a power loss during an update. As a last resort restore the encrypted backup on a new host.
+
+The command does not update the files in `deploy/docker/` themselves; take those from the release when its notes say so.
+
+## Commands
+
+| Command | Does |
+|---|---|
+| `./projektrack install --domain ... --email ... --image ...` | Writes the secrets (`setup.sh`) |
+| `./projektrack backup` | One encrypted backup now |
+| `./projektrack restore <backup>` | Restores a backup into an empty instance and starts it |
+| `./projektrack update <image>@sha256:<digest>` | Update with automatic rollback |

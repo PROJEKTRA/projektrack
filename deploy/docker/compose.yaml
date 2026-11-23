@@ -228,6 +228,27 @@ services:
       db:
         condition: service_healthy
 
+  # Only while an update runs (./projektrack update): the local rollback snapshot.
+  snapshot:
+    <<: *app
+    profiles: ['update']
+    command: ['projektrack-snapshot']
+    restart: 'no'
+    networks:
+      - backend
+    volumes:
+      - storage:/app/storage
+      - snapshot:/snapshot
+    environment:
+      DB_HOST: db
+      DB_PORT: '3306'
+      DB_DATABASE: projektrack
+      DB_USERNAME: projektrack_migrator
+      DB_PASSWORD: ${DB_MIGRATOR_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     image: ${MARIADB_IMAGE:-mariadb:11.4}
     restart: unless-stopped
@@ -285,6 +306,7 @@ networks:
 
 volumes:
   storage:
+  snapshot:
   db:
   redis:
   caddy_data:

@@ -29,6 +29,7 @@
 /VERSION
 /deploy/docker/backup-identity.txt
 /deploy/docker/backups/
+/deploy/docker/.lock
 
 # Tooling
 .phpunit.result.cache

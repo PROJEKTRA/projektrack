@@ -67,6 +67,7 @@ COPY deploy/docker/nginx.conf /etc/nginx/nginx.conf
 COPY --chmod=0755 deploy/docker/entrypoint.sh /usr/local/bin/projektrack-entrypoint
 COPY --chmod=0755 deploy/docker/backup.sh /usr/local/bin/projektrack-backup
 COPY --chmod=0755 deploy/docker/restore.sh /usr/local/bin/projektrack-restore
+COPY --chmod=0755 deploy/docker/snapshot.sh /usr/local/bin/projektrack-snapshot
 
 COPY --from=build /app /app
 
@@ -78,7 +79,8 @@ RUN set -eux; \
     chown www-data:www-data /app/bootstrap/cache; \
     rm -rf /app/storage; \
     mkdir -m 0750 /app/storage /backups; \
-    chown www-data:www-data /app/storage /backups
+    mkdir -m 0700 /snapshot; \
+    chown www-data:www-data /app/storage /backups /snapshot
 
 WORKDIR /app
 USER www-data
