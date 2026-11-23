@@ -1,0 +1,39 @@
+{
+  "key": "service_reports",
+  "name_string": "service_reports:module_name",
+  "description_string": "service_reports:module_description",
+  "version": "1.0.0",
+  "core": "^0.9 || ^1.0",
+  "edition": "community",
+  "vendor": "projektra",
+  "requires": [
+    "core",
+    "crm",
+    "projects",
+    "timesheets",
+    "rates"
+  ],
+  "permissions": [
+    "service_reports.view",
+    "service_reports.generate",
+    "service_reports.view_amounts"
+  ],
+  "role_defaults": {
+    "admin": [
+      "service_reports.view",
+      "service_reports.generate",
+      "service_reports.view_amounts"
+    ],
+    "controller": [
+      "service_reports.view",
+      "service_reports.generate",
+      "service_reports.view_amounts"
+    ]
+  },
+  "project_role_defaults": {
+    "project_lead": [
+      "service_reports.view",
+      "service_reports.generate"
+    ]
+  }
+}

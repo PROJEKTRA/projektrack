@@ -18,6 +18,23 @@ final class Directory implements CompanyDirectory
             ->map(fn (Company $c): array => ['id' => $c->id, 'number' => $c->number, 'name' => $c->name])->all());
     }
 
+    public function billing(string $id, string $onDate): ?array
+    {
+        $c = Company::query()->find($id);
+        if ($c === null) {
+            return null;
+        }
+        $tax = $c->taxProfiles()->where(fn ($q) => $q->whereNull('valid_from')->orWhereDate('valid_from', '<=', $onDate))
+            ->where(fn ($q) => $q->whereNull('valid_to')->orWhereDate('valid_to', '>=', $onDate))->first();
+        $a = Address::query()->where('owner_type', 'company')->where('owner_id', $c->id)->first();
+
+        return [
+            'id' => $c->id, 'number' => $c->number, 'name' => $c->legal_name ?? $c->name, 'document_locale' => $c->document_locale, 'currency' => $c->currency, 'payment_days' => $c->payment_days,
+            'tax' => $tax === null ? null : ['tax_status' => $tax->tax_status, 'country_code' => $tax->country_code, 'vat_id' => $tax->vat_id, 'tax_number' => $tax->tax_number],
+            'address' => $a === null ? null : ['line1' => $a->line1, 'line2' => $a->line2, 'postal_code' => $a->postal_code, 'city' => $a->city, 'region' => $a->region, 'country_code' => $a->country_code],
+        ];
+    }
+
     public function isActive(string $id): bool
     {
         return Company::query()->whereKey($id)->where('status', 'active')->exists();

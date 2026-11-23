@@ -9,12 +9,14 @@ import {
     CalendarCheck,
     Clock,
     Coins,
+    FileText,
     FolderKanban,
     KeyRound,
     Languages,
     LayoutGrid,
     ListChecks,
     Palette,
+    ReceiptText,
     Settings,
     Stethoscope,
 } from '@lucide/vue';
@@ -30,6 +32,8 @@ import ApprovalController from '@/actions/Modules/Timesheets/Http/ApprovalContro
 import PeriodController from '@/actions/Modules/Timesheets/Http/PeriodController';
 import TimesheetController from '@/actions/Modules/Timesheets/Http/TimesheetController';
 import RateController from '@/actions/Modules/Rates/Http/RateController';
+import InvoiceController from '@/actions/Modules/Invoices/Http/InvoiceController';
+import ReportController from '@/actions/Modules/ServiceReports/Http/ReportController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -111,6 +115,24 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('rates:title'),
                       href: RateController.index(),
                       icon: Coins,
+                  },
+              ]
+            : []),
+        ...(anywhere.includes('service_reports.view')
+            ? [
+                  {
+                      title: t('service_reports:title'),
+                      href: ReportController.index(),
+                      icon: FileText,
+                  },
+              ]
+            : []),
+        ...(permissions.includes('invoices.view')
+            ? [
+                  {
+                      title: t('invoices:title'),
+                      href: InvoiceController.index(),
+                      icon: ReceiptText,
                   },
               ]
             : []),

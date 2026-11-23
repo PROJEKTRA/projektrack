@@ -1,0 +1,116 @@
+{
+  "type": "object",
+  "properties": {
+    "legal_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 191,
+      "x-label": "invoices:settings.legal_name"
+    },
+    "street": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 191,
+      "x-label": "invoices:settings.street"
+    },
+    "postal_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 20,
+      "x-label": "invoices:settings.postal_code"
+    },
+    "city": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 120,
+      "x-label": "invoices:settings.city"
+    },
+    "tax_number": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 40,
+      "x-label": "invoices:settings.tax_number"
+    },
+    "vat_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 20,
+      "x-label": "invoices:settings.vat_id"
+    },
+    "vat_status": {
+      "type": "string",
+      "default": "registered",
+      "enum": [
+        "registered",
+        "small_business",
+        "not_registered"
+      ],
+      "x-enum-labels": [
+        "invoices:settings.registered",
+        "invoices:settings.small_business",
+        "invoices:settings.not_registered"
+      ],
+      "x-label": "invoices:settings.vat_status"
+    },
+    "bank": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 120,
+      "x-label": "invoices:settings.bank"
+    },
+    "iban": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 40,
+      "x-label": "invoices:settings.iban"
+    },
+    "bic": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 20,
+      "x-label": "invoices:settings.bic"
+    },
+    "contact": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 191,
+      "x-label": "invoices:settings.contact"
+    },
+    "legal_texts_confirmed": {
+      "type": "boolean",
+      "default": false,
+      "x-label": "invoices:settings.legal_texts_confirmed",
+      "x-help": "invoices:settings.legal_texts_help"
+    }
+  }
+}

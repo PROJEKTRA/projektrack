@@ -1,0 +1,40 @@
+{
+  "key": "invoices",
+  "name_string": "invoices:module_name",
+  "description_string": "invoices:module_description",
+  "version": "1.0.0",
+  "core": "^0.9 || ^1.0",
+  "edition": "community",
+  "vendor": "projektra",
+  "requires": [
+    "core",
+    "crm",
+    "projects",
+    "timesheets",
+    "rates"
+  ],
+  "permissions": [
+    "invoices.view",
+    "invoices.create",
+    "invoices.finalize",
+    "invoices.cancel",
+    "invoices.payments.record"
+  ],
+  "role_defaults": {
+    "admin": [
+      "invoices.view",
+      "invoices.create",
+      "invoices.finalize",
+      "invoices.cancel",
+      "invoices.payments.record"
+    ],
+    "controller": [
+      "invoices.view",
+      "invoices.create",
+      "invoices.finalize",
+      "invoices.cancel",
+      "invoices.payments.record"
+    ]
+  },
+  "settings_schema": "settings.schema.json"
+}
