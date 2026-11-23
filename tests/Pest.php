@@ -11,4 +11,4 @@ use Tests\TestCase;
 // Feature tests run inside a tenant served at "localhost" (see Tests\TestCase).
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature', '../modules');

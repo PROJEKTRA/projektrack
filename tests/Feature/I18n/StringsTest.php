@@ -99,7 +99,7 @@ describe('one layer for backend and frontend', function () {
     it('resolves module strings with the module key as component', function () {
         FakeModules::install(['timesheets' => []]);
         app()->forgetInstance(StringCatalog::class);
-        $dir = dirname(app(ModuleRegistry::class)->get('timesheets')->path);
+        $dir = app(ModuleRegistry::class)->get('timesheets')->path;
 
         foreach (['en' => '{count, plural, one {# hour booked} other {# hours booked}}',
             'bs' => '{count, plural, one {# sat evidentiran} few {# sata evidentirana} other {# sati evidentirano}}'] as $locale => $message) {
@@ -283,7 +283,9 @@ describe('versioned bundle', function () {
 describe('compiled strings', function () {
     it('compiles per locale and reads the compiled file until it is cleared', function () {
         $root = useStringFixtures(['bs', 'en'], ['en' => ['a' => 'one'], 'bs' => ['a' => 'jedan']]);
-        $catalog = app(StringCatalog::class);
+        // Shipped modules bring texts of their own; only the fixtures count here.
+        $noModules = new ModuleRegistry([], new NullLogger);
+        $catalog = new StringCatalog($root, $noModules, "{$root}/cache", new NullLogger);
 
         expect($catalog->compile(['bs', 'en']))->toBe(['bs' => 1, 'en' => 1])
             ->and("{$root}/cache/bs.php")->toBeFile();

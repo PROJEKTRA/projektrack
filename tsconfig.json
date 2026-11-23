@@ -28,6 +28,8 @@
         "resources/js/**/*.ts",
         "resources/js/**/*.d.ts",
         "resources/js/**/*.vue",
+        "modules/*/resources/js/**/*.ts",
+        "modules/*/resources/js/**/*.vue",
         "vite.config.ts",
         "vitest.config.ts",
         "scripts/**/*.ts",

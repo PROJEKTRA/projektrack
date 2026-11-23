@@ -19,6 +19,8 @@ use App\Licensing\InstanceId;
 use App\Licensing\InstanceLicense;
 use App\Licensing\InvalidLicense;
 use App\Models\Tenant;
+use App\Modules\ModuleRegistry;
+use App\Modules\TenantModules;
 use App\Release\ReleaseVerifier;
 use App\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Artisan;
@@ -30,6 +32,23 @@ Artisan::command('projektrack:permissions:sync', function (PermissionCatalog $ca
     $count = $catalog->sync();
     $this->info("{$count} permissions registered.");
 })->purpose('Write the permissions of the core and all installed modules to the permission catalog');
+
+// A module that arrived with an update, for one existing company (S-0939). New companies start with all of them.
+Artisan::command('projektrack:modules:enable {tenant : Slug of the tenant} {module : Key of the module, for example crm}', function (TenantContext $context, ModuleRegistry $registry) {
+    /** @var ClosureCommand $this */
+    $tenant = Tenant::query()->where('slug', $this->argument('tenant'))->first();
+    $key = $this->argument('module');
+    if ($tenant === null || ! is_string($key) || ! $registry->has($key)) {
+        $this->error('Unknown tenant or module.');
+
+        return 1;
+    }
+
+    $plan = $context->run($tenant, fn (): array => app(TenantModules::class)->enable($key));
+    $this->info($plan === [] ? 'Already on.' : 'Switched on: '.implode(', ', $plan));
+
+    return 0;
+})->purpose('Switch on a module for a tenant, with everything it requires');
 
 Artisan::command('projektrack:audit:verify {--tenant= : Verify only this tenant id}', function (ChainVerifier $verifier) {
     $only = $this->option('tenant');

@@ -12,6 +12,7 @@ use App\I18n\TenantLanguages;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Modules\TenantModules;
 use App\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
 use RuntimeException;
@@ -60,6 +61,7 @@ class E2eSeeder extends Seeder
         app(TenantContext::class)->run($tenant, function (): void {
             $admin = Role::query()->where('key', Role::ADMIN)->firstOrFail();
             $users = [];
+            app(TenantModules::class)->enable('crm');
 
             foreach (self::USERS as $key => $user) {
                 $users[$key] = User::factory()->create([

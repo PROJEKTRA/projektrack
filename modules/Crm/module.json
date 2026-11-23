@@ -1,0 +1,46 @@
+{
+  "key": "crm",
+  "name_string": "crm:module_name",
+  "description_string": "crm:module_description",
+  "version": "1.0.0",
+  "core": "^0.9 || ^1.0",
+  "edition": "community",
+  "vendor": "projektra",
+  "requires": [
+    "core"
+  ],
+  "permissions": [
+    "crm.view",
+    "crm.manage",
+    "crm.contacts.manage",
+    "crm.tax_profile.manage"
+  ],
+  "role_defaults": {
+    "admin": [
+      "crm.view",
+      "crm.manage",
+      "crm.contacts.manage",
+      "crm.tax_profile.manage"
+    ],
+    "controller": [
+      "crm.view",
+      "crm.manage",
+      "crm.contacts.manage",
+      "crm.tax_profile.manage"
+    ],
+    "project_lead": [
+      "crm.view",
+      "crm.contacts.manage"
+    ]
+  },
+  "api_scopes": [
+    {
+      "scope": "crm:read",
+      "label_string": "crm:scopes.read"
+    },
+    {
+      "scope": "crm:write",
+      "label_string": "crm:scopes.write"
+    }
+  ]
+}

@@ -16,6 +16,7 @@
 
 @import './rtl.css';
 
+@source '../../modules/*/resources/js';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 

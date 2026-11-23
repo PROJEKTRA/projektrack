@@ -5,6 +5,7 @@
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import { ConfigProvider } from 'reka-ui';
 import { createApp, h, ref } from 'vue';
+import type { DefineComponent } from 'vue';
 import { initializeTheme } from '@/composables/useAppearance';
 import { setFormats } from '@/i18n/formats';
 import type { FormatsMeta } from '@/i18n/formats';
@@ -81,6 +82,26 @@ async function boot(): Promise<void> {
                 default:
                     return AppLayout;
             }
+        },
+        // Core pages by name, module pages as "Crm::Companies".
+        resolve: async (name) => {
+            const pages = import.meta.glob<{ default: DefineComponent }>([
+                './pages/**/*.vue',
+                '../../modules/*/resources/js/pages/**/*.vue',
+            ]);
+            const [module, page] = name.split('::');
+            const load =
+                pages[
+                    page
+                        ? `../../modules/${module}/resources/js/pages/${page}.vue`
+                        : `./pages/${name}.vue`
+                ];
+
+            if (!load) {
+                throw new Error(`Page not found: ${name}`);
+            }
+
+            return (await load()).default;
         },
         setup: ({ el, App, props, plugin }) => {
             setFormats(

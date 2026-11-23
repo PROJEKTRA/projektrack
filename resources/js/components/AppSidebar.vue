@@ -5,6 +5,7 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
+    Building2,
     KeyRound,
     Languages,
     LayoutGrid,
@@ -18,6 +19,7 @@ import BrandController from '@/actions/App/Http/Controllers/Admin/BrandControlle
 import DoctorController from '@/actions/App/Http/Controllers/Admin/DoctorController';
 import LicenseController from '@/actions/App/Http/Controllers/Admin/LicenseController';
 import SettingsController from '@/actions/App/Http/Controllers/Admin/SettingsController';
+import CompanyController from '@/actions/Modules/Crm/Http/CompanyController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -46,6 +48,15 @@ const mainNavItems = computed<NavItem[]>(() => {
             href: dashboard(),
             icon: LayoutGrid,
         },
+        ...(permissions.includes('crm.view')
+            ? [
+                  {
+                      title: t('crm:title'),
+                      href: CompanyController.index(),
+                      icon: Building2,
+                  },
+              ]
+            : []),
         ...(permissions.includes('core.strings.customize')
             ? [
                   {

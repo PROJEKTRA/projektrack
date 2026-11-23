@@ -16,6 +16,757 @@
         }
     ],
     "paths": {
+        "/api/v1/crm/companies": {
+            "get": {
+                "operationId": "api.v1.crm.companies.index",
+                "tags": [
+                    "crm"
+                ],
+                "summary": "Customers by name, 50 per page (\"page\", \"search\", \"status\").",
+                "x-scope": "crm:read",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "data",
+                                        "page",
+                                        "pages"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": [
+                                                    "id",
+                                                    "number",
+                                                    "name",
+                                                    "kind",
+                                                    "status"
+                                                ]
+                                            }
+                                        },
+                                        "page": {
+                                            "type": "integer"
+                                        },
+                                        "pages": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No valid token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope, or the user the permission.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests for this token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-permission": "crm.view"
+            },
+            "post": {
+                "operationId": "api.v1.crm.companies.store",
+                "tags": [
+                    "crm"
+                ],
+                "summary": "Create a customer with everything that belongs to it. Needs crm.tax_profile.manage, and crm.contacts.manage for contacts.",
+                "x-scope": "crm:write",
+                "responses": {
+                    "201": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "number",
+                                        "name",
+                                        "kind",
+                                        "status"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "number": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "legal_name": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                                "customer",
+                                                "prospect",
+                                                "partner",
+                                                "supplier"
+                                            ]
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "active",
+                                                "archived"
+                                            ]
+                                        },
+                                        "document_locale": {
+                                            "type": "string"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "payment_days": {
+                                            "type": "integer"
+                                        },
+                                        "einvoice_format": {
+                                            "type": "string",
+                                            "enum": [
+                                                "pdf",
+                                                "zugferd",
+                                                "xrechnung_cii"
+                                            ]
+                                        },
+                                        "leitweg_id": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "tax": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ]
+                                        },
+                                        "address": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ]
+                                        },
+                                        "contacts": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "sites": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No valid token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope, or the user the permission.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The request is not valid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests for this token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-permission": "crm.manage",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "kind",
+                                    "document_locale",
+                                    "currency",
+                                    "payment_days",
+                                    "einvoice_format"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "number": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "legal_name": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                            "customer",
+                                            "prospect",
+                                            "partner",
+                                            "supplier"
+                                        ]
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ]
+                                    },
+                                    "document_locale": {
+                                        "type": "string"
+                                    },
+                                    "currency": {
+                                        "type": "string"
+                                    },
+                                    "payment_days": {
+                                        "type": "integer"
+                                    },
+                                    "einvoice_format": {
+                                        "type": "string",
+                                        "enum": [
+                                            "pdf",
+                                            "zugferd",
+                                            "xrechnung_cii"
+                                        ]
+                                    },
+                                    "leitweg_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "tax": {
+                                        "type": [
+                                            "object",
+                                            "null"
+                                        ]
+                                    },
+                                    "address": {
+                                        "type": [
+                                            "object",
+                                            "null"
+                                        ]
+                                    },
+                                    "contacts": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "sites": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/crm/companies/{company}": {
+            "get": {
+                "operationId": "api.v1.crm.companies.show",
+                "tags": [
+                    "crm"
+                ],
+                "summary": "One customer with tax profile, address, contacts and sites.",
+                "x-scope": "crm:read",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "number",
+                                        "name",
+                                        "kind",
+                                        "status"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "number": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "legal_name": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                                "customer",
+                                                "prospect",
+                                                "partner",
+                                                "supplier"
+                                            ]
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "active",
+                                                "archived"
+                                            ]
+                                        },
+                                        "document_locale": {
+                                            "type": "string"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "payment_days": {
+                                            "type": "integer"
+                                        },
+                                        "einvoice_format": {
+                                            "type": "string",
+                                            "enum": [
+                                                "pdf",
+                                                "zugferd",
+                                                "xrechnung_cii"
+                                            ]
+                                        },
+                                        "leitweg_id": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "tax": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ]
+                                        },
+                                        "address": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ]
+                                        },
+                                        "contacts": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "sites": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No valid token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope, or the user the permission.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found in the tenant of the host.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests for this token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-permission": "crm.view",
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ]
+            },
+            "put": {
+                "operationId": "api.v1.crm.companies.update",
+                "tags": [
+                    "crm"
+                ],
+                "summary": "Change a customer. Parts that are left out (tax, address, contacts, sites) stay as they are; a list that is sent replaces the stored one.",
+                "x-scope": "crm:write",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "id",
+                                        "number",
+                                        "name",
+                                        "kind",
+                                        "status"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "number": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "legal_name": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                                "customer",
+                                                "prospect",
+                                                "partner",
+                                                "supplier"
+                                            ]
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "active",
+                                                "archived"
+                                            ]
+                                        },
+                                        "document_locale": {
+                                            "type": "string"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "payment_days": {
+                                            "type": "integer"
+                                        },
+                                        "einvoice_format": {
+                                            "type": "string",
+                                            "enum": [
+                                                "pdf",
+                                                "zugferd",
+                                                "xrechnung_cii"
+                                            ]
+                                        },
+                                        "leitweg_id": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "tax": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ]
+                                        },
+                                        "address": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ]
+                                        },
+                                        "contacts": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "sites": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No valid token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The token lacks the scope, or the user the permission.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found in the tenant of the host.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The request is not valid.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests for this token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-permission": "crm.manage",
+                "parameters": [
+                    {
+                        "name": "company",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "kind",
+                                    "document_locale",
+                                    "currency",
+                                    "payment_days",
+                                    "einvoice_format"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "number": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "legal_name": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                            "customer",
+                                            "prospect",
+                                            "partner",
+                                            "supplier"
+                                        ]
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "archived"
+                                        ]
+                                    },
+                                    "document_locale": {
+                                        "type": "string"
+                                    },
+                                    "currency": {
+                                        "type": "string"
+                                    },
+                                    "payment_days": {
+                                        "type": "integer"
+                                    },
+                                    "einvoice_format": {
+                                        "type": "string",
+                                        "enum": [
+                                            "pdf",
+                                            "zugferd",
+                                            "xrechnung_cii"
+                                        ]
+                                    },
+                                    "leitweg_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "tax": {
+                                        "type": [
+                                            "object",
+                                            "null"
+                                        ]
+                                    },
+                                    "address": {
+                                        "type": [
+                                            "object",
+                                            "null"
+                                        ]
+                                    },
+                                    "contacts": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "sites": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/files": {
             "post": {
                 "operationId": "api.v1.files.store",
