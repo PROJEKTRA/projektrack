@@ -13,6 +13,7 @@ import type { StringsMeta } from '@/i18n/strings';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import SharedLayout from '@/layouts/SharedLayout.vue';
 import { cspNonce } from '@/lib/csp';
 import { initializeFlashToast } from '@/lib/flashToast';
 
@@ -73,6 +74,8 @@ async function boot(): Promise<void> {
                     return null;
                 case name.startsWith('auth/'):
                     return AuthLayout;
+                case name.startsWith('shared/'):
+                    return SharedLayout;
                 case name.startsWith('settings/'):
                     return [AppLayout, SettingsLayout];
                 default:

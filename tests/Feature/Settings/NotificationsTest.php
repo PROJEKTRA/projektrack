@@ -121,7 +121,7 @@ it('sends only security notices by e-mail when the organization turned e-mail of
     timesheetsModule();
     $user = User::factory()->create();
     app(Settings::class)->save('core', [
-        'default_locale' => 'bs', 'format_locale' => null, 'timezone' => 'UTC', 'email_notifications' => false,
+        'default_locale' => 'bs', 'format_locale' => null, 'timezone' => 'UTC', 'shared_link_max_days' => 90, 'email_notifications' => false,
     ], User::factory()->create());
     app()->forgetScopedInstances();
 
@@ -188,7 +188,7 @@ describe('security review findings', function () {
         $foreign = Tenant::factory()->create();
         $recipient = app(TenantContext::class)->run($foreign, function () {
             app(TenantModules::class)->enable('timesheets');
-            app(Settings::class)->save('core', ['default_locale' => 'bs', 'format_locale' => null, 'timezone' => 'UTC', 'email_notifications' => false], User::factory()->create());
+            app(Settings::class)->save('core', ['default_locale' => 'bs', 'format_locale' => null, 'timezone' => 'UTC', 'shared_link_max_days' => 90, 'email_notifications' => false], User::factory()->create());
 
             return User::factory()->create();
         });

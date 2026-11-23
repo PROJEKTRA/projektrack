@@ -136,6 +136,8 @@ describe('secrets at rest', function () {
         'api_tokens.token' => 'SHA-256 of the token secret; the secret is shown once (S-0913)',
         'api_tokens.tokenable_type' => 'the owner of a token, not a secret',
         'api_tokens.tokenable_id' => 'the owner of a token, not a secret',
+        'shared_links.token' => 'SHA-256 of the link token; the token is shown once (S-0987)',
+        'shared_links.password' => 'hashed (Argon2id) by SharedLinks (S-0987)',
     ];
 
     it('stores no secret-looking column unprotected', function () use ($reviewed) {

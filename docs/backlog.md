@@ -24,3 +24,6 @@ Rules:
 | BL-011 | Delete stored file content with its record and with the tenant; clean orphaned blobs. | Security review (S-0909) | 19.11.2026 | 0.9.1 |
 | BL-012 | API tokens: daily pruning of expired tokens inside each tenant, `last_used_at` written at most once a minute, optional audit of token use. | Security review (S-0913) | 19.11.2026 | 0.9.1 |
 | BL-013 | System check: once tenant domains can be edited in the UI, check only verified hosts and refuse private, loopback and link-local addresses on the address it builds. | Security review (S-0988) | 23.11.2026 | 0.9.1 |
+| BL-014 | Shared links: token in the URL fragment (sent to the server by the page, never in request paths), so web server and proxy access logs cannot hold it; until then sample server configs exclude /s/ from access logs. Needs a product decision. | Security review (S-0987) | 23.11.2026 | 0.9.1 |
+| BL-015 | Retention of the shared link access log (default 12 months, per tenant privacy setting) and pruning of long-expired links. | Security review (S-0987) | 23.11.2026 | 0.9.1 |
+| BL-016 | Revoke a user's shared links when the user is deactivated or loses the right to share, or check the creator again on each use. | Security review (S-0987) | 23.11.2026 | 0.9.1 |

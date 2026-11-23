@@ -104,6 +104,8 @@ Scenario: Shared link properties
   And the response carries the noindex headers
 ```
 
+Implementation note (23.11.2026): `App\SharedLinks\SharedLinks` creates, resolves and revokes links to one object that a module offers through `SharedLinkTarget`. The token is 256 random bits, prefix `shl_`, shown once, and stored as SHA-256. Links are valid for 30 days by default, never longer than the tenant setting "Longest validity of shared links" (default 90, at most 365 days). Revocation takes effect at once, and revoking an object revokes all its links. An optional password is stored with Argon2id; ten wrong passwords lock the link for an hour. `/s/{token}` shows the object without any navigation into the instance. `/s/{token}/{action}` runs only actions the link grants: reading ones by GET, changing ones by POST only. Link previews and mail scanners get a page without content. Unknown, expired, revoked and not granted all get the same 404. Responses are `private, no-store` with the noindex headers. Every use is logged with the link (never the token), a shortened address and the browser family, and tokens are redacted from every log. Not built yet: the first object type and the owner screen with its access log (they come with service reports, S-0953), and restricting a link to an e-mail address with a one-time code.
+
 ---
 
 ### S-0988 CI crawl test and external doctor check

@@ -19,6 +19,7 @@ use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\RouteAccess;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\SetSecurityHeaders;
+use App\Http\Middleware\StartSession;
 use App\Http\Middleware\UniformResponseTime;
 use App\Tenancy\CrossTenantWrite;
 use App\Tenancy\TenantContext;
@@ -62,6 +63,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Shared link addresses never land in the session (S-0987).
+        $middleware->web(replace: [Illuminate\Session\Middleware\StartSession::class => StartSession::class]);
         $middleware->web(append: [
             EnsureSessionIsValid::class,
             UniformResponseTime::class,

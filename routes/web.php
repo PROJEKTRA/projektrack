@@ -15,7 +15,9 @@ use App\Http\Controllers\Admin\UserTwoFactorController;
 use App\Http\Controllers\BrandLogoController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SharedLinkController;
 use App\Http\Controllers\StringBundleController;
+use App\SharedLinks\SharedLinks;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
@@ -115,6 +117,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->whereUlid('file')
         ->name('files.download');
 });
+
+// Shared links (S-0987): one object for people outside the instance. Public,
+// limited per address and per link; the token is the only key.
+Route::middleware(['access:public', 'throttle:shared-links'])
+    ->prefix('s/{token}')
+    ->where(['token' => SharedLinks::PATTERN])
+    ->name('shared.')
+    ->controller(SharedLinkController::class)
+    ->group(function () {
+        Route::get('/', 'show')->name('show');
+        Route::post('/', 'unlock')->middleware('throttle:shared-links-unlock')->name('unlock');
+        Route::match(['get', 'post'], '{action}', 'action')->where('action', '[a-z_]{1,40}')->name('action');
+    });
 
 // The signed-in user's notifications (S-0912).
 Route::middleware(['auth', 'verified', 'access:self'])

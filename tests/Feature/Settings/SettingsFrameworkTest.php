@@ -92,7 +92,7 @@ it('keeps the organization language and time zone on the tenant', function () {
         'default_locale' => 'en',
         'format_locale' => 'de-DE',
         'timezone' => 'Europe/Sarajevo',
-        'email_notifications' => '1',
+        'shared_link_max_days' => 90, 'email_notifications' => '1',
     ])->assertSessionHasNoErrors();
 
     $tenant = $this->tenant->refresh();
@@ -109,7 +109,7 @@ it('keeps settings inside their tenant', function () {
         'default_locale' => 'bs',
         'format_locale' => 'en-US',
         'timezone' => 'UTC',
-        'email_notifications' => '0',
+        'shared_link_max_days' => 90, 'email_notifications' => '0',
     ]);
 
     app(TenantContext::class)->run(Tenant::factory()->create(), function () {
@@ -145,7 +145,7 @@ it('refuses schemas it cannot render or validate correctly', function (array $pr
 
 describe('security review findings', function () {
     it('reads each tenant its own values when a job switches tenants', function () {
-        app(Settings::class)->save('core', ['default_locale' => 'bs', 'format_locale' => 'en-US', 'timezone' => 'UTC', 'email_notifications' => false], settingsAdmin());
+        app(Settings::class)->save('core', ['default_locale' => 'bs', 'format_locale' => 'en-US', 'timezone' => 'UTC', 'shared_link_max_days' => 90, 'email_notifications' => false], settingsAdmin());
         $settings = app(Settings::class);
         expect($settings->get('core.format_locale'))->toBe('en-US');
 
@@ -177,7 +177,7 @@ describe('security review findings', function () {
         $slug = $this->tenant->slug;
 
         $this->actingAs(settingsAdmin())->put('/admin/settings/core', [
-            'default_locale' => 'bs', 'format_locale' => '', 'timezone' => 'UTC', 'email_notifications' => '1',
+            'default_locale' => 'bs', 'format_locale' => '', 'timezone' => 'UTC', 'shared_link_max_days' => 90, 'email_notifications' => '1',
             'slug' => 'taken-over', 'status' => 'suspended', 'edition' => 'enterprise',
         ])->assertSessionHasNoErrors();
 

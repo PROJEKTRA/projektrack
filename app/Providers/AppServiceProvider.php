@@ -13,6 +13,8 @@ use App\Branding\SetMailSender;
 use App\Models\ApiToken;
 use App\Models\User;
 use App\Settings\Settings;
+use App\SharedLinks\SharedLinks;
+use App\SharedLinks\SharedLinkTargets;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -34,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // Settings of the current tenant, read once per request (S-0912).
         $this->app->scoped(Settings::class);
+        // Shareable object types; modules register theirs (S-0987).
+        $this->app->singleton(SharedLinkTargets::class);
         // Brand of the current tenant (S-0911).
         $this->app->scoped(Brand::class);
     }
@@ -58,6 +62,25 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
         RateLimiter::for('api-ip', fn (Request $request): Limit => Limit::perMinute(120)->by('ip:'.$request->ip()));
+
+        // Shared links (S-0987): per address and per link (by the hash, never the token).
+        RateLimiter::for('shared-links', function (Request $request): array {
+            $token = $request->route('token');
+
+            return [
+                Limit::perMinute(60)->by('shared-ip:'.SharedLinks::limitKey($request->ip())),
+                Limit::perMinute(120)->by('shared-link:'.SharedLinks::hash(is_string($token) ? $token : '')),
+            ];
+        });
+        RateLimiter::for('shared-links-unlock', function (Request $request): array {
+            $token = $request->route('token');
+
+            return [
+                Limit::perMinute(10)->by('shared-unlock-ip:'.SharedLinks::limitKey($request->ip())),
+                // The lock allows 10 wrong passwords an hour; this caps attempts from many addresses.
+                Limit::perHour(30)->by('shared-unlock-link:'.SharedLinks::hash(is_string($token) ? $token : '')),
+            ];
+        });
 
         // Sender name of the tenant's brand on every e-mail (S-0911).
         Event::listen(MessageSending::class, SetMailSender::class);
