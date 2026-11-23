@@ -7,7 +7,7 @@ import { PASSWORD, signIn } from './support';
 
 // S-0961 to S-0966: draft, issue, pay. Seller and customer come from E2eSeeder.
 test('issues an invoice and records its payment', async ({ page }) => {
-    await signIn(page, 'crawl');
+    await signIn(page, 'invoices');
     await page.goto('/invoices');
     await page.getByTestId('new-invoice').click();
     const dialog = page.getByRole('dialog');

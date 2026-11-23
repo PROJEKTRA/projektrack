@@ -25,6 +25,26 @@ export const USERS = {
         secret: 'KRSXG5DDOJQXOZBA',
         locale: 'bs',
     },
+    crm: {
+        email: 'e2e-crm@example.test',
+        secret: 'MFRGGZDFMZTWQ2LK',
+        locale: 'bs',
+    },
+    projects: {
+        email: 'e2e-projects@example.test',
+        secret: 'NBSWY3DPEHPK3PXA',
+        locale: 'bs',
+    },
+    time: {
+        email: 'e2e-time@example.test',
+        secret: 'ONSWG4TFOQQHI33M',
+        locale: 'bs',
+    },
+    invoices: {
+        email: 'e2e-invoices@example.test',
+        secret: 'PFXXK4RAONSWG4TF',
+        locale: 'bs',
+    },
 } as const;
 
 export type TestUser = keyof typeof USERS;

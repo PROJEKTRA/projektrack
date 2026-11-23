@@ -7,7 +7,7 @@ import { signIn } from './support';
 
 // S-0940, S-0942: a project with nested work packages and a contract.
 test('creates a project and structures it', async ({ page }) => {
-    await signIn(page, 'crawl');
+    await signIn(page, 'projects');
     await page.goto('/projects');
     await page.getByTestId('new-project').click();
     const dialog = page.getByRole('dialog');

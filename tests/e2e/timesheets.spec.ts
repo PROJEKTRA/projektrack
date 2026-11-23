@@ -7,7 +7,7 @@ import { signIn } from './support';
 
 // S-0945: book a week with the keyboard, undo, submit.
 test('books a week with the keyboard', async ({ page }) => {
-    await signIn(page, 'bs');
+    await signIn(page, 'time');
     await page.goto('/projects');
     await page.getByTestId('new-project').click();
     await page

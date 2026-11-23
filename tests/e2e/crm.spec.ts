@@ -7,7 +7,7 @@ import { signIn } from './support';
 
 // S-0939: a customer with address, tax data and contact in one dialog.
 test('creates and edits a customer', async ({ page }) => {
-    await signIn(page, 'bs');
+    await signIn(page, 'crm');
     await page.goto('/crm/companies');
     await page.getByTestId('new-company').click();
 
