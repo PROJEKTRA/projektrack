@@ -3,10 +3,13 @@
     SPDX-License-Identifier: AGPL-3.0-only
 -->
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
-import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+import { Head, Link } from '@inertiajs/vue3';
 import { t } from '@/i18n/strings';
 import { dashboard } from '@/routes';
+
+defineProps<{
+    cards: { label: string; value: string; href: string; alert?: boolean }[];
+}>();
 
 defineOptions({
     layout: () => ({
@@ -23,30 +26,26 @@ defineOptions({
 <template>
     <Head :title="$t('core:nav.dashboard')" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-        </div>
-        <div
-            class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border"
-        >
-            <PlaceholderPattern />
-        </div>
+    <div class="px-4 py-6">
+        <p v-if="cards.length === 0" class="text-muted-foreground">
+            {{ $t('core:dashboard.empty') }}
+        </p>
+        <ul v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <li v-for="card in cards" :key="card.label">
+                <Link
+                    :href="card.href"
+                    class="block rounded-xl border bg-card p-4 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-hidden"
+                >
+                    <span class="block text-sm text-muted-foreground">{{
+                        $t(card.label)
+                    }}</span>
+                    <bdi
+                        class="mt-1 block text-2xl font-semibold tabular-nums"
+                        :class="card.alert ? 'text-destructive' : ''"
+                        >{{ card.value }}</bdi
+                    >
+                </Link>
+            </li>
+        </ul>
     </div>
 </template>

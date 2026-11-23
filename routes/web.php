@@ -12,8 +12,10 @@ use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\LicenseController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StringController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserTwoFactorController;
 use App\Http\Controllers\BrandLogoController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SharedLinkController;
@@ -22,8 +24,6 @@ use App\SharedLinks\SharedLinks;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use Inertia\Response;
 
 /*
  * Deny by default: every route carries "permission:<key>" (or a "can:" policy
@@ -43,11 +43,14 @@ Route::get('strings/{chain}/{version}.json', StringBundleController::class)
 Route::get('/', fn (): RedirectResponse => to_route('dashboard'))->middleware('access:public')->name('home');
 
 Route::middleware(['auth', 'verified', 'access:self'])->group(function () {
-    Route::get('dashboard', fn (): Response => Inertia::render('Dashboard'))->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 });
 
 // User administration. Sensitive steps need a recent password confirmation (15 minutes).
 Route::middleware(['auth', 'verified', 'permission:core.users.manage'])->group(function () {
+    Route::get('admin/users', [UserController::class, 'index'])->middleware(RequirePassword::class)->name('admin.users.index');
+    Route::post('admin/users', [UserController::class, 'store'])->middleware([RequirePassword::class, 'throttle:30,1'])->name('admin.users.store');
+    Route::put('admin/users/{user}', [UserController::class, 'update'])->whereUlid('user')->middleware(RequirePassword::class)->name('admin.users.update');
     Route::delete('users/{user}/two-factor', [UserTwoFactorController::class, 'destroy'])
         ->middleware(RequirePassword::class)
         ->name('users.two-factor.reset');

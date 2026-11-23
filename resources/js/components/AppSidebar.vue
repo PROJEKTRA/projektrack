@@ -19,6 +19,7 @@ import {
     ReceiptText,
     Settings,
     Stethoscope,
+    Users,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import LanguageController from '@/actions/App/Http/Controllers/Admin/LanguageController';
@@ -34,6 +35,7 @@ import TimesheetController from '@/actions/Modules/Timesheets/Http/TimesheetCont
 import RateController from '@/actions/Modules/Rates/Http/RateController';
 import InvoiceController from '@/actions/Modules/Invoices/Http/InvoiceController';
 import ReportController from '@/actions/Modules/ServiceReports/Http/ReportController';
+import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -133,6 +135,15 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('invoices:title'),
                       href: InvoiceController.index(),
                       icon: ReceiptText,
+                  },
+              ]
+            : []),
+        ...(permissions.includes('core.users.manage')
+            ? [
+                  {
+                      title: t('core:nav.users'),
+                      href: UserController.index(),
+                      icon: Users,
                   },
               ]
             : []),

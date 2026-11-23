@@ -7,6 +7,7 @@
 
 namespace App\Providers;
 
+use App\Dashboard\Dashboard;
 use App\Modules\ModuleRegistry;
 use App\Modules\TenantModules;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +28,8 @@ class ModuleServiceProvider extends ServiceProvider
             [base_path('modules'), base_path('ee/modules')],
             $this->app->make(LoggerInterface::class),
         ));
+
+        $this->app->singleton(Dashboard::class);
 
         // Scoped: the per-tenant cache lives for one request or job only.
         $this->app->scoped(TenantModules::class);
