@@ -8,7 +8,7 @@
 #     with provenance and a CycloneDX SBOM;
 #   - SHA256SUMS over all of it.
 # Nothing is signed or published here and no signing key exists on GitHub: a
-# maintainer approves the build by signing it offline (deploy/release/approve.sh).
+# maintainer approves the build by signing it on their machine (deploy/release/approve.sh).
 # Actions are pinned to full commit SHAs.
 
 name: release
@@ -170,7 +170,7 @@ jobs:
           retention-days: 7
 
   bundle:
-    name: Bundle for the offline signature
+    name: Bundle for the signature
     needs: [gate, zip, image]
     runs-on: ubuntu-24.04
     timeout-minutes: 10

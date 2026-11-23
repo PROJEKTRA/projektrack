@@ -4,7 +4,7 @@ How releases are built and signed (S-0924, security baseline section 9), how ope
 
 ## What a release contains
 
-A tag `vX.Y.Z` on a commit of `main` whose CI is green starts `.github/workflows/release.yml`, which builds but signs nothing. A maintainer approves the build by signing it offline. The GitHub release then holds:
+A tag `vX.Y.Z` on a commit of `main` whose CI is green starts `.github/workflows/release.yml`, which builds but signs nothing. A maintainer approves the build by signing it on their own machine. The GitHub release then holds:
 
 | File | Content |
 |---|---|

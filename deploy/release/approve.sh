@@ -85,9 +85,10 @@ echo "Image:     $(cat "${dist}/${name}.image.txt")"
 if [[ "${previous}" != 'first' ]]; then
     echo 'Changes:'
     git --no-pager log --format='%h %an: %s' "${previous}..${commit}" | plain
-    git --no-pager diff --stat=100 "${previous}" "${commit}" | plain
+    git --no-pager diff --text --no-ext-diff --no-textconv --stat=100 "${previous}" "${commit}" | plain
     echo 'What decides about trust, in full:'
-    git --no-pager diff --no-color "${previous}" "${commit}" -- resources/release deploy/release .github | plain
+    # As text whatever .gitattributes says, or a commit could hide a new key.
+    git --no-pager diff --text --no-ext-diff --no-textconv --no-color "${previous}" "${commit}" -- resources/release deploy .github | plain
 fi
 read -r -p "Sign and publish ${tag}? Type ${tag} to approve: " answer
 [[ "${answer}" == "${tag}" ]] || fail 'Not approved. Nothing was signed or published.'
