@@ -329,7 +329,7 @@ test('anonymous visitors see nothing indexable or telling', async ({
 
 test('signed-in pages keep every rule', async ({ page }) => {
     const watcher = watch(page, false);
-    await signIn(page, 'bs');
+    await signIn(page, 'crawl');
 
     // Follow same-origin links three levels deep, never sign out.
     const seen = new Set<string>();

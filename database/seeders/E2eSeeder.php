@@ -33,11 +33,14 @@ class E2eSeeder extends Seeder
      * tests/e2e/support.ts). One secret per user, because a code is accepted
      * only once.
      *
-     * @var array<string, array{email: string, secret: string}>
+     * The crawl (S-0988) signs in as its own user, in parallel with the others.
+     *
+     * @var array<string, array{email: string, secret: string, locale: string}>
      */
     public const array USERS = [
-        'bs' => ['email' => 'e2e-bs@example.test', 'secret' => 'JBSWY3DPEHPK3PXP'],
-        'ar' => ['email' => 'e2e-ar@example.test', 'secret' => 'GEZDGNBVGY3TQOJQ'],
+        'bs' => ['email' => 'e2e-bs@example.test', 'secret' => 'JBSWY3DPEHPK3PXP', 'locale' => 'bs'],
+        'ar' => ['email' => 'e2e-ar@example.test', 'secret' => 'GEZDGNBVGY3TQOJQ', 'locale' => 'ar'],
+        'crawl' => ['email' => 'e2e-crawl@example.test', 'secret' => 'KRSXG5DDOJQXOZBA', 'locale' => 'bs'],
     ];
 
     public function run(): void
@@ -58,17 +61,17 @@ class E2eSeeder extends Seeder
             $admin = Role::query()->where('key', Role::ADMIN)->firstOrFail();
             $users = [];
 
-            foreach (self::USERS as $locale => $user) {
-                $users[$locale] = User::factory()->create([
-                    'name' => "E2E {$locale}",
+            foreach (self::USERS as $key => $user) {
+                $users[$key] = User::factory()->create([
+                    'name' => "E2E {$key}",
                     'email' => $user['email'],
                     'password' => self::PASSWORD,
-                    'locale' => $locale,
+                    'locale' => $user['locale'],
                     'two_factor_secret' => encrypt($user['secret']),
                     'two_factor_recovery_codes' => json_encode([]),
                     'two_factor_confirmed_at' => now(),
                 ]);
-                app(RoleManager::class)->assign($users[$locale], $admin);
+                app(RoleManager::class)->assign($users[$key], $admin);
             }
 
             app(TenantLanguages::class)->copy('en', 'ar', 'العربية', 'rtl', $users['bs']);

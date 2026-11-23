@@ -9,11 +9,26 @@ import type { Page } from '@playwright/test';
 /** Synthetic users of database/seeders/E2eSeeder.php. */
 export const PASSWORD = 'e2e-password-not-secret';
 export const USERS = {
-    bs: { email: 'e2e-bs@example.test', secret: 'JBSWY3DPEHPK3PXP' },
-    ar: { email: 'e2e-ar@example.test', secret: 'GEZDGNBVGY3TQOJQ' },
+    bs: {
+        email: 'e2e-bs@example.test',
+        secret: 'JBSWY3DPEHPK3PXP',
+        locale: 'bs',
+    },
+    ar: {
+        email: 'e2e-ar@example.test',
+        secret: 'GEZDGNBVGY3TQOJQ',
+        locale: 'ar',
+    },
+    // The crawl's own user: a code is accepted once, tests run in parallel.
+    crawl: {
+        email: 'e2e-crawl@example.test',
+        secret: 'KRSXG5DDOJQXOZBA',
+        locale: 'bs',
+    },
 } as const;
 
-export type TestLocale = keyof typeof USERS;
+export type TestUser = keyof typeof USERS;
+export type TestLocale = 'bs' | 'ar';
 
 function base32(secret: string): Buffer {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -41,8 +56,8 @@ export function totp(secret: string, now = Date.now()): string {
 }
 
 /** Sign in with password and authenticator code; ends on the dashboard. */
-export async function signIn(page: Page, locale: TestLocale): Promise<void> {
-    const user = USERS[locale];
+export async function signIn(page: Page, who: TestUser): Promise<void> {
+    const user = USERS[who];
 
     await page.goto('/login');
     await page.locator('#email').fill(user.email);
@@ -56,5 +71,5 @@ export async function signIn(page: Page, locale: TestLocale): Promise<void> {
     await page.waitForURL('**/dashboard');
     // The string bundle of the user's language follows the first page.
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(page.locator('html')).toHaveAttribute('lang', user.locale);
 }
