@@ -121,7 +121,7 @@ Exit code 2 means the rollback failed too: the proxy stays stopped and the snaps
 2. If `.update-state` contains `committed=1`, the new version was healthy and may already hold new data: keep it and skip to step 5.
 3. Set `PROJEKTRACK_IMAGE` in `.env` to `previous` from `.update-state`.
 4. Restore: `docker compose --profile update run --rm snapshot projektrack-snapshot restore`. If it says that there is no complete snapshot, the database was not touched yet (without `committed=1`). If it says that the snapshot is damaged, restore the encrypted backup on a new host.
-5. Start only the application, with the proxy still stopped: `docker compose up -d --no-deps app`, `docker compose exec app php artisan up`, and check `docker compose exec app wget -q -O - http://127.0.0.1:8080/health` answers `OK`.
+5. Start only the application, with the proxy still stopped: `docker compose up -d --no-deps app`, `docker compose exec app php artisan up`, and check `docker compose exec app wget -q -O - http://127.0.0.1:8080/health` answers `OK` (it takes a few seconds after the start).
 6. Only when it is fine: `docker compose --profile update run --rm snapshot projektrack-snapshot drop`, delete `.update-state` and open the instance with `docker compose up -d`.
 
 The snapshot holds unencrypted data, like the database volume. Exclude the volume `projektrack_snapshot` from host backups.

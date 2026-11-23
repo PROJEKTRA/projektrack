@@ -39,6 +39,7 @@ data() { docker compose exec -T -e MYSQL_PWD="$(password)" db mariadb-dump -upro
 files() { docker compose exec -T app sh -c 'cd /app/storage && find app -type f -exec sha256sum {} + | sort' | sha256sum; }
 tables() { docker compose exec -T -e MYSQL_PWD="$(password)" db mariadb -uprojektrack_migrator -N projektrack -e "SHOW TABLES LIKE '$1'"; }
 online() { [[ "$(curl -sk --resolve "${DOMAIN}:443:127.0.0.1" -o /dev/null -w '%{http_code}' "https://${DOMAIN}/login")" == 200 ]]; }
+eventually_healthy() { for _ in $(seq 1 30); do [[ "$(docker compose exec -T app wget -q -O - http://127.0.0.1:8080/health 2>/dev/null || true)" == OK ]] && return 0; sleep 2; done; return 1; }
 eventually_online() { for _ in $(seq 1 30); do online && return 0; sleep 2; done; return 1; }
 no_snapshot() { [[ -z "$(docker compose --profile update run --rm -T snapshot ls -A /snapshot)" ]]; }
 running() { [[ "$(docker compose ps --format '{{.State}}' "$1")" == running ]]; }
@@ -245,7 +246,7 @@ sed -i "s|^PROJEKTRACK_IMAGE=.*|PROJEKTRACK_IMAGE=$(sed -n 's/^previous=//p' .up
 docker compose --profile update run --rm -T snapshot projektrack-snapshot restore
 docker compose up -d --no-deps app >/dev/null 2>&1
 for _ in $(seq 1 30); do docker compose exec -T app php artisan up >/dev/null 2>&1 && break; sleep 2; done
-check 'healthy behind the closed proxy' test "$(docker compose exec -T app wget -q -O - http://127.0.0.1:8080/health)" = OK
+check 'healthy behind the closed proxy' eventually_healthy
 check 'database is the same' test "$(data)" = "${before_data}"
 check 'files are the same' test "$(files)" = "${before_files}"
 docker compose --profile update run --rm -T snapshot projektrack-snapshot drop
