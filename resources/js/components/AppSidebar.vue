@@ -6,10 +6,13 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import {
     Building2,
+    CalendarCheck,
+    Clock,
     FolderKanban,
     KeyRound,
     Languages,
     LayoutGrid,
+    ListChecks,
     Palette,
     Settings,
     Stethoscope,
@@ -22,6 +25,9 @@ import LicenseController from '@/actions/App/Http/Controllers/Admin/LicenseContr
 import SettingsController from '@/actions/App/Http/Controllers/Admin/SettingsController';
 import CompanyController from '@/actions/Modules/Crm/Http/CompanyController';
 import ProjectController from '@/actions/Modules/Projects/Http/ProjectController';
+import ApprovalController from '@/actions/Modules/Timesheets/Http/ApprovalController';
+import PeriodController from '@/actions/Modules/Timesheets/Http/PeriodController';
+import TimesheetController from '@/actions/Modules/Timesheets/Http/TimesheetController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -67,6 +73,33 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('projects:title'),
                       href: ProjectController.index(),
                       icon: FolderKanban,
+                  },
+              ]
+            : []),
+        ...(permissions.includes('timesheets.view')
+            ? [
+                  {
+                      title: t('timesheets:title'),
+                      href: TimesheetController.index(),
+                      icon: Clock,
+                  },
+              ]
+            : []),
+        ...(anywhere.includes('timesheets.approve')
+            ? [
+                  {
+                      title: t('timesheets:approvals.title'),
+                      href: ApprovalController.index(),
+                      icon: ListChecks,
+                  },
+              ]
+            : []),
+        ...(permissions.includes('timesheets.lock_period')
+            ? [
+                  {
+                      title: t('timesheets:periods.title'),
+                      href: PeriodController.index(),
+                      icon: CalendarCheck,
                   },
               ]
             : []),

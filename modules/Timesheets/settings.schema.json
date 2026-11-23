@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "description_from_minutes": {
+      "type": "integer",
+      "default": 0,
+      "minimum": 0,
+      "maximum": 1440,
+      "x-label": "timesheets:settings.description_from_minutes",
+      "x-help": "timesheets:settings.description_from_help"
+    },
+    "day_warning_minutes": {
+      "type": "integer",
+      "default": 600,
+      "minimum": 60,
+      "maximum": 1440,
+      "x-label": "timesheets:settings.day_warning_minutes"
+    }
+  }
+}
