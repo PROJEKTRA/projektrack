@@ -101,7 +101,7 @@ say 'Start 0.9.1'
 printf 'CADDY_GLOBAL_OPTIONS=local_certs\nPROJEKTRACK_REPOSITORY=%s\n' "${REPO}" >> .env
 docker compose up -d
 # Data to compare; the tenant host must answer for the sign-in page.
-docker compose exec -T app php artisan tinker --execute="app(App\Tenancy\TenantContext::class)->run(App\Models\Tenant::query()->create(['slug' => 'ci', 'name' => 'CI d.o.o.', 'status' => 'active', 'country_code' => 'BA', 'default_locale' => 'bs', 'base_currency' => 'BAM', 'timezone' => 'Europe/Sarajevo', 'region' => 'eu', 'edition' => 'community']), fn () => App\Models\TenantDomain::query()->create(['host' => '${DOMAIN}', 'kind' => 'custom', 'is_primary' => true, 'verified_at' => now()]));"
+docker compose exec -T -e HOME=/tmp -e XDG_CONFIG_HOME=/tmp/config app php artisan tinker --execute="app(App\Tenancy\TenantContext::class)->run(App\Models\Tenant::query()->create(['slug' => 'ci', 'name' => 'CI d.o.o.', 'status' => 'active', 'country_code' => 'BA', 'default_locale' => 'bs', 'base_currency' => 'BAM', 'timezone' => 'Europe/Sarajevo', 'region' => 'eu', 'edition' => 'community']), fn () => App\Models\TenantDomain::query()->create(['host' => '${DOMAIN}', 'kind' => 'custom', 'is_primary' => true, 'verified_at' => now()]));"
 docker compose exec -T app sh -c 'printf "keep me\n" > storage/app/private/update.txt'
 check 'the instance is online' eventually_online
 check 'a backup is written by the CLI' ./projektrack backup
@@ -202,6 +202,44 @@ kill -HUP -- "-${update}" 2>/dev/null || true
 check 'update fails' fails_wait "${update}"
 cat "${work}/out"
 after_rollback
+
+say 'A rollback that fails, and the recovery by hand of the guide'
+quiet
+before_data="$(data)"
+before_files="$(files)"
+setsid ./projektrack update "${bad_migration}" > "${work}/out" 2>&1 &
+update=$!
+for _ in $(seq 1 120); do
+    [[ -n "$(tables ci_broken)" ]] && break
+    sleep 1
+done
+check 'the migration is running' test -n "$(tables ci_broken)"
+# Damage the snapshot; the good copy stands for a repaired cause.
+docker compose --profile update run --rm -T snapshot sh -c 'cp /snapshot/database.sql.gz /snapshot/good && echo x >> /snapshot/database.sql.gz'
+kill -HUP -- "-${update}"
+status=0
+wait "${update}" || status=$?
+cat "${work}/out"
+check 'exit code 2' test "${status}" = 2
+check 'it says so' said 'ROLLBACK FAILED'
+check 'the proxy stays closed' test -z "$(docker compose ps --status running -q proxy)"
+check 'a damaged snapshot changes nothing' test -n "$(tables ci_broken)"
+check 'the state names the previous image' grep -qx "previous=${v2}" .update-state
+check 'a new update is refused' fails ./projektrack update "${v5}"
+docker compose --profile update run --rm -T snapshot sh -c 'mv /snapshot/good /snapshot/database.sql.gz'
+docker compose stop proxy app worker scheduler backup >/dev/null 2>&1
+sed -i "s|^PROJEKTRACK_IMAGE=.*|PROJEKTRACK_IMAGE=$(sed -n 's/^previous=//p' .update-state)|" .env
+docker compose --profile update run --rm -T snapshot projektrack-snapshot restore
+docker compose up -d --no-deps app >/dev/null 2>&1
+for _ in $(seq 1 30); do docker compose exec -T app php artisan up >/dev/null 2>&1 && break; sleep 2; done
+check 'healthy behind the closed proxy' test "$(docker compose exec -T app wget -q -O - http://127.0.0.1:8080/health)" = OK
+check 'database is the same' test "$(data)" = "${before_data}"
+check 'files are the same' test "$(files)" = "${before_files}"
+docker compose --profile update run --rm -T snapshot projektrack-snapshot drop
+rm .update-state
+check 'the snapshot is gone' no_snapshot
+docker compose up -d >/dev/null 2>&1
+check 'online again' eventually_online
 docker compose exec -T app rm storage/app/private/slow.txt
 
 say 'An update still works after rollbacks'

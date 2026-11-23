@@ -201,6 +201,8 @@ update() {
     # From here on users may write, so there is no way back to the snapshot.
     trap - ERR
     trap '' INT TERM HUP
+    printf 'committed=1\n' >> .update-state
+    sync
     drop_snapshot
     dc up -d --no-build || fail "Version ${to} is healthy, but not every service started. Run \"docker compose up -d\"."
     sleep 10
