@@ -20,8 +20,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
-    // Release version, shown to signed-in users only (About, S-0911); set by the release build.
-    'version' => env('APP_VERSION', '0.9.0-dev'),
+    // Release version, shown to signed-in users only (About, S-0911); the release
+    // build writes it to the file VERSION (S-0924).
+    'version' => env('APP_VERSION', is_file(dirname(__DIR__).'/VERSION') ? trim((string) file_get_contents(dirname(__DIR__).'/VERSION')) : '0.9.0-dev'),
 
     /*
     |--------------------------------------------------------------------------

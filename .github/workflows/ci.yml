@@ -17,7 +17,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # On main every commit keeps its run: a release needs green CI on its commit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NODE_VERSION: '24'
@@ -281,6 +282,36 @@ jobs:
           name: playwright-results
           path: test-results/
           retention-days: 7
+
+  # S-0924: the release ZIP as the release workflow builds it, signed with a
+  # throwaway key; verification must accept it and refuse any change.
+  release-dry-run:
+    name: Release ZIP and signature (dry run)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: intl, bcmath, sodium, gd, fileinfo, zip
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Build, sign, verify, tamper
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
+          bash tests/release/dry-run.sh
 
   # S-0923: the production stack as an operator starts it, incl. the restore drill.
   docker:

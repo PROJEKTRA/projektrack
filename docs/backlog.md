@@ -32,4 +32,5 @@ Rules:
 | BL-019 | Docker stack: CPU, memory and process limits per service; database and cache without extra capabilities and with read-only root file systems. | Security review (S-0923) | 23.11.2026 | 0.9.1 |
 | BL-020 | Docker stack: IPv6 network so IPv6 visitors keep their own address; system check warns when the client address is the network gateway. | Security review (S-0923) | 23.11.2026 | 0.9.1 |
 | BL-021 | Backup and restore write audit entries; the CI crawl also runs against the Caddy stack. | Security review (S-0923) | 23.11.2026 | 0.9.1 |
+| BL-023 | CI job that lints the workflows (actions pinned by SHA, least-privilege permissions, no template injection), as security baseline 9 asks. | Security review (S-0924) | 23.11.2026 | 0.9.1 |
 | BL-022 | Caddy: the 421 for a Host header that differs from the TLS server name comes before the site routes, so it may lack the mandatory headers; check and, if so, answer it from a route with the headers. Browsers never send such requests. | Security review (S-0923) | 23.11.2026 | 0.9.1 |

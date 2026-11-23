@@ -26,6 +26,7 @@
 *.key
 /storage/keys/
 /auth.json
+/VERSION
 /deploy/docker/backup-identity.txt
 /deploy/docker/backups/
 

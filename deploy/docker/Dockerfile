@@ -41,8 +41,11 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
 COPY . .
+# Set by the release workflow (S-0924); shown to administrators under About.
+ARG PROJEKTRACK_VERSION=
 # A throwaway key for the build only; the file is gone before the layer ends.
-RUN mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
+RUN if [ -n "${PROJEKTRACK_VERSION}" ]; then printf '%s\n' "${PROJEKTRACK_VERSION}" > VERSION; fi \
+    && mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
     && composer dump-autoload --optimize --no-dev --no-interaction \
     && cp .env.example .env \
     && php artisan key:generate --no-interaction \
