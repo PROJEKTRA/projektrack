@@ -81,6 +81,13 @@ class CreateTenant extends Command
         /** @var array{slug: string, name: string, domain: string, admin_email: string, admin_name: string, locale: string, country: string, currency: string, timezone: string} $data */
         $data = $validator->validated();
 
+        // The setup link must leave by mail, never into a log or nowhere.
+        if (app()->environment('production') && ! $this->mailDelivers()) {
+            $this->error('Mail delivery is not configured (MAIL_MAILER and MAIL_HOST). Configure it first: the setup link goes by mail.');
+
+            return self::FAILURE;
+        }
+
         if (Tenant::query()->where('slug', $data['slug'])->exists()) {
             $this->error('A tenant with this slug exists already.');
 
@@ -143,5 +150,16 @@ class CreateTenant extends Command
         $this->line('A setup link was sent to the administrator. It is valid for '.config()->integer('auth.passwords.users.expire', 60).' minutes.');
 
         return self::SUCCESS;
+    }
+
+    private function mailDelivers(): bool
+    {
+        $mailer = config('mail.default');
+
+        return match ($mailer) {
+            'smtp' => is_string(config('mail.mailers.smtp.host')) && config('mail.mailers.smtp.host') !== '',
+            'log', 'array', null => false,
+            default => true,
+        };
     }
 }

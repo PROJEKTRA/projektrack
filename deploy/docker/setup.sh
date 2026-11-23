@@ -17,18 +17,25 @@ fail() { echo "setup: $*" >&2; exit 1; }
 domain=''
 email=''
 image="${PROJEKTRACK_IMAGE:-projektrack:local}"
-subnet='172.31.240.0/24'
-proxy_ip='172.31.240.10'
+# Frontend network: the proxy has a fixed address below the range Docker
+# hands out dynamically, so no other container can ever take it.
+prefix='172.31.240'
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --domain) domain="${2:-}"; shift 2 ;;
         --email) email="${2:-}"; shift 2 ;;
         --image) image="${2:-}"; shift 2 ;;
-        --subnet) subnet="${2:-}"; proxy_ip="${3:-}"; shift 3 ;;
+        --network) prefix="${2:-}"; shift 2 ;;
         *) fail "unknown option $1" ;;
     esac
 done
+
+[[ "${prefix}" =~ ^(10\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\.[0-9]{1,3}$ ]] \
+    || fail 'Give --network as the first three parts of a private /24 network, for example 172.31.240.'
+subnet="${prefix}.0/24"
+ip_range="${prefix}.128/25"
+proxy_ip="${prefix}.10"
 
 domain="${domain,,}"
 [[ "${domain}" =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$ ]] || fail 'Give the host name with --domain, for example app.example.com.'
@@ -46,7 +53,8 @@ app_key="base64:$(head -c 32 /dev/urandom | base64 | tr -d '\n')"
 db_password="$(secret 40)"
 db_migrator_password="$(secret 40)"
 redis_password="$(secret 40)"
-for value in "${db_password}" "${db_migrator_password}" "${redis_password}"; do
+backup_hmac_key="$(secret 40)"
+for value in "${db_password}" "${db_migrator_password}" "${redis_password}" "${backup_hmac_key}"; do
     [[ ${#value} -eq 40 ]] || fail 'Could not read the random source.'
 done
 [[ ${#app_key} -eq 51 ]] || fail 'Could not read the random source.'
@@ -73,9 +81,12 @@ DB_PASSWORD=${db_password}
 DB_MIGRATOR_PASSWORD=${db_migrator_password}
 REDIS_PASSWORD=${redis_password}
 BACKUP_AGE_RECIPIENT=${recipient}
+BACKUP_HMAC_KEY=${backup_hmac_key}
 
-# Internal network; the proxy address is the only trusted proxy of the app.
+# Frontend network; the proxy address is the only trusted proxy of the app and
+# lies outside the range of dynamic addresses.
 PROJEKTRACK_SUBNET=${subnet}
+PROJEKTRACK_IP_RANGE=${ip_range}
 PROXY_IP=${proxy_ip}
 
 # Who may ask GET /health (addresses or CIDR ranges, comma-separated).
@@ -88,10 +99,11 @@ BACKUP_KEEP_DAYS=14
 APP_LOCALE=bs
 DOCTOR_OPERATOR_TENANT=
 
+# Implicit TLS by default; STARTTLS on 587 could be stripped on the way.
 MAIL_MAILER=smtp
-MAIL_SCHEME=
+MAIL_SCHEME=smtps
 MAIL_HOST=
-MAIL_PORT=587
+MAIL_PORT=465
 MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM_ADDRESS=

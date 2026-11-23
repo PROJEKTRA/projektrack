@@ -10,8 +10,14 @@
 	{$CADDY_GLOBAL_OPTIONS}
 	email {$ACME_EMAIL}
 	admin off
+	# Error entries of the HTTP server quote the request URI, which can carry tokens.
+	log default {
+		exclude http.log.error
+	}
 	servers {
 		protocols h1 h2 h3
+		# A Host header that differs from the TLS server name is refused.
+		strict_sni_host on
 	}
 }
 
@@ -52,5 +58,15 @@ http:// {
 	@static path *.css *.js *.mjs *.map *.svg *.json *.webmanifest *.txt
 	encode @static zstd gzip
 
-	reverse_proxy app:8080
+	reverse_proxy app:8080 {
+		# Caddy overwrites X-Forwarded-For, -Proto and -Host; these it would pass on.
+		header_up -X-Forwarded-Port
+		header_up -X-Forwarded-Prefix
+	}
+
+	# Errors of Caddy itself (application down, timeout): empty, with the headers.
+	handle_errors {
+		import projektrack_headers
+		respond "" {err.status_code}
+	}
 }

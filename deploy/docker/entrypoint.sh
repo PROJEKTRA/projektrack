@@ -22,6 +22,7 @@ prepare() {
     mkdir -p storage/app/private storage/app/public storage/framework/cache/data \
         storage/framework/sessions storage/framework/views storage/logs
     cp -a bootstrap/cache.dist/. bootstrap/cache/
+    mkdir -p "${VIEW_COMPILED_PATH:-storage/framework/views}"
     php artisan config:cache --no-interaction >/dev/null
     php artisan event:cache --no-interaction >/dev/null
     php artisan route:cache --no-interaction >/dev/null
@@ -59,6 +60,20 @@ grant_runtime_user() {
                 printf "GRANT SELECT, INSERT, UPDATE, DELETE ON \`%s\` TO '%s'@'%%';\n" "${table}" "${DB_RUNTIME_USERNAME}"
             fi
         done | "${sql[@]}"
+
+    # Fail closed on any right beyond that, for example from a manual GRANT.
+    local excess
+    # Table_priv is a SET: Select 1, Insert 2, Update 4, Delete 8, anything higher is more.
+    excess="$("${sql[@]}" --execute="
+        SELECT CONCAT(Table_priv, ' on ', Table_name) FROM mysql.tables_priv
+         WHERE User = '${DB_RUNTIME_USERNAME}' AND Host = '%' AND Db = DATABASE()
+           AND ((Table_priv + 0) & ~15 <> 0 OR (Table_name = 'audit_log' AND (Table_priv + 0) & 12 <> 0))
+        UNION ALL
+        SELECT CONCAT('rights on the schema ', Db) FROM mysql.db WHERE User = '${DB_RUNTIME_USERNAME}' AND Host = '%'")"
+    if [[ -n "${excess}" ]]; then
+        log "The runtime account has rights it must not have: ${excess//$'\n'/, }"
+        return 1
+    fi
     unset MYSQL_PWD
 }
 

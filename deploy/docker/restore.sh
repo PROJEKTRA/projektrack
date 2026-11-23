@@ -23,10 +23,24 @@ stamp="${1:-}"
 source="/backups/${stamp}"
 
 [[ -d "${source}" ]] || fail "No backup ${stamp} in /backups."
-[[ -r "${IDENTITY}" ]] || fail "The private backup key is not readable at ${IDENTITY}."
+[[ -f "${IDENTITY}" && -r "${IDENTITY}" ]] || fail "The private backup key is not readable at ${IDENTITY}."
+key="${BACKUP_HMAC_KEY:-}"
+[[ ${#key} -ge 32 ]] || fail 'BACKUP_HMAC_KEY is missing or too short; take it from the .env of the instance the backup came from.'
 
-log 'checking checksums'
+log 'checking origin and checksums'
+[[ -f "${source}/SHA256SUMS" && -f "${source}/SHA256SUMS.hmac" ]] || fail 'The backup has no signed checksum list.'
+php -r '
+    $expected = hash_hmac("sha256", file_get_contents($argv[1]), getenv("BACKUP_HMAC_KEY"));
+    exit(hash_equals($expected, trim((string) file_get_contents($argv[2]))) ? 0 : 1);
+' "${source}/SHA256SUMS" "${source}/SHA256SUMS.hmac" || fail 'The checksum list was not made by this instance (HMAC mismatch).'
+[[ "$(awk '{print $2}' "${source}/SHA256SUMS" | sort | tr '\n' ' ')" == 'database.sql.gz.age files.tar.gz.age ' ]] \
+    || fail 'The checksum list must name exactly the database and the files.'
 (cd "${source}" && sha256sum -c SHA256SUMS >/dev/null) || fail 'Checksums do not match: the backup is damaged or was changed.'
+
+# A trial run first: a damaged file must stop the restore before anything is written.
+log 'trial decryption'
+age --decrypt --identity "${IDENTITY}" "${source}/database.sql.gz.age" | gunzip -t || fail 'The database file cannot be decrypted completely.'
+age --decrypt --identity "${IDENTITY}" "${source}/files.tar.gz.age" | gunzip -t || fail 'The files archive cannot be decrypted completely.'
 
 export MYSQL_PWD="${DB_PASSWORD}"
 sql=(mariadb --host="${DB_HOST}" --port="${DB_PORT:-3306}" --user="${DB_USERNAME}" --batch --skip-column-names)

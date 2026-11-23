@@ -27,3 +27,8 @@ Rules:
 | BL-014 | Shared links: token in the URL fragment (sent to the server by the page, never in request paths), so web server and proxy access logs cannot hold it; until then sample server configs exclude /s/ from access logs. Needs a product decision. | Security review (S-0987) | 23.11.2026 | 0.9.1 |
 | BL-015 | Retention of the shared link access log (default 12 months, per tenant privacy setting) and pruning of long-expired links. | Security review (S-0987) | 23.11.2026 | 0.9.1 |
 | BL-016 | Revoke a user's shared links when the user is deactivated or loses the right to share, or check the creator again on each use. | Security review (S-0987) | 23.11.2026 | 0.9.1 |
+| BL-017 | Docker backups: off-site copy built into the backup service (S3-compatible target in the same jurisdiction) and retention of 14 daily plus 8 weekly; today 14 days on the host, off-site copy by the operator. | Security review (S-0923) | 23.11.2026 | 0.9.1 |
+| BL-018 | Docker images: base images pinned by digest, `npm ci --ignore-scripts` where the build allows it, image scan in CI (with S-0924). | Security review (S-0923) | 23.11.2026 | 0.9.1 |
+| BL-019 | Docker stack: CPU, memory and process limits per service; database and cache without extra capabilities and with read-only root file systems. | Security review (S-0923) | 23.11.2026 | 0.9.1 |
+| BL-020 | Docker stack: IPv6 network so IPv6 visitors keep their own address; system check warns when the client address is the network gateway. | Security review (S-0923) | 23.11.2026 | 0.9.1 |
+| BL-021 | Backup and restore write audit entries; the CI crawl also runs against the Caddy stack. | Security review (S-0923) | 23.11.2026 | 0.9.1 |

@@ -46,6 +46,15 @@ Scenario: Backups
   And a documented restore drill restores it on a second host
 ```
 
+Implementation note (23.11.2026): `deploy/docker/` holds the stack.
+- **Services:** application image (Nginx and PHP-FPM as `www-data`, read-only root file system, no capabilities), Caddy with automatic TLS as the only published service, queue worker, scheduler, a one-shot `migrate` service, MariaDB 11.4 and Valkey 8.
+- **Secrets:** `setup.sh` generates every secret once into `.env` (mode 0600). The database has a migration account and a runtime account that changes rows but no schema and only adds to the audit log; the root password is random.
+- **Tenant setup:** `projektrack:tenant:create` creates the tenant, its address and the first administrator, who receives a setup link by mail.
+- **Backups:** every 6 hours, encrypted with age to a public key whose private key stays off the host, signed with an HMAC key, kept 14 days on the host (off-site copy by the operator until BL-017). `projektrack-restore` checks signature and checksums, decrypts once as a trial and restores into an empty instance only.
+- **Networks:** the proxy and the database are on separate networks; the database network has no internet access. No log holds request paths.
+- **CI:** builds and starts the stack, checks secrets, headers, health, the worker and the database rights, and runs the restore drill into a second stack. Guide: `docs/admin/docker.md`.
+- **Not in this story:** Meilisearch, Gotenberg, MinIO, ClamAV and Reverb (fallbacks active), PostgreSQL as stack database, Horizon (plain queue worker), signed images (S-0924) and the update command (S-0927).
+
 ---
 
 ### S-0924 Signed release pipeline (ZIP, images, checksums, SBOM)

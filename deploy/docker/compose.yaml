@@ -4,7 +4,9 @@
 # Production stack of the Docker Compose profile and the managed instances
 # (S-0923, infrastructure profiles 4 and 7). Secrets come from .env, written
 # once by setup.sh. Only the proxy publishes ports; every service gets just
-# the secrets it needs. Operator guide: docs/admin/docker.md.
+# the secrets it needs. Two networks: "frontend" (proxy, and the services that
+# send mail) and the internal "backend" without internet access (database,
+# cache). The proxy cannot reach the database. Guide: docs/admin/docker.md.
 
 name: ${COMPOSE_PROJECT_NAME:-projektrack}
 
@@ -25,7 +27,8 @@ x-app: &app
     - ALL
   restart: unless-stopped
   networks:
-    - projektrack
+    - frontend
+    - backend
   logging: &logging
     driver: json-file
     options:
@@ -41,6 +44,8 @@ x-app-env: &app-env
   I18N_LOCALES: ${I18N_LOCALES:-bs,en}
   LOG_CHANNEL: stderr
   LOG_LEVEL: ${LOG_LEVEL:-info}
+  # Compiled views in the tmpfs of each container, not on the shared volume.
+  VIEW_COMPILED_PATH: /app/bootstrap/cache/views
   DB_CONNECTION: mariadb
   DB_HOST: db
   DB_PORT: '3306'
@@ -57,9 +62,9 @@ x-app-env: &app-env
   HEALTH_ALLOWED_IPS: ${HEALTH_ALLOWED_IPS:-127.0.0.1}
   DOCTOR_OPERATOR_TENANT: ${DOCTOR_OPERATOR_TENANT:-}
   MAIL_MAILER: ${MAIL_MAILER:-smtp}
-  MAIL_SCHEME: ${MAIL_SCHEME:-}
+  MAIL_SCHEME: ${MAIL_SCHEME:-smtps}
   MAIL_HOST: ${MAIL_HOST:-}
-  MAIL_PORT: ${MAIL_PORT:-587}
+  MAIL_PORT: ${MAIL_PORT:-465}
   MAIL_USERNAME: ${MAIL_USERNAME:-}
   MAIL_PASSWORD: ${MAIL_PASSWORD:-}
   MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
@@ -91,7 +96,7 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     networks:
-      projektrack:
+      frontend:
         ipv4_address: ${PROXY_IP}
     depends_on:
       app:
@@ -142,6 +147,8 @@ services:
     <<: *app
     command: ['migrate']
     restart: 'no'
+    networks:
+      - backend
     environment:
       <<: *app-env
       DB_USERNAME: projektrack_migrator
@@ -156,6 +163,8 @@ services:
   backup:
     <<: *app
     command: ['backup', 'loop']
+    networks:
+      - backend
     volumes:
       - storage:/app/storage:ro
       - ${BACKUP_DIR:-./backups}:/backups
@@ -166,6 +175,7 @@ services:
       DB_USERNAME: projektrack
       DB_PASSWORD: ${DB_PASSWORD}
       BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?BACKUP_AGE_RECIPIENT is not set}
+      BACKUP_HMAC_KEY: ${BACKUP_HMAC_KEY:?BACKUP_HMAC_KEY is not set}
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-6}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
     healthcheck:
@@ -178,26 +188,42 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # Only on demand: docker compose --profile restore run --rm restore <backup>
+  # Only on demand: docker compose --profile restore run --rm restore restore <backup>
   restore:
     <<: *app
     profiles: ['restore']
     command: ['restore']
     restart: 'no'
+    networks:
+      - backend
     # Root inside the container only: it reads the key file of the operator
     # and keeps the owners of the restored files.
     user: '0:0'
-    cap_drop: []
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
     volumes:
       - storage:/app/storage
-      - ${BACKUP_DIR:-./backups}:/backups:ro
-      - ${BACKUP_IDENTITY_FILE:-./backup-identity.txt}:/run/secrets/backup-identity:ro
+      - type: bind
+        source: ${BACKUP_DIR:-./backups}
+        target: /backups
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BACKUP_IDENTITY_FILE:-./backup-identity.txt}
+        target: /run/secrets/backup-identity
+        read_only: true
+        bind:
+          create_host_path: false
     environment:
       DB_HOST: db
       DB_PORT: '3306'
       DB_DATABASE: projektrack
       DB_USERNAME: projektrack_migrator
       DB_PASSWORD: ${DB_MIGRATOR_PASSWORD}
+      BACKUP_HMAC_KEY: ${BACKUP_HMAC_KEY}
     depends_on:
       db:
         condition: service_healthy
@@ -223,7 +249,7 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - projektrack
+      - backend
     logging: *logging
 
   redis:
@@ -243,14 +269,19 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - projektrack
+      - backend
     logging: *logging
 
 networks:
-  projektrack:
+  frontend:
     ipam:
       config:
+        # Dynamic addresses come only from ip_range, so no container can take
+        # the proxy address, the only one the application trusts.
         - subnet: ${PROJEKTRACK_SUBNET:?PROJEKTRACK_SUBNET is not set}
+          ip_range: ${PROJEKTRACK_IP_RANGE:?PROJEKTRACK_IP_RANGE is not set}
+  backend:
+    internal: true
 
 volumes:
   storage:

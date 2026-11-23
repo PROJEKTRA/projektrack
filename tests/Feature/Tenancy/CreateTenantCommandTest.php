@@ -66,6 +66,23 @@ it('never prints the setup link', function () {
         ->assertSuccessful();
 });
 
+it('refuses to run in production without mail delivery', function (string $mailer, ?string $host) {
+    Notification::fake();
+    app()->detectEnvironment(fn (): string => 'production');
+    config(['mail.default' => $mailer, 'mail.mailers.smtp.host' => $host]);
+
+    $this->artisan('projektrack:tenant:create', tenantOptions())
+        ->expectsOutputToContain('Mail delivery is not configured')
+        ->assertFailed();
+
+    expect(Tenant::query()->where('slug', 'acme')->exists())->toBeFalse();
+    Notification::assertNothingSent();
+})->with([
+    'log mailer' => ['log', 'mail.example.test'],
+    'array mailer' => ['array', 'mail.example.test'],
+    'smtp without host' => ['smtp', ''],
+]);
+
 it('refuses a slug or host name in use', function (array $options, string $message) {
     Notification::fake();
     Tenant::factory()->withDomain('taken.example.test')->create(['slug' => 'taken']);
