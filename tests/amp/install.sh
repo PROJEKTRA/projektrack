@@ -8,6 +8,8 @@
 # runs the installation again. Usage: tests/amp/install.sh <folder for the ZIP>
 set -Eeuo pipefail
 
+printf 'resolve = "test.localhost:8080:127.0.0.1"\nresolve = "test.localhost:8081:127.0.0.1"\n' > "${HOME}/.curlrc"
+
 out="${1:?folder for the ZIP}"
 mkdir -p "${out}"
 out="$(cd "${out}" && pwd)"
@@ -58,7 +60,7 @@ say 'Install'
 check 'first run writes .env' php_ projektrack:install
 check '.env is readable by its owner only' test "$(docker exec amp-web stat -c %a /srv/site/.env)" = 600
 check 'placeholders are refused' bash -c '! docker exec -u www-data -w /srv/site amp-web php artisan projektrack:install >/dev/null 2>&1'
-set_env APP_URL http://localhost
+set_env APP_URL http://test.localhost
 set_env DB_CONNECTION mariadb
 set_env DB_HOST amp-db
 set_env DB_DATABASE site
@@ -73,13 +75,13 @@ set_env MAIL_FROM_ADDRESS noreply@example.test
 check 'second run installs' php_ projektrack:install --slug=test --name='Test d.o.o.' --admin-email=admin@example.test --admin-name='Test Admin'
 
 say 'Cron'
-link() { docker exec amp-web sh -c "grep -rhoE 'http://localhost/reset-password/[A-Za-z0-9]+' /srv/site/storage/logs | tail -n 1"; }
+link() { docker exec amp-web sh -c "grep -rhoE 'http://test.localhost/reset-password/[A-Za-z0-9]+' /srv/site/storage/logs | tail -n 1"; }
 check 'no link before cron ran' test -z "$(link || true)"
 docker exec -u www-data -w /srv/site amp-web php artisan schedule:run >/dev/null
 check 'cron sent the setup link' test -n "$(link || true)"
 
 say 'In the browser'
-url=http://localhost:8080
+url=http://test.localhost:8080
 headers="$(curl -s -o /tmp/login.html -D - "${url}/login")"
 check 'sign-in page' grep -q '^HTTP/1.1 200' <<<"${headers}"
 check 'in Bosnian' grep -q 'lang="bs"' /tmp/login.html
@@ -87,11 +89,11 @@ check 'noindex' grep -qi '^x-robots-tag: noindex' <<<"${headers}"
 check 'no X-Powered-By' bash -c '! grep -qi "^x-powered-by" <<<"$1"' _ "${headers}"
 asset="$(grep -oE '/build/assets/[A-Za-z0-9_-]+\.css' /tmp/login.html | head -n 1)"
 check 'stylesheet' test "$(code "${url}${asset}")" = 200
-check 'setup page of the link' test "$(code "${url}$(link | sed 's#http://localhost##')")" = 200
+check 'setup page of the link' test "$(code "${url}$(link | sed 's#http://test.localhost##')")" = 200
 check 'health' test "$(curl -s "${url}/health")" = OK
 check 'robots.txt' bash -c 'curl -s "$1/robots.txt" | grep -q "^Disallow: /$"' _ "${url}"
 check '/.env is not served' bash -c '[[ "$(curl -s -o /dev/null -w "%{http_code}" "$1/.env")" =~ ^40[34]$ ]]' _ "${url}"
-wrong=http://localhost:8081
+wrong=http://test.localhost:8081
 for path in / /.env /composer.json /artisan /storage/logs/ /config/app.php /public/; do
     check "web root on the wrong folder: ${path} is refused" bash -c '[[ "$(curl -s -o /dev/null -w "%{http_code}" "$1")" =~ ^40[34]$ ]] || [[ "$1" == */public/ ]]' _ "${wrong}${path}"
 done

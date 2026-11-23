@@ -63,6 +63,8 @@ it('refuses with a plain reason', function (array $config, string $reason) {
 })->with([
     'placeholder' => [['app.url' => 'https://CHANGE-ME'], 'APP_URL is not the address'],
     'no address' => [['app.url' => ''], 'APP_URL is not the address'],
+    'host without a dot' => [['app.url' => 'http://localhost'], 'host name with a dot'],
+    'address' => [['app.url' => 'http://127.0.0.1:8000'], 'host name with a dot'],
     'http' => [['app.url' => 'http://app.example.com'], 'must start with https'],
     'debug' => [['app.url' => 'https://app.example.com', 'app.debug' => true], 'APP_DEBUG must be false'],
     'no key' => [['app.key' => ''], 'APP_KEY is empty'],

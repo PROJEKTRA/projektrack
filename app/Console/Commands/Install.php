@@ -71,10 +71,10 @@ class Install extends Command
             return self::SUCCESS;
         }
 
-        $host = parse_url(config()->string('app.url'), PHP_URL_HOST);
+        $host = (string) parse_url(config()->string('app.url'), PHP_URL_HOST);
 
         return $this->call('projektrack:tenant:create', [
-            '--domain' => is_string($host) ? $host : '',
+            '--domain' => $host,
             ...array_combine(
                 ['--slug', '--name', '--admin-email', '--admin-name', '--locale', '--country', '--currency', '--timezone'],
                 array_map(fn (string $name) => $this->option($name), ['slug', 'name', 'admin-email', 'admin-name', 'locale', 'country', 'currency', 'timezone']),
@@ -135,9 +135,11 @@ class Install extends Command
         $parts = is_string($url) ? parse_url($url) : false;
         $host = is_array($parts) ? ($parts['host'] ?? '') : '';
         $scheme = is_array($parts) ? ($parts['scheme'] ?? '') : '';
-        $local = in_array($host, ['localhost', '127.0.0.1'], true) || str_ends_with($host, '.localhost') || str_ends_with($host, '.test');
+        $local = str_ends_with($host, '.localhost') || str_ends_with($host, '.test');
         if ($host === '' || str_contains($host, self::PLACEHOLDER)) {
             $problems[] = 'APP_URL is not the address of this installation.';
+        } elseif (preg_match('/^([a-z0-9-]+\.)+[a-z][a-z0-9-]*$/i', $host) !== 1) {
+            $problems[] = 'APP_URL needs a host name with a dot, for example app.example.com; on a test machine test.localhost.';
         } elseif ($scheme !== 'https' && ! $local) {
             $problems[] = 'APP_URL must start with https://.';
         }
