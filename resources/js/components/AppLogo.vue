@@ -6,8 +6,10 @@
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import markUrl from '../../brand/mark-white.png?inline';
 
-// The tenant's brand (S-0911): its logo if it has one, else the shipped mark.
+// The tenant's brand (S-0911): its logo if it has one, else the licensor's mark
+// (docs/ux/brand.md section 10), else the neutral mark.
 const page = usePage();
 const brand = computed(() => page.props.brand);
 </script>
@@ -19,6 +21,12 @@ const brand = computed(() => page.props.brand);
         alt=""
         class="size-8 rounded-md object-contain"
     />
+    <div
+        v-else-if="brand.licensorMark"
+        class="flex aspect-square size-8 items-center justify-center rounded-[22%] bg-beam"
+    >
+        <img :src="markUrl" alt="" class="w-5" />
+    </div>
     <div
         v-else
         class="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground"

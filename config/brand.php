@@ -15,6 +15,9 @@ return [
 
     'name' => env('BRAND_NAME', 'Projektrack'),
 
+    // Under this name, and without an own logo, the licensor's mark is shown.
+    'shipped_name' => 'Projektrack',
+
     // Name shown before sign-in when a tenant has none (S-0986): generic by
     // default, never the product name.
     'login_title' => env('BRAND_LOGIN_TITLE'),

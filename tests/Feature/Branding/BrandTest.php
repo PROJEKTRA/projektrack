@@ -88,6 +88,23 @@ it('shows the brand in the page title, shared props and theme color', function (
         ->where('brand.name', 'Acme Projects'));
 });
 
+it('shows the licensor mark only after sign-in and only without an own brand', function () {
+    config(['brand.name' => config('brand.shipped_name')]);
+    $mark = fn (string $url, bool $shown) => $this->get($url)->assertInertia(fn (AssertableInertia $page) => $page->where('brand.licensorMark', $shown));
+
+    $mark('/login', false);
+    $this->actingAs(User::factory()->create());
+    $mark('/dashboard', true);
+
+    config(['brand.name' => 'Partner']);
+    app()->forgetScopedInstances();
+    $mark('/dashboard', false);
+
+    config(['brand.name' => config('brand.shipped_name')]);
+    acme();
+    $mark('/dashboard', false);
+});
+
 it('lets an admin set name, color and sender, validated and audited', function () {
     $admin = brandAdmin();
 
