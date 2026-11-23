@@ -20,15 +20,15 @@ return [
     'short_name' => 'PROJEKTRA IT Consulting',
     'website' => 'https://projektra.net',
 
-    'street' => null,
+    'street' => 'Meljanac 1D',
     'postal_code' => null,
     'city' => 'Travnik',
     'country_code' => 'BA',
 
     // Jedinstveni identifikacioni broj (tax identification number).
-    'jib' => null,
+    'jib' => '4236848020000',
     // Matični broj subjekta upisa (company register number).
-    'mbs' => null,
+    'mbs' => '51-01-0039-26',
 
     'email' => null,
 
