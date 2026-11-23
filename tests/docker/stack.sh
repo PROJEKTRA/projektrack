@@ -71,10 +71,9 @@ for key in DB_PASSWORD DB_MIGRATOR_PASSWORD REDIS_PASSWORD; do
 done
 check 'APP_KEY is 32 random bytes' grep -Eq '^APP_KEY=base64:[A-Za-z0-9+/]{43}=$' .env
 check 'setup refuses to overwrite secrets' bash -c '! ./setup.sh --domain other.localhost --email a@example.test --image '"${IMAGE}"' 2>/dev/null'
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
+env_value() { grep "^$1=" .env | cut -d= -f2-; }
+DB_PASSWORD="$(env_value DB_PASSWORD)"
+DB_MIGRATOR_PASSWORD="$(env_value DB_MIGRATOR_PASSWORD)"
 
 say 'Start the stack'
 compose up -d
