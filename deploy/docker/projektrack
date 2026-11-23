@@ -83,7 +83,7 @@ restore() {
 
 # Runs on every failure once the instance has been touched.
 rollback() {
-    trap - ERR INT TERM
+    trap - ERR INT TERM HUP
     set +e
     log 'FAILED. Rolling back to the previous version.'
     dc stop proxy app worker scheduler backup >/dev/null 2>&1
@@ -136,7 +136,7 @@ update() {
     log "updating ${from} to ${to}"
     dc exec -T backup projektrack-backup run
 
-    trap rollback ERR INT TERM
+    trap rollback ERR INT TERM HUP
     dc exec -T app php artisan down --retry=60
     dc stop worker scheduler backup
     snapshot create
@@ -152,7 +152,7 @@ update() {
     artisan_up
     healthy
     dc up -d
-    trap - ERR INT TERM
+    trap - ERR INT TERM HUP
     snapshot drop
     log "Updated to ${to}."
 }
