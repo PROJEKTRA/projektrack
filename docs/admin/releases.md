@@ -24,7 +24,7 @@ Do not run anything from the ZIP before it is verified: a forged ZIP would bring
 
 ```
 KEY='<the base64 key>'
-(printf '\x30\x2a\x30\x05\x06\x03\x2b\x65\x70\x03\x21\x00'; printf '%s' "$KEY" | base64 -d) > release.der
+(printf '\060\052\060\005\006\003\053\145\160\003\041\000'; printf '%s' "$KEY" | base64 -d) > release.der
 openssl pkey -pubin -inform DER -in release.der -out release.pub
 openssl pkeyutl -verify -pubin -inkey release.pub -rawin -in SHA256SUMS -sigfile SHA256SUMS.sig
 sha256sum -c --ignore-missing SHA256SUMS
@@ -46,7 +46,7 @@ On a running instance, with `SHA256SUMS` and `SHA256SUMS.sig` next to the ZIP:
 php artisan projektrack:release:verify projektrack-X.Y.Z.zip --release=X.Y.Z
 ```
 
-It checks the signature with the release keys shipped with the running release, the checksum of the ZIP, and that the ZIP is exactly release X.Y.Z (name and `VERSION` inside), so an older genuine release cannot be passed off as an update. It refuses on any difference, and when no key is shipped. No setting or environment variable on an instance can change the trusted keys. The updater (S-0927, S-0928) runs the same check and must also refuse a version that is not newer than the running one.
+It checks the signature with the release keys shipped with the running release, the checksum of the ZIP, and that the ZIP is exactly release X.Y.Z (name and `VERSION` inside), so an older genuine release cannot be passed off as an update. It refuses on any difference, and when no key is shipped. The trusted keys come only from the shipped file; there is no setting or environment variable for them. The updater (S-0927, S-0928) runs the same check and must also refuse a version that is not newer than the running one.
 
 ## Verify an image before running it
 

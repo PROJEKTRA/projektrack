@@ -269,12 +269,17 @@ jobs:
           php artisan projektrack:release:verify "dist/projektrack-$VERSION.zip" --release="$VERSION"
           # An update is checked with the keys of the running release, so the
           # previous release must already trust the key that signed this one.
-          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$GITHUB_SHA^" 2>/dev/null || true)"
-          if [[ -n "$previous" ]]; then
-            keys="$(git show "$previous:resources/release/public-keys.txt" 2>/dev/null | grep -v '^#' | grep -v '^$' | paste -sd, - || true)"
-            if [[ -z "$keys" ]]; then echo "::error::$previous ships no release key."; exit 1; fi
-            APP_ENV=testing RELEASE_PUBLIC_KEYS="$keys" php artisan projektrack:release:verify "dist/projektrack-$VERSION.zip" --release="$VERSION"
-          fi
+          # Tags whose key file is empty were never published (they could not
+          # pass this job), so the newest tag that ships a key counts.
+          for tag in $(git tag --list 'v[0-9]*' --sort=-v:refname --merged "$GITHUB_SHA^" 2>/dev/null); do
+            keys="$(git show "$tag:resources/release/public-keys.txt" 2>/dev/null | grep -v -e '^#' -e '^[[:space:]]*$' || true)"
+            [[ -n "$keys" ]] || continue
+            echo "Previous release with keys: $tag"
+            cp -r . "$RUNNER_TEMP/previous-keys"
+            printf '%s\n' "$keys" > "$RUNNER_TEMP/previous-keys/resources/release/public-keys.txt"
+            (cd "$RUNNER_TEMP/previous-keys" && php artisan projektrack:release:verify "$GITHUB_WORKSPACE/dist/projektrack-$VERSION.zip" --release="$VERSION")
+            break
+          done
 
   publish:
     name: Tag the image and publish
@@ -299,7 +304,13 @@ jobs:
           password: ${{ github.token }}
 
       - name: Tag the signed image
-        run: docker buildx imagetools create --tag "$IMAGE:$VERSION" "$(cat "dist/projektrack-$VERSION.image.txt")"
+        run: |
+          ref="$(cat "dist/projektrack-$VERSION.image.txt")"
+          docker buildx imagetools create --tag "$IMAGE:$VERSION" "$ref"
+          tagged="$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{.Manifest.Digest}}')"
+          if [[ "$IMAGE@$tagged" != "$ref" ]]; then
+            echo "::error::The tag points to $tagged, not to the signed $ref."; exit 1
+          fi
 
       - name: Publish the release
         env:

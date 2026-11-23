@@ -39,8 +39,16 @@ openssl genpkey -algorithm ed25519 -out "${work}/key.pem" 2>/dev/null
 public="$(openssl pkey -in "${work}/key.pem" -pubout -outform DER | tail -c 32 | base64)"
 deploy/release/sign.sh "${dist}" "${work}/key.pem" >/dev/null
 
-# The key override counts only with APP_ENV=testing.
-accepts() { APP_ENV=testing RELEASE_PUBLIC_KEYS="$1" php artisan projektrack:release:verify "$2" "${@:3}" >/dev/null 2>&1; }
+# Trusted keys can only come from the shipped file: the checks run the
+# unpacked release itself, with the throwaway key written into its file.
+app="${work}/app"
+mkdir "${app}"
+unzip -q "${zip}" -d "${app}"
+app="${app}/projektrack-${version}"
+cp "${app}/.env.example" "${app}/.env"
+php "${app}/artisan" key:generate --no-interaction >/dev/null
+keys_file="${app}/resources/release/public-keys.txt"
+accepts() { printf '%s\n' "$1" > "${keys_file}"; php "${app}/artisan" projektrack:release:verify "$2" "${@:3}" >/dev/null 2>&1; }
 refuses() { ! accepts "$@"; }
 
 check 'a genuine release is accepted' accepts "${public}" "${zip}" --release="${version}"
@@ -48,8 +56,8 @@ check 'another expected release is refused' refuses "${public}" "${zip}" --relea
 
 other="$(openssl genpkey -algorithm ed25519 2>/dev/null | openssl pkey -pubout -outform DER | tail -c 32 | base64)"
 check 'another key is refused' refuses "${other}" "${zip}"
-check 'no configured key refuses' refuses '' "${zip}"
-check 'outside tests the key override is ignored' bash -c '! APP_ENV=production RELEASE_PUBLIC_KEYS="$1" php artisan projektrack:release:verify "$2" >/dev/null 2>&1' _ "${public}" "${zip}"
+check 'no shipped key refuses' refuses '# no key' "${zip}"
+check 'an environment variable cannot add a key' bash -c '! RELEASE_PUBLIC_KEYS="$1" APP_ENV=testing php artisan projektrack:release:verify "$2" >/dev/null 2>&1' _ "${public}" "${zip}"
 
 cp "${zip}" "${work}/original.zip"
 printf 'tampered' >> "${zip}"
