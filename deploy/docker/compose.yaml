@@ -1,0 +1,260 @@
+# Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Production stack of the Docker Compose profile and the managed instances
+# (S-0923, infrastructure profiles 4 and 7). Secrets come from .env, written
+# once by setup.sh. Only the proxy publishes ports; every service gets just
+# the secrets it needs. Operator guide: docs/admin/docker.md.
+
+name: ${COMPOSE_PROJECT_NAME:-projektrack}
+
+x-app: &app
+  image: ${PROJEKTRACK_IMAGE:?PROJEKTRACK_IMAGE is not set, run setup.sh}
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+  read_only: true
+  tmpfs:
+    - /tmp:uid=82,gid=82,mode=0700
+    - /app/bootstrap/cache:uid=82,gid=82,mode=0700
+  volumes:
+    - storage:/app/storage
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  restart: unless-stopped
+  networks:
+    - projektrack
+  logging: &logging
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '10'
+
+x-app-env: &app-env
+  APP_ENV: production
+  APP_DEBUG: 'false'
+  APP_KEY: ${APP_KEY:?APP_KEY is not set}
+  APP_URL: https://${PROJEKTRACK_DOMAIN:?PROJEKTRACK_DOMAIN is not set}
+  APP_LOCALE: ${APP_LOCALE:-bs}
+  I18N_LOCALES: ${I18N_LOCALES:-bs,en}
+  LOG_CHANNEL: stderr
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DB_CONNECTION: mariadb
+  DB_HOST: db
+  DB_PORT: '3306'
+  DB_DATABASE: projektrack
+  DB_USERNAME: projektrack
+  DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: redis
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is not set}
+  CACHE_STORE: redis
+  QUEUE_CONNECTION: redis
+  SESSION_DRIVER: database
+  TRUSTED_PROXIES: ${PROXY_IP:?PROXY_IP is not set}
+  HEALTH_ALLOWED_IPS: ${HEALTH_ALLOWED_IPS:-127.0.0.1}
+  DOCTOR_OPERATOR_TENANT: ${DOCTOR_OPERATOR_TENANT:-}
+  MAIL_MAILER: ${MAIL_MAILER:-smtp}
+  MAIL_SCHEME: ${MAIL_SCHEME:-}
+  MAIL_HOST: ${MAIL_HOST:-}
+  MAIL_PORT: ${MAIL_PORT:-587}
+  MAIL_USERNAME: ${MAIL_USERNAME:-}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+  MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+  MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
+
+services:
+  proxy:
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      PROJEKTRACK_DOMAIN: ${PROJEKTRACK_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is not set}
+      CADDY_GLOBAL_OPTIONS: ${CADDY_GLOBAL_OPTIONS:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    networks:
+      projektrack:
+        ipv4_address: ${PROXY_IP}
+    depends_on:
+      app:
+        condition: service_healthy
+    logging: *logging
+
+  app:
+    <<: *app
+    command: ['web']
+    environment:
+      <<: *app-env
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ['worker']
+    environment:
+      <<: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app
+    command: ['scheduler']
+    environment:
+      <<: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # Runs on every start: migrations, permission catalog, table grants. Then exits.
+  migrate:
+    <<: *app
+    command: ['migrate']
+    restart: 'no'
+    environment:
+      <<: *app-env
+      DB_USERNAME: projektrack_migrator
+      DB_PASSWORD: ${DB_MIGRATOR_PASSWORD:?DB_MIGRATOR_PASSWORD is not set}
+      DB_RUNTIME_USERNAME: projektrack
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  backup:
+    <<: *app
+    command: ['backup', 'loop']
+    volumes:
+      - storage:/app/storage:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    environment:
+      DB_HOST: db
+      DB_PORT: '3306'
+      DB_DATABASE: projektrack
+      DB_USERNAME: projektrack
+      DB_PASSWORD: ${DB_PASSWORD}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?BACKUP_AGE_RECIPIENT is not set}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-6}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    healthcheck:
+      test: ['CMD', 'projektrack-backup', 'check']
+      interval: 5m
+      timeout: 10s
+      retries: 1
+      start_period: 15m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Only on demand: docker compose --profile restore run --rm restore <backup>
+  restore:
+    <<: *app
+    profiles: ['restore']
+    command: ['restore']
+    restart: 'no'
+    # Root inside the container only: it reads the key file of the operator
+    # and keeps the owners of the restored files.
+    user: '0:0'
+    cap_drop: []
+    volumes:
+      - storage:/app/storage
+      - ${BACKUP_DIR:-./backups}:/backups:ro
+      - ${BACKUP_IDENTITY_FILE:-./backup-identity.txt}:/run/secrets/backup-identity:ro
+    environment:
+      DB_HOST: db
+      DB_PORT: '3306'
+      DB_DATABASE: projektrack
+      DB_USERNAME: projektrack_migrator
+      DB_PASSWORD: ${DB_MIGRATOR_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: ${MARIADB_IMAGE:-mariadb:11.4}
+    restart: unless-stopped
+    environment:
+      MARIADB_RANDOM_ROOT_PASSWORD: '1'
+      MARIADB_MYSQL_LOCALHOST_USER: '1'
+      MARIADB_DATABASE: projektrack
+      PROJEKTRACK_DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD}
+      PROJEKTRACK_DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - projektrack
+    logging: *logging
+
+  redis:
+    image: ${VALKEY_IMAGE:-valkey/valkey:8-alpine}
+    restart: unless-stopped
+    command: ['valkey-server', '--requirepass', '${REDIS_PASSWORD}', '--appendonly', 'yes', '--save', '']
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+      VALKEYCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'valkey-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - projektrack
+    logging: *logging
+
+networks:
+  projektrack:
+    ipam:
+      config:
+        - subnet: ${PROJEKTRACK_SUBNET:?PROJEKTRACK_SUBNET is not set}
+
+volumes:
+  storage:
+  db:
+  redis:
+  caddy_data:
+  caddy_config:
