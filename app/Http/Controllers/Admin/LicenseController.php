@@ -74,8 +74,10 @@ class LicenseController extends Controller
         $request->validate(['license' => ['required', 'string', 'max:16384']]);
 
         try {
-            // Together or not at all: no license without its audit entry.
+            // Together or not at all: no license without its audit entry. The write
+            // comes first, so two installs wait for each other before they read.
             $license = DB::transaction(function () use ($request, $licenses, $audit, $user): License {
+                DB::table('instance_state')->where('id', 1)->update(['updated_at' => now()]);
                 $license = $licenses->install($request->string('license')->toString());
                 $audit->record('license.installed', ['instance_licenses', $license->id], ['serial' => $license->serial, 'edition' => $license->edition->value], $user);
 

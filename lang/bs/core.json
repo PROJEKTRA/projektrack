@@ -299,7 +299,7 @@
     "license.refused.not_started": "Licenca još ne važi. Instalirajte je kada počne važiti ili provjerite sat servera.",
     "license.refused.older": "Ova ili novija verzija ove licence je već instalirana.",
     "license.refused.other_instance": "Licenca pripada drugoj instalaciji. Pošaljite ID instance prikazan ovdje.",
-    "license.refused.untrusted_key": "Ova verzija ne poznaje ključ licence. Ažurirajte instalaciju ili zatražite novu licencu.",
+    "license.refused.untrusted_key": "Ova verzija programa ne poznaje ključ licence. Ažurirajte instalaciju ili zatražite novu licencu.",
     "license.status.active": "Aktivna",
     "license.status.community": "Licenca nije potrebna",
     "license.status.grace": "Istekla, komercijalne funkcije samo za čitanje od {date}",

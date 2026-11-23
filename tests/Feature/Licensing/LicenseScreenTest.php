@@ -184,6 +184,7 @@ it('shows a damaged instance id and refuses to install on it', function () {
 
     $this->actingAs($this->admin)->get('/admin/license')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('instanceId', null));
     $this->post('/admin/license', ['license' => $license])->assertSessionHasErrors('license');
+    expect(DB::table('instance_licenses')->count())->toBe(0);
 });
 
 it('names the earlier end of a pending payment', function () {
