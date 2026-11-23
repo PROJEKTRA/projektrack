@@ -78,11 +78,12 @@ final class CompanyInput
                     $fail(__('crm:errors.leitweg_id'));
                 }
             }],
-            'tax' => [$must, 'array:tax_status,country_code,vat_id,tax_number'],
+            'tax' => [$must, 'array:tax_status,country_code,vat_id,tax_number,valid_from'],
             'tax.tax_status' => ['required_with:tax', Rule::in(CompanyTaxProfile::STATUSES)],
             'tax.country_code' => ['required_with:tax', ...$country],
             'tax.vat_id' => $text(20),
             'tax.tax_number' => $text(40),
+            'tax.valid_from' => ['nullable', 'date_format:Y-m-d'],
             'address' => [$must, 'array:line1,line2,postal_code,city,region,country_code'],
             ...$address('address', 'address'),
             'contacts' => ['sometimes', 'array', 'max:200'],

@@ -83,7 +83,8 @@ Route::middleware(['auth', 'verified', 'permission:core.strings.customize'])
     });
 
 // Settings declared by the core and enabled modules (S-0912).
-Route::middleware(['auth', 'verified', 'permission:core.settings.manage'])
+// They hold the bank account on invoices, so they ask for a fresh password.
+Route::middleware(['auth', 'verified', 'permission:core.settings.manage', RequirePassword::class])
     ->prefix('admin/settings')
     ->name('admin.settings.')
     ->controller(SettingsController::class)

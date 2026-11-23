@@ -107,7 +107,11 @@ it('keeps the history of the tax profile', function () {
     $this->actingAs($user)->post('/crm/companies', companyInput());
     $id = Company::query()->sole()->id;
 
-    $private = ['tax' => ['tax_status' => 'private', 'country_code' => 'DE']];
+    // Without a date: a correction of the profile itself.
+    app(Companies::class)->update(Company::query()->findOrFail($id), ['company' => [], 'tax' => ['tax_status' => 'eu_business', 'country_code' => 'DE', 'vat_id' => 'DE111111111']], $user);
+    expect(CompanyTaxProfile::query()->sole()->vat_id)->toBe('DE111111111');
+
+    $private = ['tax' => ['tax_status' => 'private', 'country_code' => 'DE', 'valid_from' => '2026-12-01']];
     $this->travelTo('2026-12-01 00:30:00');
     $save = fn () => app(Companies::class)->update(Company::query()->findOrFail($id), ['company' => [], ...$private], $user);
     $save();

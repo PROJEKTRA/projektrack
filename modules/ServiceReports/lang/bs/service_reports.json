@@ -23,6 +23,7 @@
     "document.unvalued": "{count, plural, one {# unos nema cijenu ni iznos.} few {# unosa nemaju cijenu ni iznos.} other {# unosa nema cijenu ni iznos.}}",
     "empty": "Još nema izvještaja.",
     "errors.empty": "U ovom periodu nema odobrenog vremena.",
+    "errors.too_long": "Izvještaj je predug. Izaberite kraći period.",
     "field.download": "Preuzimanje",
     "field.from": "Od",
     "field.number": "Broj",

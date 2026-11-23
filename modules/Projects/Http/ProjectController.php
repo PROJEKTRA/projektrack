@@ -49,7 +49,7 @@ class ProjectController extends Controller
         return Inertia::render('Projects::Project', [
             'project' => $view->details($model, $user),
             'form' => $this->form($user, $companies, $tenant, $model),
-            'users' => $mayMembers ? User::query()->orderBy('name')->get()->map(fn (User $u): array => ['value' => $u->id, 'text' => $u->name])->all() : [],
+            'users' => $mayMembers ? User::query()->where('user_type', '!=', 'portal')->orderBy('name')->get()->map(fn (User $u): array => ['value' => $u->id, 'text' => $u->name])->all() : [],
             'roles' => $mayMembers ? ProjectRole::query()->orderBy('id')->get()->map(fn (ProjectRole $r): array => ['value' => $r->id, 'text' => $view->roleName($r)])->all() : [],
             'contractTypes' => Contract::TYPES,
             'categories' => WorkPackage::CATEGORIES,
@@ -81,7 +81,8 @@ class ProjectController extends Controller
     {
         $on = $project === null ? [] : [$project];
         $edit = $project === null ? $user->can('projects.create') : $user->can('projects.manage', $on);
-        $choices = $edit ? $companies->choices() : [];
+        // Other customers are offered only to those who may change the customer.
+        $choices = $edit && ($project === null || $user->can('projects.contracts.manage', $on)) ? $companies->choices() : [];
         if ($edit && $project !== null && ! in_array($project->company_id, array_column($choices, 'id'), true)) {
             $choices[] = ['id' => $project->company_id, 'number' => '', 'name' => $companies->names([$project->company_id])[$project->company_id] ?? ''];
         }

@@ -7,6 +7,7 @@
 
 namespace Modules\ServiceReports\Http;
 
+use App\Audit\AuditLog;
 use App\Authorization\Permissions;
 use App\Documents\Pdf;
 use App\Domain\Money\Amount;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Controller;
 use App\I18n\Strings;
 use App\Models\User;
 use App\Tenancy\TenantContext;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -34,7 +36,7 @@ class ReportController extends Controller
         abort_unless(in_array('service_reports.view', $this->permissions->anywhere($user), true), 403);
 
         $visible = fn (string $permission): \Closure => fn (array $p): bool => $this->permissions->allows($user, $permission, is_string($p['id'] ?? null) ? $p['id'] : null);
-        $reports = ServiceReport::query()->orderByDesc('created_at')->orderByDesc('number')->limit(500)->get()
+        $reports = ServiceReport::query()->select(['id', 'tenant_id', 'number', 'project_id', 'period_from', 'period_to', 'with_amounts', 'created_at'])->orderByDesc('created_at')->orderByDesc('number')->limit(500)->get()
             ->filter(fn (ServiceReport $r): bool => $this->allowed($user, $r))->values();
         $names = $projects->projects(array_values($reports->map(fn (ServiceReport $r): string => $r->project_id)->unique()->all()));
         $month = now($tenant->current()->timezone)->startOfMonth();
@@ -53,6 +55,7 @@ class ReportController extends Controller
     {
         $user = $this->currentUser($request);
         $request->validate(['project_id' => ['required', 'ulid'], 'period_from' => ['required', 'date_format:Y-m-d'], 'period_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:period_from'], 'with_amounts' => ['boolean']]);
+        $request->validate(['period_to' => ['before_or_equal:'.CarbonImmutable::parse($request->string('period_from')->toString(), 'UTC')->addDays(366)->toDateString()]]);
         $project = $request->string('project_id')->toString();
         $amounts = $request->boolean('with_amounts');
         abort_unless($this->permissions->allows($user, 'service_reports.generate', $project), 403);
@@ -66,18 +69,22 @@ class ReportController extends Controller
         return to_route('service_reports.index');
     }
 
-    public function pdf(Request $request, string $report, Pdf $pdf): HttpResponse
+    public function pdf(Request $request, string $report, Pdf $pdf, AuditLog $audit): HttpResponse
     {
         $model = $this->find($request, $report);
+        $content = $model->content();
+        $audit->record('service_reports.downloaded', $model, ['number' => $model->number], $this->currentUser($request));
+        $format = $content['format'] ?? null;
 
-        return response($pdf->render('service_reports::report', ['r' => $model->content(), 'amounts' => $model->with_amounts], $model->locale, $model->number), 200, [
+        return response($pdf->render('service_reports::report', ['r' => $content, 'amounts' => $model->with_amounts], $model->locale, $model->number, is_array($content['labels'] ?? null) ? $content['labels'] : [], is_string($format) ? $format : null), 200, [
             'Content-Type' => 'application/pdf', 'Content-Disposition' => "attachment; filename=\"{$model->number}.pdf\"", 'Cache-Control' => 'private, no-store',
         ]);
     }
 
-    public function csv(Request $request, string $report, Strings $strings): HttpResponse
+    public function csv(Request $request, string $report, Strings $strings, AuditLog $audit): HttpResponse
     {
         $model = $this->find($request, $report);
+        $audit->record('service_reports.exported', $model, ['number' => $model->number], $this->currentUser($request));
         $content = $model->content();
         $head = ['date', 'user', 'package', 'minutes', 'description', ...($model->with_amounts ? ['rate', 'currency', 'amount'] : [])];
         $out = [array_map(fn (string $c): string => $strings->get("service_reports:column.{$c}", [], $model->locale), $head)];
@@ -105,7 +112,8 @@ class ReportController extends Controller
     private function find(Request $request, string $id): ServiceReport
     {
         $report = ServiceReport::query()->findOrFail($id);
-        abort_unless($this->allowed($this->currentUser($request), $report), 403);
+        // Hidden reports look like missing ones.
+        abort_unless($this->allowed($this->currentUser($request), $report), 404);
 
         return $report;
     }

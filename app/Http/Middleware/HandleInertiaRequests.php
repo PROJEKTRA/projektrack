@@ -19,6 +19,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
+use Symfony\Component\HttpFoundation\Response;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -100,6 +101,12 @@ class HandleInertiaRequests extends Middleware
             'version' => $version,
             'url' => route('strings.bundle', ['chain' => implode('.', $chain), 'version' => $version], false),
         ];
+    }
+
+    /** Never the address of a shared link: it holds the token (S-0987). */
+    public function shouldStoreCurrentUrl(Request $request, Response $response): bool
+    {
+        return ! $request->routeIs('shared.*') && parent::shouldStoreCurrentUrl($request, $response);
     }
 
     private function auditWarning(mixed $user): ?string

@@ -64,7 +64,7 @@ class RateController extends Controller
             'valid_from' => ['required', 'date_format:Y-m-d'],
         ]);
         $scope = $request->string('scope')->toString();
-        $id = $scope === 'tenant' ? null : $request->string('scope_id')->toString();
+        $id = $scope === 'tenant' ? null : $request->string('scope_id')->lower()->toString();
         $known = match ($scope) {
             'tenant' => true,
             'user' => User::query()->whereKey($id)->exists(),

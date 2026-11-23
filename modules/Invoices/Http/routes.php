@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 use Modules\Invoices\Http\InvoiceController;
 
@@ -18,9 +19,10 @@ Route::middleware(['web', 'auth', 'verified', 'module:invoices', 'permission:inv
         Route::put('/', 'update')->middleware('permission:invoices.create')->name('update');
         Route::delete('/', 'discard')->middleware('permission:invoices.create')->name('discard');
         Route::get('pdf', 'pdf')->middleware('throttle:60,1')->name('pdf');
-        Route::post('finalize', 'finalize')->middleware('permission:invoices.finalize')->name('finalize');
-        Route::post('cancel', 'cancel')->middleware('permission:invoices.cancel')->name('cancel');
+        Route::get('confirm', 'confirm')->middleware(RequirePassword::class)->name('confirm');
+        Route::post('finalize', 'finalize')->middleware(['permission:invoices.finalize', RequirePassword::class])->name('finalize');
+        Route::post('cancel', 'cancel')->middleware(['permission:invoices.cancel', RequirePassword::class])->name('cancel');
         Route::post('payments', 'pay')->middleware('permission:invoices.payments.record')->name('pay');
-        Route::put('fiscal-reference', 'fiscal')->middleware('permission:invoices.finalize')->name('fiscal');
+        Route::put('fiscal-reference', 'fiscal')->middleware(['permission:invoices.finalize', RequirePassword::class])->name('fiscal');
     });
 });

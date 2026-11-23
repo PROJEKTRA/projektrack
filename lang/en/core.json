@@ -637,6 +637,7 @@
     "validation.uuid": "The :attribute field must be a valid UUID.",
     "dashboard.empty": "Nothing to show yet. Figures appear once you work with customers, projects and time.",
     "nav.users": "Users",
+    "profile.in_use": "Your account has booked time or documents and cannot be deleted. Please ask an administrator.",
     "users.title": "Users",
     "users.description": "Invite people and give them roles.",
     "users.invite": "Invite",

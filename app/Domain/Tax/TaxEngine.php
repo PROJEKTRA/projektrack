@@ -24,12 +24,29 @@ final class TaxEngine
         'BA' => ['standard' => [['2006-01-01', 170000]]],
     ];
 
+    /** Countries whose addresses are complete only with a postal code. */
+    public static function needsPostalCode(string $country): bool
+    {
+        return $country === 'BA' || (in_array($country, self::EU, true) && $country !== 'IE');
+    }
+
     public function decide(TaxContext $c): TaxDecision
     {
-        $business = in_array($c->customerStatus, ['domestic', 'eu_business', 'non_eu_business', 'exempt', 'public_sector'], true);
-        if (! $business && $c->customerStatus !== 'private') {
+        $abroad = $c->customerCountry !== $c->sellerCountry;
+        $eu = in_array($c->customerCountry, self::EU, true);
+        // The status has to fit the country: a wrong one decides nothing.
+        $fits = match ($c->customerStatus) {
+            'private' => true,
+            'domestic' => ! $abroad,
+            'eu_business' => $abroad && $eu,
+            'non_eu_business' => $abroad && ! $eu,
+            'exempt', 'public_sector' => ! $abroad || ($eu && $c->customerHasVatId),
+            default => false,
+        };
+        if (! $fits) {
             throw new TaxReviewRequired('customer_status');
         }
+        $business = $c->customerStatus !== 'private';
 
         return match ($c->sellerCountry) {
             'DE' => $this->germany($c, $business),

@@ -18,7 +18,8 @@
     "invoices.create",
     "invoices.finalize",
     "invoices.cancel",
-    "invoices.payments.record"
+    "invoices.payments.record",
+    "tax.legal_notice.override"
   ],
   "role_defaults": {
     "admin": [
@@ -26,14 +27,16 @@
       "invoices.create",
       "invoices.finalize",
       "invoices.cancel",
-      "invoices.payments.record"
+      "invoices.payments.record",
+    "tax.legal_notice.override"
     ],
     "controller": [
       "invoices.view",
       "invoices.create",
       "invoices.finalize",
       "invoices.cancel",
-      "invoices.payments.record"
+      "invoices.payments.record",
+    "tax.legal_notice.override"
     ]
   },
   "settings_schema": "settings.schema.json"

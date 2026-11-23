@@ -98,13 +98,13 @@ final class Directory implements ProjectDirectory
 
     /**
      * @param  Collection<int, Project>  $projects
-     * @return array<string, array{id: string, name: string, number: string, company_id: string, currency: string}>
+     * @return array<string, array{id: string, name: string, number: string, company_id: string, currency: string, billing_model: string}>
      */
     private function list(Collection $projects): array
     {
         $result = [];
         foreach ($projects as $p) {
-            $result[$p->id] = ['id' => $p->id, 'name' => $p->name, 'number' => $p->number, 'company_id' => $p->company_id, 'currency' => $p->currency];
+            $result[$p->id] = ['id' => $p->id, 'name' => $p->name, 'number' => $p->number, 'company_id' => $p->company_id, 'currency' => $p->currency, 'billing_model' => $p->billing_model];
         }
 
         return $result;

@@ -48,7 +48,7 @@ final class Rates
                 foreach (array_filter($scopes) as $scope => $id) {
                     $q->orWhere(fn (Builder $one) => $one->where('scope', $scope)->where('scope_id', $id));
                 }
-            })->get()->keyBy('scope');
+            })->orderBy('valid_from')->get()->keyBy('scope');
 
         foreach (RateRule::SCOPES as $scope) {
             if ($rules->has($scope)) {
@@ -71,6 +71,10 @@ final class Rates
             return;
         }
         // A correction is valued like the entry it corrects, whatever the rates say today.
+        // Never frozen in a currency the project cannot be billed in.
+        if ($rule !== null && $rule->currency !== ($this->projects->projects([$event->projectId])[$event->projectId]['currency'] ?? null)) {
+            return;
+        }
         $rate = $original->rate ?? $rule->rate ?? '0';
         $currency = $original->currency ?? $rule->currency ?? '';
 
@@ -84,6 +88,29 @@ final class Rates
             'amount_minor' => Amount::time($event->billableMinutes, $rate, $currency),
             'valued_at' => now(),
         ]);
+    }
+
+    /**
+     * Value approved time that got no value at its approval, by its work date.
+     * Values that exist are never touched.
+     *
+     * @param  list<TimeApproved>  $entries  originals before their corrections
+     */
+    public function valueMissing(array $entries, User $actor): int
+    {
+        return DB::transaction(function () use ($entries, $actor): int {
+            $before = Valuation::query()->whereIn('time_entry_id', array_map(fn (TimeApproved $e): string => $e->entryId, $entries))->pluck('time_entry_id')->all();
+            $missing = array_filter($entries, fn (TimeApproved $e): bool => ! in_array($e->entryId, $before, true));
+            foreach ($missing as $entry) {
+                $this->value($entry);
+            }
+            $count = Valuation::query()->whereIn('time_entry_id', array_map(fn (TimeApproved $e): string => $e->entryId, $missing))->count();
+            if ($count > 0) {
+                $this->audit->record('rates.valued_later', null, ['entries' => $count], $actor);
+            }
+
+            return $count;
+        }, 3);
     }
 
     /**
@@ -114,6 +141,11 @@ final class Rates
             throw ValidationException::withMessages(['valid_to' => __('rates:errors.end_before_start')]);
         }
         DB::transaction(function () use ($rule, $lastDay, $actor): void {
+            Tenant::query()->whereKey($this->tenant->id())->lockForUpdate()->first();
+            $next = RateRule::query()->where('scope', $rule->scope)->where('scope_id', $rule->scope_id)->whereDate('valid_from', '>', $rule->valid_from->toDateString())->whereDate('valid_from', '<=', $lastDay)->exists();
+            if ($next) {
+                throw ValidationException::withMessages(['valid_to' => __('rates:errors.later_rule')]);
+            }
             $rule->update(['valid_to' => $lastDay]);
             $this->audit->record('rates.rule.ended', $rule, ['valid_to' => $lastDay], $actor);
         });

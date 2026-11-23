@@ -23,6 +23,9 @@ final class ProjectInput
     {
         $mayMoney = $user->can('projects.budget.view', $project === null ? [] : [$project]);
         abort_if($request->has('budget_minor') && ! $mayMoney, 403);
+        // Who pays, and in which currency, is not for project leads to change.
+        abort_if($project !== null && ! $user->can('projects.contracts.manage', [$project])
+            && ($request->input('company_id') !== $project->company_id || $request->input('currency') !== $project->currency || $request->input('billing_model') !== $project->billing_model), 403);
 
         /** @var array<string, mixed> $values */
         $values = Validator::make($request->all(), [

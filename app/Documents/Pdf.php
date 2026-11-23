@@ -28,22 +28,60 @@ final class Pdf
         private readonly TenantContext $tenant,
     ) {}
 
-    /** @param array<string, mixed> $data */
-    public function render(string $view, array $data, string $locale, string $title): string
+    /**
+     * The texts of a document as they are now, to seal them with it.
+     *
+     * @param  list<string>  $prefixes
+     * @return array<string, string> identifier => message; missing texts are left out
+     */
+    public function labels(array $prefixes, string $locale): array
     {
-        $format = $this->format($locale);
+        $labels = [];
+        foreach (array_keys($this->strings->catalogMessages('en')) as $id) {
+            if (array_any($prefixes, fn (string $p): bool => str_starts_with($id, $p))) {
+                $found = $this->strings->resolve($id, [$locale], false);
+                if ($found !== null) {
+                    $labels[$id] = $found[0];
+                }
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Whether the language has every text of the document, so no other language slips in.
+     *
+     * @param  list<string>  $prefixes
+     */
+    public function speaks(array $prefixes, string $locale): bool
+    {
+        return count($this->labels($prefixes, $locale)) === count($this->labels($prefixes, 'en'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<array-key, mixed>  $labels  sealed texts; others are read now
+     */
+    public function render(string $view, array $data, string $locale, string $title, array $labels = [], ?string $formatLocale = null): string
+    {
+        $format = $formatLocale === null ? $this->format($locale) : new RegionalFormat($formatLocale, $this->tenant->current()->timezone);
         $temp = storage_path('framework/pdf');
         File::ensureDirectoryExists($temp, 0700);
         $html = View::make($view, [
             ...$data,
             'format' => $format,
             'dir' => $this->strings->direction($locale),
-            't' => fn (string $id, array $args = []): string => $this->strings->get($id, $args, $locale),
+            't' => function (string $id, array $args = []) use ($labels, $locale): string {
+                $sealed = $labels[$id] ?? null;
+
+                return is_string($sealed) ? ($this->strings->format($id, $sealed, $args, $locale) ?? $sealed) : $this->strings->get($id, $args, $locale);
+            },
             'decimal' => fn (string $value, int $least = 2): string => self::decimal($value, $least, $format->locale),
             'hours' => fn (int $minutes): string => ($minutes < 0 ? '-' : '').intdiv(abs($minutes), 60).':'.sprintf('%02d', abs($minutes) % 60),
         ])->render();
 
-        $pdf = new Mpdf(['tempDir' => $temp, 'default_font' => 'dejavusans', 'margin_top' => 18, 'margin_bottom' => 22, 'autoScriptToLang' => true, 'autoLangToFont' => true]);
+        $pdf = new Mpdf(['tempDir' => $temp, 'default_font' => 'dejavusans', 'exposeVersion' => false, 'margin_top' => 18, 'margin_bottom' => 22, 'autoScriptToLang' => true, 'autoLangToFont' => true]);
         $pdf->SetTitle($title);
         // The product name stays out of the file.
         $pdf->SetCreator('');

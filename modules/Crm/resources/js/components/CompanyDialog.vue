@@ -76,6 +76,7 @@ function values() {
                 vat_id: null,
                 tax_number: null,
             }),
+            valid_from: null as string | null,
         },
         address: { ...(c?.address ?? emptyAddress()) },
         contacts: (c?.contacts ?? (c ? [] : [emptyContact()])).map(
@@ -227,6 +228,14 @@ function submit(): void {
                             v-model="form.tax.tax_number"
                             name="tax.tax_number"
                             :label="$t('crm:field.tax_number')"
+                            :errors="errors"
+                        />
+                        <TextField
+                            v-if="company"
+                            v-model="form.tax.valid_from"
+                            name="tax.valid_from"
+                            type="date"
+                            :label="$t('crm:field.tax_valid_from')"
                             :errors="errors"
                         />
                     </div>

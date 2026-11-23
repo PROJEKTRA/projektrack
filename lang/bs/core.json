@@ -637,6 +637,7 @@
     "validation.uuid": "Polje :attribute mora biti važeći UUID.",
     "dashboard.empty": "Još nema podataka. Pojavit će se kad počnete raditi s klijentima, projektima i vremenom.",
     "nav.users": "Korisnici",
+    "profile.in_use": "Vaš račun ima knjiženo vrijeme ili dokumente i ne može se obrisati. Obratite se administratoru.",
     "users.title": "Korisnici",
     "users.description": "Pozovite ljude i dodijelite im uloge.",
     "users.invite": "Pozovi",

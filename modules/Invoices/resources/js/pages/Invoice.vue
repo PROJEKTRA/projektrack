@@ -3,7 +3,7 @@
     SPDX-License-Identifier: AGPL-3.0-only
 -->
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import InvoiceController from '@/actions/Modules/Invoices/Http/InvoiceController';
 import FormDialog from '@/components/FormDialog.vue';
@@ -67,6 +67,7 @@ type InvoiceData = {
 const props = defineProps<{
     invoice: InvoiceData;
     today: string;
+    confirmed: boolean;
     can: { create: boolean; finalize: boolean; cancel: boolean; pay: boolean };
 }>();
 
@@ -97,7 +98,17 @@ const [editing, finalizing, cancelling, discarding, paying, fiscalOpen] = (
 ).map(shown);
 
 const edit = useForm({ service_from: '', service_to: '', lines: [] as Line[] });
-const action = useForm({});
+const action = useForm({ gross_minor: null as number | null });
+
+/** Issuing and cancelling ask for the password first, then come back here. */
+function guarded(name: 'finalize' | 'cancel' | 'fiscal'): void {
+    if (props.confirmed) {
+        dialog.value = name;
+    } else {
+        router.visit(InvoiceController.confirm.url(props.invoice.id));
+    }
+}
+
 const pay = useForm({ amount: '', paid_on: props.today, note: '' });
 const fiscal = useForm({ fiscal_reference: '', reason: '' });
 const editErrors = computed(
@@ -202,7 +213,7 @@ function openEdit(): void {
                         v-if="can.finalize"
                         data-test="finalize"
                         :disabled="invoice.problems.length > 0"
-                        @click="dialog = 'finalize'"
+                        @click="guarded('finalize')"
                         >{{ $t('invoices:finalize') }}</Button
                     >
                 </template>
@@ -217,7 +228,7 @@ function openEdit(): void {
                     <Button
                         v-if="can.finalize"
                         variant="ghost"
-                        @click="dialog = 'fiscal'"
+                        @click="guarded('fiscal')"
                         >{{ $t('invoices:fiscal') }}</Button
                     >
                     <Button
@@ -228,7 +239,7 @@ function openEdit(): void {
                         "
                         variant="ghost"
                         data-test="cancel-invoice"
-                        @click="dialog = 'cancel'"
+                        @click="guarded('cancel')"
                         >{{ $t('invoices:cancel') }}</Button
                     >
                     <Button
@@ -384,7 +395,11 @@ function openEdit(): void {
         :description="$t('invoices:finalize_confirm')"
         :save="$t('invoices:finalize')"
         :processing="action.processing"
-        @submit="action.post(InvoiceController.finalize.url(invoice.id), close)"
+        @submit="
+            action
+                .transform(() => ({ gross_minor: invoice.gross_minor }))
+                .post(InvoiceController.finalize.url(invoice.id), close)
+        "
         ><p v-if="actionError" class="text-sm text-destructive sm:col-span-2">
             {{ actionError }}
         </p></FormDialog

@@ -30,11 +30,11 @@ interface ProjectDirectory
 
     /**
      * @param  list<string>  $ids
-     * @return array<string, array{id: string, name: string, number: string, company_id: string, currency: string}>
+     * @return array<string, array{id: string, name: string, number: string, company_id: string, currency: string, billing_model: string}>
      */
     public function projects(array $ids): array;
 
-    /** @return list<array{id: string, name: string, number: string, company_id: string, currency: string}> active projects by name */
+    /** @return list<array{id: string, name: string, number: string, company_id: string, currency: string, billing_model: string}> active projects by name */
     public function active(): array;
 
     /** The contract of a work package, if any. */

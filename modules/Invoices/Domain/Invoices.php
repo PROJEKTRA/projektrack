@@ -10,6 +10,7 @@ namespace Modules\Invoices\Domain;
 use App\Audit\AuditLog;
 use App\Audit\CanonicalJson;
 use App\Documents\Numbers;
+use App\Documents\Pdf;
 use App\Domain\Money\Amount;
 use App\Domain\Tax\TaxCase;
 use App\Domain\Tax\TaxContext;
@@ -20,6 +21,7 @@ use App\Domain\Tax\TaxTotals;
 use App\I18n\Strings;
 use App\Models\User;
 use App\Tenancy\TenantContext;
+use Brick\Math\Exception\MathException;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -46,6 +48,7 @@ final class Invoices
         private readonly Strings $strings,
         private readonly TenantContext $tenant,
         private readonly AuditLog $audit,
+        private readonly Pdf $pdf,
     ) {}
 
     /** @param list<LineData> $lines */
@@ -66,6 +69,9 @@ final class Invoices
     public function draftFromTime(string $projectId, string $from, string $to, User $actor): Invoice
     {
         $project = $this->projects->projects([$projectId])[$projectId] ?? abort(404);
+        if (! in_array($project['billing_model'], ['time_and_material', 'mixed'], true)) {
+            throw ValidationException::withMessages(['project_id' => __('invoices:errors.billing_model')]);
+        }
         $company = $this->companies->billing($project['company_id'], $to) ?? abort(404);
 
         return DB::transaction(function () use ($project, $company, $from, $to, $actor): Invoice {
@@ -76,6 +82,7 @@ final class Invoices
             if ($rows === []) {
                 throw ValidationException::withMessages(['period_from' => __('invoices:errors.no_time')]);
             }
+            $this->values->valueMissing($rows, $actor);
             $values = $this->values->of(array_column($rows, 'id'));
             $packages = $this->projects->workPackages(array_values(array_unique(array_column($rows, 'work_package_id'))));
 
@@ -117,6 +124,9 @@ final class Invoices
         DB::transaction(function () use ($invoice, $from, $to, $lines, $actor): void {
             $locked = $this->locked($invoice->id);
             $this->ensureDraft($locked);
+            if (($locked->service_from->toDateString() !== $from || $locked->service_to->toDateString() !== $to) && InvoiceTime::query()->where('invoice_id', $locked->id)->exists()) {
+                throw ValidationException::withMessages(['service_from' => __('invoices:errors.period_of_time')]);
+            }
             $locked->update(['service_from' => $from, 'service_to' => $to]);
             $this->writeLines($locked, $lines);
             $this->audit->record('invoices.draft_changed', $locked, [], $actor);
@@ -149,7 +159,7 @@ final class Invoices
         $date = $invoice->service_to->toDateString();
         $company = $this->companies->billing($invoice->company_id, $date);
         $problems = [];
-        foreach (['name', 'street', 'city'] as $field) {
+        foreach (['name', 'street', 'postal_code', 'city'] as $field) {
             if ($seller[$field] === '') {
                 $problems[] = 'seller_'.$field;
             }
@@ -159,6 +169,17 @@ final class Invoices
         }
         if ($company === null || $company['address'] === null) {
             $problems[] = 'customer_address';
+        } elseif (trim((string) $company['address']['postal_code']) === '' && TaxEngine::needsPostalCode($company['address']['country_code'])) {
+            $problems[] = 'customer_postal_code';
+        }
+        if ($seller['country'] === 'BA' && $seller['vat_status'] === 'registered' && $seller['vat_id'] === '') {
+            $problems[] = 'seller_vat_id_ba';
+        }
+        if ($seller['country'] === 'BA' && ($company['tax']['country_code'] ?? '') === 'BA' && ($company['tax']['tax_status'] ?? '') !== 'private' && ($company['tax']['vat_id'] ?? '') === '' && ($company['tax']['tax_number'] ?? '') === '') {
+            $problems[] = 'customer_id_ba';
+        }
+        if (! $this->pdf->speaks(['invoices:document.', 'invoices:unit.', 'invoices:legal_notice.'], $invoice->locale)) {
+            $problems[] = 'language';
         }
         if ($company === null || $company['tax'] === null) {
             return ['problems' => [...$problems, 'customer_tax'], 'totals' => null, 'notices' => [], 'decisions' => []];
@@ -176,6 +197,10 @@ final class Invoices
                 if ($notice !== null && ! in_array($notice, $notices, true)) {
                     $notices[] = $notice;
                 }
+                // Where the recipient is liable under German law, the wording of section 14a(5) UStG.
+                if ((($d->case === TaxCase::BaExportService && $company['tax']['country_code'] === 'DE') || $d->case === TaxCase::EuB2bReverseCharge) && ! in_array('invoices:legal_notice.reverse_charge_de', $notices, true)) {
+                    $notices[] = 'invoices:legal_notice.reverse_charge_de';
+                }
                 if ($d->case === TaxCase::EuB2bReverseCharge && $seller['vat_id'] === '') {
                     $problems[] = 'seller_vat_id';
                 }
@@ -190,21 +215,40 @@ final class Invoices
             $problems[] = 'texts_not_confirmed';
         }
 
-        return ['problems' => array_values(array_unique($problems)), 'totals' => TaxTotals::of($lines), 'notices' => $notices, 'decisions' => $decisions];
+        $totals = TaxTotals::of($lines);
+        if ($totals->grossMinor() < 0) {
+            $problems[] = 'negative_total';
+        }
+        $home = $seller['country'] === 'BA' ? 'BAM' : 'EUR';
+        if ($totals->taxMinor !== 0 && $invoice->currency !== $home) {
+            $problems[] = 'tax_currency';
+        }
+        if ($invoice->service_to->toDateString() > now($this->tenant->current()->timezone)->toDateString()) {
+            $problems[] = 'future_service';
+        }
+
+        return ['problems' => array_values(array_unique($problems)), 'totals' => $totals, 'notices' => $notices, 'decisions' => $decisions];
     }
 
-    public function finalize(Invoice $invoice, User $actor): Invoice
+    /** @param int|null $seenGross what the person saw; anything else is not issued */
+    public function finalize(Invoice $invoice, User $actor, ?int $seenGross = null): Invoice
     {
-        return DB::transaction(function () use ($invoice, $actor): Invoice {
+        return DB::transaction(function () use ($invoice, $actor, $seenGross): Invoice {
             $locked = $this->locked($invoice->id);
             $this->ensureDraft($locked);
             $preview = $this->preview($locked);
             if ($preview['problems'] !== [] || $preview['totals'] === null) {
                 throw ValidationException::withMessages(['invoice' => array_map(fn (string $p): string => __("invoices:problem.{$p}"), $preview['problems'])]);
             }
+            if ($seenGross !== null && $seenGross !== $preview['totals']->grossMinor()) {
+                throw ValidationException::withMessages(['invoice' => __('invoices:errors.changed')]);
+            }
             // Issued documents wait for each other, so numbers and dates never cross.
             $number = $this->numbers->next('invoice', 'INV');
             $today = now($this->tenant->current()->timezone)->toDateString();
+            if (substr($today, 0, 4) !== explode('-', $number)[1]) {
+                throw ValidationException::withMessages(['invoice' => __('invoices:errors.changed')]);
+            }
             $company = $this->companies->billing($locked->company_id, $locked->service_to->toDateString());
             $due = CarbonImmutable::parse($today, 'UTC')->addDays($company['payment_days'] ?? 0)->toDateString();
             $totals = $preview['totals'];
@@ -218,6 +262,7 @@ final class Invoices
                 'kind' => 'invoice', 'number' => $number, 'issue_date' => $today, 'due_date' => $due, 'service_from' => $locked->service_from->toDateString(), 'service_to' => $locked->service_to->toDateString(),
                 'currency' => $locked->currency, 'locale' => $locked->locale, 'seller' => $this->seller->data(), 'buyer' => $company, 'lines' => $lines, 'groups' => $totals->groups,
                 'net_minor' => $totals->netMinor, 'tax_minor' => $totals->taxMinor, 'gross_minor' => $totals->grossMinor(),
+                'labels' => $this->pdf->labels(['invoices:document.', 'invoices:unit.'], $locked->locale), 'format' => $this->pdf->format($locked->locale)->locale,
                 'notices' => array_map(fn (string $id): string => $this->strings->get($id, [], $locked->locale), $preview['notices']),
             ], $actor);
             $this->audit->record('invoices.finalized', $locked, ['number' => $number, 'gross_minor' => $locked->gross_minor, 'hash' => $locked->content_hash], $actor);
@@ -234,6 +279,9 @@ final class Invoices
             if ($locked->kind !== 'invoice' || $locked->status !== 'finalized') {
                 throw ValidationException::withMessages(['invoice' => __('invoices:errors.not_cancellable')]);
             }
+            if ($locked->paid_minor !== 0) {
+                throw ValidationException::withMessages(['invoice' => __('invoices:errors.paid')]);
+            }
             $content = $locked->content();
             $number = $this->numbers->next('cancellation', 'CN');
             $today = now($this->tenant->current()->timezone)->toDateString();
@@ -244,14 +292,14 @@ final class Invoices
                 'service_from' => $locked->service_from, 'service_to' => $locked->service_to, 'currency' => $locked->currency, 'locale' => $locked->locale,
             ]);
             $this->seal($cancellation, [
-                ...$content, 'kind' => 'cancellation', 'number' => $number, 'cancels' => $locked->number, 'issue_date' => $today, 'due_date' => $today,
+                ...$content, 'kind' => 'cancellation', 'number' => $number, 'cancels' => $locked->number, 'cancels_date' => $locked->issue_date?->toDateString(), 'issue_date' => $today, 'due_date' => $today,
                 'lines' => $negate(is_array($content['lines'] ?? null) ? $content['lines'] : []), 'groups' => $negate(is_array($content['groups'] ?? null) ? $content['groups'] : []),
                 'net_minor' => -$locked->net_minor, 'tax_minor' => -$locked->tax_minor, 'gross_minor' => -$locked->gross_minor,
             ], $actor);
             $locked->update(['status' => 'cancelled']);
             // The time can be billed again; which invoice billed it first stays visible.
             InvoiceTime::query()->where('invoice_id', $locked->id)->update(['active_key' => null]);
-            $this->audit->record('invoices.cancelled', $locked, ['number' => $locked->number, 'cancellation' => $number], $actor);
+            $this->audit->record('invoices.cancelled', $locked, ['number' => $locked->number, 'cancellation' => $number, 'hash' => $cancellation->content_hash], $actor);
 
             return $cancellation;
         }, 3);
@@ -263,6 +311,9 @@ final class Invoices
             $locked = $this->locked($invoice->id);
             if ($locked->kind !== 'invoice' || $locked->status !== 'finalized') {
                 throw ValidationException::withMessages(['amount' => __('invoices:errors.not_payable')]);
+            }
+            if ($paidOn > now($this->tenant->current()->timezone)->toDateString()) {
+                throw ValidationException::withMessages(['paid_on' => __('invoices:errors.future')]);
             }
             $paid = $locked->paid_minor + $amountMinor;
             if ($amountMinor === 0 || $paid < 0 || $paid > $locked->gross_minor) {
@@ -308,7 +359,15 @@ final class Invoices
         }
         $position = (int) $invoice->lines()->max('position');
         foreach ($lines as $line) {
-            InvoiceLine::query()->create([...$line, 'invoice_id' => $invoice->id, 'position' => ++$position, 'minutes' => null, 'net_minor' => Amount::line($line['quantity'], $line['unit_price'], $invoice->currency)]);
+            try {
+                $net = Amount::line($line['quantity'], $line['unit_price'], $invoice->currency);
+            } catch (MathException) {
+                $net = PHP_INT_MAX;
+            }
+            if (abs($net) > 1_000_000_000_000) {
+                throw ValidationException::withMessages(['lines' => __('invoices:errors.too_large')]);
+            }
+            InvoiceLine::query()->create([...$line, 'invoice_id' => $invoice->id, 'position' => ++$position, 'minutes' => null, 'net_minor' => $net]);
         }
         $this->total($invoice);
     }

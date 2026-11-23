@@ -23,6 +23,7 @@
     "document.unvalued": "{count, plural, one {# entry has no rate and no amount.} other {# entries have no rate and no amount.}}",
     "empty": "No reports yet.",
     "errors.empty": "There is no approved time in this period.",
+    "errors.too_long": "The report is too long. Choose a shorter period.",
     "field.download": "Download",
     "field.from": "From",
     "field.number": "Number",

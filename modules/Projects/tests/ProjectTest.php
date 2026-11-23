@@ -110,6 +110,7 @@ it('hides the money budget without permission', function () {
     join_($project, $lead, 'project_lead');
     $this->actingAs($lead)->get("/projects/{$project->id}")->assertInertia(fn (AssertableInertia $p) => $p->missing('project.budget_minor')->where('project.budget_minutes', 18000));
     $this->put("/projects/{$project->id}", projectInput(['budget_minor' => 1]))->assertForbidden();
+    $this->put("/projects/{$project->id}", projectInput(['currency' => 'USD']))->assertForbidden();
     $this->put("/projects/{$project->id}", projectInput(['name' => 'Renamed']))->assertSessionHasNoErrors();
     expect($project->refresh()->budget_minor)->toBe(3000000)->and($project->name)->toBe('Renamed');
 });

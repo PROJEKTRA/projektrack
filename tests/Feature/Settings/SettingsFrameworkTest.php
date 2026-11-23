@@ -25,6 +25,8 @@ use Tests\Support\FakeModules;
  * S-0912: settings from module schemas, edited in Admin > Settings.
  */
 
+beforeEach(fn () => $this->withSession(['auth.password_confirmed_at' => time()]));
+
 function settingsAdmin(): User
 {
     $admin = User::factory()->withTwoFactor()->create(['locale' => 'en']);

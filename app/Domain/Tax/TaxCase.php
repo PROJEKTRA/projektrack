@@ -28,12 +28,12 @@ enum TaxCase: string
     public function notice(): ?string
     {
         return match ($this) {
-            self::EuB2bReverseCharge => 'invoices:notice.reverse_charge',
-            self::NonEuB2bOutsideScope => 'invoices:notice.outside_scope_de',
-            self::DeSmallBusiness => 'invoices:notice.small_business_de',
-            self::BaExportService => 'invoices:notice.ba_export_service',
-            self::BaNotRegistered => 'invoices:notice.ba_not_registered',
-            self::Exempt => 'invoices:notice.exempt',
+            self::EuB2bReverseCharge => 'invoices:legal_notice.reverse_charge',
+            self::NonEuB2bOutsideScope => 'invoices:legal_notice.outside_scope_de',
+            self::DeSmallBusiness => 'invoices:legal_notice.small_business_de',
+            self::BaExportService => 'invoices:legal_notice.ba_export_service',
+            self::BaNotRegistered => 'invoices:legal_notice.ba_not_registered',
+            self::Exempt => 'invoices:legal_notice.exempt',
             default => null,
         };
     }

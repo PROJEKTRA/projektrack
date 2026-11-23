@@ -7,6 +7,7 @@
 
 namespace Modules\Invoices\Http;
 
+use App\Audit\AuditLog;
 use App\Documents\Pdf;
 use App\Http\Controllers\Controller;
 use App\Tenancy\TenantContext;
@@ -80,6 +81,7 @@ class InvoiceController extends Controller
                 'cancelled_by' => $cancelled?->only(['id', 'number']),
                 'payments' => InvoicePayment::query()->where('invoice_id', $i->id)->orderBy('paid_on')->orderBy('created_at')->get()->map(fn (InvoicePayment $p): array => ['id' => $p->id, 'paid_on' => $p->paid_on->toDateString(), 'amount_minor' => $p->amount_minor, 'note' => $p->note])->all(),
             ],
+            'confirmed' => (int) now()->timestamp - (is_int($at = $request->session()->get('auth.password_confirmed_at')) ? $at : 0) < config()->integer('auth.password_timeout'),
             'today' => now($tenant->current()->timezone)->toDateString(),
             'can' => ['create' => $user->can('invoices.create'), 'finalize' => $user->can('invoices.finalize'), 'cancel' => $user->can('invoices.cancel'), 'pay' => $user->can('invoices.payments.record')],
         ]);
@@ -116,9 +118,16 @@ class InvoiceController extends Controller
         return to_route('invoices.index');
     }
 
+    /** Asks for the password (route) and comes back to the invoice. */
+    public function confirm(string $invoice): RedirectResponse
+    {
+        return to_route('invoices.show', Invoice::query()->findOrFail($invoice)->id);
+    }
+
     public function finalize(Request $request, string $invoice, Invoices $invoices): RedirectResponse
     {
-        $invoices->finalize(Invoice::query()->findOrFail($invoice), $this->currentUser($request));
+        $request->validate(['gross_minor' => ['required', 'integer']]);
+        $invoices->finalize(Invoice::query()->findOrFail($invoice), $this->currentUser($request), $request->integer('gross_minor'));
 
         return to_route('invoices.show', $invoice);
     }
@@ -148,12 +157,16 @@ class InvoiceController extends Controller
     }
 
     /** Only issued documents have a PDF: a draft must not look like an invoice. */
-    public function pdf(string $invoice, Pdf $pdf): HttpResponse
+    public function pdf(Request $request, string $invoice, Pdf $pdf, AuditLog $audit): HttpResponse
     {
         $i = Invoice::query()->findOrFail($invoice);
         abort_if($i->isDraft(), 404);
 
-        return response($pdf->render('invoices::invoice', ['i' => $i->content()], $i->locale, (string) $i->number), 200, [
+        $content = $i->content();
+        $audit->record('invoices.downloaded', $i, ['number' => $i->number], $this->currentUser($request));
+        $format = $content['format'] ?? null;
+
+        return response($pdf->render('invoices::invoice', ['i' => $content], $i->locale, (string) $i->number, is_array($content['labels'] ?? null) ? $content['labels'] : [], is_string($format) ? $format : null), 200, [
             'Content-Type' => 'application/pdf', 'Content-Disposition' => "attachment; filename=\"{$i->number}.pdf\"", 'Cache-Control' => 'private, no-store',
         ]);
     }
@@ -197,7 +210,7 @@ class InvoiceController extends Controller
             'service_from' => ['required', 'date_format:Y-m-d'], 'service_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:service_from'],
             'lines' => ['sometimes', 'list', 'max:200'], 'lines.*' => ['array:description,quantity,unit,unit_price,rate_class'],
             'lines.*.description' => ['required', 'string', 'max:500'], 'lines.*.quantity' => ['required', 'string', $number], 'lines.*.unit' => ['required', Rule::in(['piece', 'hour', 'day', 'flat'])],
-            'lines.*.unit_price' => ['required', 'string', $number], 'lines.*.rate_class' => ['required', Rule::in(['standard', 'reduced', 'exempt'])],
+            'lines.*.unit_price' => ['required', 'string', $number], 'lines.*.rate_class' => ['required', Rule::in(['standard', 'reduced'])],
         ])->validate();
 
         return [$data['service_from'], $data['service_to'], array_map(fn (array $l): array => [...$l, 'quantity' => str_replace(',', '.', $l['quantity']), 'unit_price' => str_replace(',', '.', $l['unit_price'])], $data['lines'] ?? [])];

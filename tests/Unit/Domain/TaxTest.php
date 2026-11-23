@@ -79,6 +79,7 @@ it('decides by the table', function (array $arguments, TaxCase $case, int $ppm, 
     'exempt line' => [['class' => 'exempt'], TaxCase::Exempt, 0, 'E'],
     'EU private' => [['country' => 'FR', 'customer' => 'private'], TaxCase::EuB2cSellerCountry, 190000, 'S'],
     'public sector' => [['customer' => 'public_sector'], TaxCase::DeStandard, 190000, 'S'],
+    'public sector in Austria with VAT ID' => [['country' => 'AT', 'customer' => 'public_sector'], TaxCase::EuB2bReverseCharge, 0, 'AE'],
 ]);
 
 it('refuses instead of guessing', function (array $arguments, string $reason) {
@@ -90,12 +91,15 @@ it('refuses instead of guessing', function (array $arguments, string $reason) {
     }
 })->with([
     'T8 no VAT ID' => [['country' => 'AT', 'customer' => 'eu_business', 'vatId' => false], 'vat_id_missing'],
-    'seller in France' => [['seller' => 'FR'], 'seller_country'],
+    'seller in France' => [['seller' => 'FR', 'country' => 'FR'], 'seller_country'],
     'DE seller not registered' => [['status' => 'not_registered'], 'seller_status'],
     'BA reduced' => [['seller' => 'BA', 'country' => 'BA', 'class' => 'reduced'], 'rate_class'],
     'BA seller to private abroad' => [['seller' => 'BA', 'country' => 'DE', 'customer' => 'private'], 'private_abroad'],
     'DE seller to private outside EU' => [['country' => 'CH', 'customer' => 'private'], 'private_outside_eu'],
     'unknown customer status' => [['customer' => 'x'], 'customer_status'],
+    'public sector in Switzerland' => [['country' => 'CH', 'customer' => 'public_sector'], 'customer_status'],
+    'domestic in Switzerland' => [['country' => 'CH'], 'customer_status'],
+    'BA: public sector in Serbia' => [['seller' => 'BA', 'country' => 'RS', 'customer' => 'public_sector'], 'customer_status'],
     'before the rate' => [['date' => '2020-12-31'], 'rate_class'],
 ]);
 

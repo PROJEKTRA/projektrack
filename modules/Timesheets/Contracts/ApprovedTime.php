@@ -10,7 +10,7 @@ namespace Modules\Timesheets\Contracts;
 /**
  * Approved time, corrections included, for service reports and invoices.
  *
- * @phpstan-type ApprovedRow array{id: string, date: string, user_id: string, user: string, work_package_id: string, project_id: string, minutes: int, billable_minutes: int, description: string|null, correction: bool}
+ * @phpstan-type ApprovedRow array{id: string, date: string, user_id: string, user: string, work_package_id: string, project_id: string, minutes: int, billable_minutes: int, description: string|null, correction: bool, corrects: string|null}
  */
 interface ApprovedTime
 {

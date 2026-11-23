@@ -7,6 +7,9 @@
 
 return [
 
+    // The site sends no referrer (INV-04): validation errors and back() find the page here.
+    'store_previous_url' => true,
+
     /*
     |--------------------------------------------------------------------------
     | Server Side Rendering

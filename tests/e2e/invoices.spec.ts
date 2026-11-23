@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { expect, test } from '@playwright/test';
-import { signIn } from './support';
+import { PASSWORD, signIn } from './support';
 
 // S-0961 to S-0966: draft, issue, pay. Seller and customer come from E2eSeeder.
 test('issues an invoice and records its payment', async ({ page }) => {
@@ -19,6 +19,10 @@ test('issues an invoice and records its payment', async ({ page }) => {
     await page.getByTestId('dialog-save').click();
 
     await expect(page.getByTestId('gross')).toContainText(/235[.,]17/);
+    // Issuing asks for the password first and comes back.
+    await page.getByTestId('finalize').click();
+    await page.locator('#password').fill(PASSWORD);
+    await page.getByTestId('confirm-password-button').click();
     await page.getByTestId('finalize').click();
     await page.getByTestId('dialog-save').click();
     await expect(

@@ -92,7 +92,7 @@ class TimesheetController extends Controller
         $description = $request->input('description');
 
         return [
-            'workPackageId' => $request->string('work_package_id')->toString(),
+            'workPackageId' => $request->string('work_package_id')->lower()->toString(),
             'date' => $request->string('date')->toString(),
             'minutes' => $request->integer('minutes'),
             'description' => is_string($description) ? $description : null,

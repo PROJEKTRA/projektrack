@@ -7,6 +7,8 @@
 
 use App\Authorization\RoleManager;
 use App\Documents\Numbers;
+use App\I18n\RegionalFormat;
+use App\I18n\StringEditor;
 use App\Models\AuditEntry;
 use App\Models\ProjectRole;
 use App\Models\Role;
@@ -19,6 +21,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Testing\TestResponse;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia;
 use Modules\Crm\Domain\Companies;
 use Modules\Crm\Domain\Company;
@@ -46,6 +49,7 @@ beforeEach(function () {
     app(TenantModules::class)->enable('service_reports');
     app(TenantModules::class)->enable('invoices');
     $this->controller = invUser('controller');
+    $this->withSession(['auth.password_confirmed_at' => time()]);
     sellerData();
     $this->company = invCompany('domestic', 'DE', null);
 });
@@ -128,20 +132,31 @@ it('prints the notice and both VAT IDs on reverse charge', function () {
 
 it('issues for a seller in Bosnia and Herzegovina', function () {
     $this->tenant->update(['country_code' => 'BA']);
-    $domestic = issue(draft([freeLine('1', '1500'), freeLine('1', '333.33')], invCompany('domestic', 'BA', null)));
+    $euro = draft([freeLine('1', '1500')], invCompany('domestic', 'BA', '123456789012'));
+    expect(app(Invoices::class)->preview($euro)['problems'])->toBe(['tax_currency']);
+    $customer = invCompany('domestic', 'BA', null);
+    $customer->update(['currency' => 'BAM']);
+    expect(app(Invoices::class)->preview(draft([freeLine('1', '1')], $customer))['problems'])->toBe(['customer_id_ba']);
+    $customer->taxProfiles()->update(['tax_number' => '4200000000000']);
+    $domestic = issue(draft([freeLine('1', '1500'), freeLine('1', '333.33')], $customer));
     $export = issue(draft([freeLine('40', '100')], invCompany('eu_business', 'DE', 'DE123456789')));
     expect([$domestic->tax_minor, $domestic->gross_minor])->toBe([31167, 214500])
-        ->and($export->tax_minor)->toBe(0)->and($export->content()['lines'][0]['tax_case'])->toBe('BA_EXPORT_SERVICE_B2B')->and($export->content()['notices'][0])->toContain('outside Bosnia and Herzegovina');
+        ->and($export->tax_minor)->toBe(0)->and($export->content()['lines'][0]['tax_case'])->toBe('BA_EXPORT_SERVICE_B2B')->and($export->content()['notices'][0])->toContain('outside Bosnia and Herzegovina')->and($export->content()['notices'][1])->toBe('Steuerschuldnerschaft des Leistungsempfängers.');
+    sellerData(['vat_id' => null]);
+    expect(app(Invoices::class)->preview(draft([freeLine('1', '1')], $customer))['problems'])->toBe(['seller_vat_id_ba']);
 });
 
 it('refuses to issue while something is missing and takes no number', function (Closure $make, string $problem) {
     $invoice = $make();
-    $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/finalize")->assertSessionHasErrors('invoice');
+    $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/finalize", ['gross_minor' => 0])->assertSessionHasErrors('invoice');
     expect($invoice->refresh()->number)->toBeNull()->and(app(Invoices::class)->preview($invoice)['problems'])->toContain($problem);
     expect(issue(draft([freeLine('1', '1')]))->number)->toBe('INV-2026-0001');
 })->with([
     'no lines' => [fn () => draft([]), 'no_lines'],
     'no VAT ID' => [fn () => draft([freeLine('1', '1')], tap(invCompany('eu_business', 'AT', 'ATU12345678'), fn (Company $c) => $c->taxProfiles()->update(['vat_id' => null]))), 'tax_vat_id_missing'],
+    'negative total' => [fn () => draft([freeLine('-1', '100')]), 'negative_total'],
+    'service not over' => [fn () => tap(draft([freeLine('1', '1')]), fn (Invoice $i) => $i->update(['service_to' => '2026-12-31'])), 'future_service'],
+    'language without texts' => [fn () => tap(draft([freeLine('1', '1')]), fn (Invoice $i) => $i->update(['locale' => 'de'])), 'language'],
     'private outside the EU' => [fn () => draft([freeLine('1', '1')], invCompany('private', 'CH', null)), 'tax_private_outside_eu'],
 ]);
 
@@ -245,17 +260,62 @@ it('bills approved time once, by package and rate', function () {
     expect(InvoiceLine::query()->orderByDesc('created_at')->get()->contains(fn (InvoiceLine $l): bool => $l->minutes === 60 && $l->net_minor === 10000))->toBeTrue();
 });
 
-it('does not bill time without a rate', function () {
+it('does not bill time without a rate, and values it once there is one', function () {
     [$project, $employee] = billedProject();
     DB::table('time_entry_valuations')->delete();
+    DB::table('rate_rules')->delete();
     $this->actingAs($this->controller)->post('/invoices/from-time', ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-31'])->assertSessionHasErrors('period_from');
     expect(Invoice::query()->count())->toBe(0)->and(InvoiceTime::query()->count())->toBe(0);
+
+    app(Rates::class)->add('tenant', null, '120', 'EUR', '2026-01-01', $this->controller);
+    $this->post('/invoices/from-time', ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-31'])->assertSessionHasNoErrors();
+    expect(InvoiceLine::query()->sole()->net_minor)->toBe(12000);
+});
+
+it('bills by time only where time is billed, in the period of the time', function () {
+    [$project] = billedProject();
+    $data = ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-31'];
+    $project->update(['billing_model' => 'fixed_price']);
+    $this->actingAs($this->controller)->post('/invoices/from-time', $data)->assertSessionHasErrors('project_id');
+    $project->update(['billing_model' => 'time_and_material']);
+    $this->post('/invoices/from-time', $data)->assertSessionHasNoErrors();
+    $this->put('/invoices/'.Invoice::query()->sole()->id, ['service_from' => '2026-11-01', 'service_to' => '2026-11-30'])->assertSessionHasErrors('service_from');
+});
+
+it('never issues what the person did not see', function () {
+    $invoice = draft([freeLine('1', '100')]);
+    app(Invoices::class)->change($invoice, '2026-10-01', '2026-10-31', [freeLine('1', '900')], $this->controller);
+    $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/finalize", ['gross_minor' => 11900])->assertSessionHasErrors('invoice');
+    $this->post("/invoices/{$invoice->id}/finalize", ['gross_minor' => 107100])->assertSessionHasNoErrors();
+    expect($invoice->refresh()->number)->toBe('INV-2026-0001');
+});
+
+it('asks for the password before issuing', function () {
+    $invoice = draft([freeLine('1', '100')]);
+    $this->actingAs($this->controller)->withSession(['auth.password_confirmed_at' => 0])->post("/invoices/{$invoice->id}/finalize", ['gross_minor' => 11900])->assertRedirect('/user/confirm-password');
+    expect($invoice->refresh()->number)->toBeNull();
+});
+
+it('does not cancel a paid invoice before its payment is reversed', function () {
+    $invoice = issue(draft([freeLine('1', '1000')]));
+    app(Invoices::class)->pay($invoice, '2026-11-05', 50000, null, $this->controller);
+    $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/cancel")->assertSessionHasErrors('invoice');
+    app(Invoices::class)->pay($invoice, '2026-11-05', -50000, 'returned', $this->controller);
+    $this->post("/invoices/{$invoice->id}/cancel")->assertSessionHasNoErrors();
+    expect(fn () => app(Invoices::class)->pay(issue(draft([freeLine('1', '1')])), '2026-11-06', 100, null, $this->controller))->toThrow(ValidationException::class);
+});
+
+it('keeps the printed words of issued documents and protects legal notices', function () {
+    $invoice = issue(draft([freeLine('1', '100')]));
+    expect($invoice->content()['labels']['invoices:document.invoice'])->toBe('Invoice')
+        ->and(StringEditor::isProtected('invoices:legal_notice.reverse_charge'))->toBeTrue()
+        ->and((new RegionalFormat('en-GB', 'UTC'))->money(123450, 'RSD'))->toContain('1,234.50');
 });
 
 it('records payments up to the total', function () {
     Event::fake([InvoicePaid::class]);
     $invoice = issue(draft([freeLine('1', '1000')]));
-    $pay = fn (string $amount): TestResponse => $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/payments", ['amount' => $amount, 'paid_on' => '2026-11-06']);
+    $pay = fn (string $amount): TestResponse => $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/payments", ['amount' => $amount, 'paid_on' => '2026-11-05']);
     $status = fn (): mixed => $this->get("/invoices/{$invoice->id}")->inertiaProps('invoice.status');
 
     $pay('500')->assertSessionHasNoErrors();
@@ -273,6 +333,7 @@ it('records payments up to the total', function () {
     $this->get('/invoices?show=open')->assertInertia(fn (AssertableInertia $p) => $p->has('invoices.data', 1)->where('invoices.data.0.id', $second->id)->where('invoices.data.0.overdue_days', 0));
     $this->travelTo('2026-11-22 10:00:00');
     $this->flushSession();
+    $this->withSession(['auth.password_confirmed_at' => time()]);
     expect($this->actingAs($this->controller)->get('/invoices?show=open')->inertiaProps('invoices.data.0.overdue_days'))->toBe(3);
 });
 
@@ -321,7 +382,7 @@ it('generates a service report that never changes', function () {
     $report = ServiceReport::query()->sole();
     $content = $report->content();
 
-    expect($report->number)->toBe('SR-2026-0001')->and($content['minutes'])->toBe(60)->and($content['amounts'])->toBe(['EUR' => 9999])
+    expect($report->number)->toBe('SR-2026-0001')->and($content['minutes'])->toBe(60)->and($content['amounts'])->toBe(['EUR' => 10000])
         ->and(array_column($content['lines'], 'date'))->toBe(['2026-10-05', '2026-10-06', '2026-10-31'])
         ->and($content['totals'])->toEqual(['package' => ['1 Consulting' => 60], 'user' => [$employee->name => 60]])
         ->and(fn () => $report->update(['snapshot' => '{}']))->toThrow(LogicException::class)
@@ -345,13 +406,14 @@ it('lets project leads report hours of their project, never amounts', function (
 
     $this->post('/service-reports', [...$data, 'with_amounts' => true])->assertForbidden();
     $this->post('/service-reports', $data)->assertSessionHasNoErrors();
-    expect((string) ServiceReport::query()->sole()->snapshot)->not->toContain('rate')->not->toContain('amount_minor');
+    $content = ServiceReport::query()->sole()->content();
+    expect($content['amounts'])->toBe([])->and(array_keys($content['lines'][0]))->toEqualCanonicalizing(['date', 'user', 'package', 'minutes', 'description', 'correction']);
     $mine = ServiceReport::query()->sole();
     $this->get("/service-reports/{$mine->id}/csv")->assertOk();
 
     $this->actingAs($this->controller)->post('/service-reports', [...$data, 'with_amounts' => true])->assertSessionHasNoErrors();
     $priced = ServiceReport::query()->where('with_amounts', true)->sole();
-    $this->actingAs($lead)->get("/service-reports/{$priced->id}/pdf")->assertForbidden();
+    $this->actingAs($lead)->get("/service-reports/{$priced->id}/pdf")->assertNotFound();
     $this->get('/service-reports')->assertInertia(fn (AssertableInertia $p) => $p->has('reports', 1));
 });
 

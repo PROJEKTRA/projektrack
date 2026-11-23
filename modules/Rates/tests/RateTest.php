@@ -109,6 +109,8 @@ it('never overlaps and never edits', function () {
     $this->post('/rates', ['scope' => 'tenant', 'rate' => '90,5', 'currency' => 'EUR', 'valid_from' => '2026-07-01'])->assertSessionHasNoErrors();
     $last = RateRule::query()->orderByDesc('valid_from')->firstOrFail();
     expect($last->rate)->toBe('90.5000');
+    $first = RateRule::query()->orderBy('valid_from')->firstOrFail();
+    $this->post("/rates/{$first->id}/end", ['valid_to' => '2026-12-31'])->assertSessionHasErrors('valid_to');
     $this->post("/rates/{$last->id}/end", ['valid_to' => '2026-06-30'])->assertSessionHasErrors('valid_to');
     $this->post("/rates/{$last->id}/end", ['valid_to' => '2026-12-31'])->assertSessionHasNoErrors();
     expect(app(Rates::class)->resolve($this->employee->id, $this->package->id, '2027-01-01'))->toBeNull();

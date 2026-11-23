@@ -170,6 +170,10 @@ final class Timesheets
             if ($minutes === $current) {
                 throw ValidationException::withMessages(['minutes' => __('timesheets:errors.no_difference')]);
             }
+            $day = TimeEntry::query()->where('user_id', $entry->user_id)->whereDate('work_date', $entry->work_date->toDateString())->sum('duration_minutes');
+            if ((int) $day + $minutes - $current > 1440) {
+                throw ValidationException::withMessages(['minutes' => __('timesheets:errors.day_full')]);
+            }
             $package = $this->projects->workPackages([$entry->work_package_id])[$entry->work_package_id];
 
             $correction = TimeEntry::query()->create([

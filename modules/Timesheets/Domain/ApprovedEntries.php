@@ -21,7 +21,7 @@ final class ApprovedEntries implements ApprovedTime
         return array_values($entries->map(fn (TimeEntry $e): array => [
             'id' => $e->id, 'date' => $e->work_date->toDateString(), 'user_id' => $e->user_id, 'user' => $users->get($e->user_id)->name ?? '',
             'work_package_id' => $e->work_package_id, 'project_id' => $e->project_id, 'minutes' => $e->duration_minutes, 'billable_minutes' => $e->billable_minutes,
-            'description' => $e->description ?? $e->correction_reason, 'correction' => $e->corrects_id !== null,
+            'description' => $e->description ?? $e->correction_reason, 'correction' => $e->corrects_id !== null, 'corrects' => $e->corrects_id,
         ])->all());
     }
 

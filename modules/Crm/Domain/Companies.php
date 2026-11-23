@@ -11,7 +11,9 @@ use App\Audit\AuditLog;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Tenancy\TenantContext;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Saves a customer with everything that belongs to it, together or not at all
@@ -20,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * @phpstan-type AddressData array{line1: string, line2?: string|null, postal_code?: string|null, city: string, region?: string|null, country_code: string}
  * @phpstan-type CompanyData array{
  *     company: array<string, mixed>,
- *     tax?: array{tax_status: string, country_code: string, vat_id?: string|null, tax_number?: string|null},
+ *     tax?: array{tax_status: string, country_code: string, vat_id?: string|null, tax_number?: string|null, valid_from?: string|null},
  *     address?: AddressData,
  *     contacts?: list<array<string, mixed>>,
  *     sites?: list<array{id?: string|null, name: string, address: AddressData}>
@@ -94,7 +96,7 @@ final class Companies
         return $parts;
     }
 
-    /** @param array{tax_status: string, country_code: string, vat_id?: string|null, tax_number?: string|null} $tax */
+    /** @param array{tax_status: string, country_code: string, vat_id?: string|null, tax_number?: string|null, valid_from?: string|null} $tax */
     private function saveTax(Company $company, array $tax): void
     {
         $values = ['tax_status' => $tax['tax_status'], 'country_code' => $tax['country_code'], 'vat_id' => $tax['vat_id'] ?? null, 'tax_number' => $tax['tax_number'] ?? null];
@@ -103,15 +105,18 @@ final class Companies
             return;
         }
 
-        $today = now($this->tenant->current()->timezone)->toDateString();
-        // A second change on the same day replaces the first; otherwise the old profile ends yesterday.
-        if ($current !== null && $current->valid_from?->toDateString() === $today) {
+        $from = $tax['valid_from'] ?? null;
+        // Without a date it is a correction: the profile was wrong from its start.
+        if ($current !== null && ($from === null || $current->valid_from?->toDateString() === $from)) {
             $current->update($values);
 
             return;
         }
-        $current?->update(['valid_to' => now($this->tenant->current()->timezone)->subDay()->toDateString()]);
-        $company->taxProfiles()->create([...$values, 'valid_from' => $current === null ? null : $today]);
+        if ($current !== null && $current->valid_from !== null && $from < $current->valid_from->toDateString()) {
+            throw ValidationException::withMessages(['tax.valid_from' => __('crm:errors.tax_valid_from')]);
+        }
+        $current?->update(['valid_to' => CarbonImmutable::parse((string) $from, 'UTC')->subDay()->toDateString()]);
+        $company->taxProfiles()->create([...$values, 'valid_from' => $current === null ? null : $from]);
     }
 
     /** @param AddressData $address */

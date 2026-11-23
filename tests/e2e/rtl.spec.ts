@@ -4,7 +4,7 @@
  */
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { signIn } from './support';
+import { PASSWORD, signIn } from './support';
 import type { TestLocale } from './support';
 
 /*
@@ -102,7 +102,10 @@ for (const locale of ['bs', 'ar'] as TestLocale[]) {
         ).toHaveText('core:common.save');
 
         // Admin > Settings (S-0912): the core form renders and saves.
+        // Behind a fresh password: they hold the bank account on invoices.
         await page.goto('/admin/settings');
+        await page.locator('#password').fill(PASSWORD);
+        await page.getByTestId('confirm-password-button').click();
         const core = page.getByTestId('settings-core');
         await expect(core.locator('select')).toHaveCount(3);
         await core.getByTestId('save-settings-core').click();

@@ -68,7 +68,7 @@ const lines = defineModel<Line[]>({ required: true });
                 :label="$t('invoices:field.rate_class')"
                 :errors="errors"
                 :options="
-                    ['standard', 'reduced', 'exempt'].map((value) => ({
+                    ['standard', 'reduced'].map((value) => ({
                         value,
                         text: t(`invoices:rate_class.${value}`),
                     }))

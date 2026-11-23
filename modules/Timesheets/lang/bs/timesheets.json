@@ -14,6 +14,8 @@
     "correct_hours": "Tačno vrijeme",
     "correct_title": "Ispravi odobreno vrijeme",
     "correction": "Korekcija: {reason}",
+    "dashboard.approvals": "Vrijeme za odobriti",
+    "dashboard.week": "Moji sati ove sedmice",
     "decided": "{count, plural, one {# unos obrađen.} few {# unosa obrađena.} other {# unosa obrađeno.}}",
     "description": "Upišite 1:30 ili 1,5. Svako polje se odmah čuva.",
     "empty": "Još niste u timu aktivnog projekta s otvorenim radnim paketima.",
