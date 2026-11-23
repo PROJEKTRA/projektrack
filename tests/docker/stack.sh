@@ -128,6 +128,9 @@ for path in /index.php /x.php /.env /.git/config; do
     check "${path}: body names no server" body_without_nginx "${path}"
 done
 
+big_cookie="x=$(head -c 9000 /dev/zero | tr '\0' a)"
+check 'oversized cookie: body names no server' bash -c '! curl -sk --resolve "$1:443:127.0.0.1" -H "Cookie: $2" "https://$1/login" | grep -qi nginx' _ "${DOMAIN}" "${big_cookie}"
+
 redirect="$(curl -s -o /dev/null -D - --resolve "${DOMAIN}:80:127.0.0.1" "http://${DOMAIN}/login")"
 check 'HTTP redirects to HTTPS' grep -qi "^location: https://${DOMAIN}/login" <<<"${redirect}"
 check 'redirect carries X-Robots-Tag' grep -qi '^x-robots-tag: noindex' <<<"${redirect}"

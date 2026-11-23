@@ -23,6 +23,7 @@ docker_process_sql --database=mysql <<-EOSQL
 	-- Read only, to verify the rights of the runtime account after each grant run.
 	GRANT SELECT ON mysql.tables_priv TO 'projektrack_migrator'@'%';
 	GRANT SELECT ON mysql.db TO 'projektrack_migrator'@'%';
+	GRANT SELECT ON mysql.columns_priv TO 'projektrack_migrator'@'%';
 	CREATE USER 'projektrack'@'%' IDENTIFIED BY '${PROJEKTRACK_DB_PASSWORD}';
 	FLUSH PRIVILEGES;
 EOSQL

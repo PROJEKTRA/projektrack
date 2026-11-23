@@ -69,6 +69,9 @@ grant_runtime_user() {
          WHERE User = '${DB_RUNTIME_USERNAME}' AND Host = '%' AND Db = DATABASE()
            AND ((Table_priv + 0) & ~15 <> 0 OR (Table_name = 'audit_log' AND (Table_priv + 0) & 12 <> 0))
         UNION ALL
+        SELECT CONCAT('column rights on ', Table_name) FROM mysql.columns_priv
+         WHERE User = '${DB_RUNTIME_USERNAME}' AND Host = '%' AND Db = DATABASE()
+        UNION ALL
         SELECT CONCAT('rights on the schema ', Db) FROM mysql.db WHERE User = '${DB_RUNTIME_USERNAME}' AND Host = '%'")"
     if [[ -n "${excess}" ]]; then
         log "The runtime account has rights it must not have: ${excess//$'\n'/, }"
