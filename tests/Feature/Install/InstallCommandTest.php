@@ -5,8 +5,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+use App\I18n\StringCatalog;
 use App\Models\Tenant;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 
 /*
@@ -18,11 +20,13 @@ beforeEach(function () {
     mkdir($this->dir);
     app()->useEnvironmentPath($this->dir);
     app()->loadEnvironmentFrom('.env');
+    // The compiled strings of this test stay out of the project.
+    config(['i18n.cache_path' => $this->dir.'/strings']);
+    app()->forgetInstance(StringCatalog::class);
 });
 
 afterEach(function () {
-    array_map(unlink(...), array_filter((array) glob($this->dir.'/{,.}[!.]*', GLOB_BRACE), 'is_file'));
-    @rmdir($this->dir);
+    File::deleteDirectory($this->dir);
 });
 
 function configured(string $url = 'https://app.example.test'): void
