@@ -36,7 +36,12 @@ declare module '@inertiajs/core' {
             /** May open Admin > License (S-0976). */
             licenseAccess: boolean;
             /** Brand of the tenant (S-0911). */
-            brand: { name: string; logoUrl: string | null; poweredBy: boolean };
+            brand: {
+                name: string;
+                logoUrl: string | null;
+                licensorMark: boolean;
+                poweredBy: boolean;
+            };
             [key: string]: unknown;
         };
     }

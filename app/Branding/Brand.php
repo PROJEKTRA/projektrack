@@ -68,13 +68,22 @@ final class Brand
     }
 
     /**
+     * Whether the licensor's mark stands for the brand: only after sign-in, and
+     * only while neither the tenant nor the instance has a brand of its own.
+     */
+    private function licensorMark(): bool
+    {
+        return auth()->check() && $this->current()['logoFileId'] === null && $this->name() === config('brand.shipped_name');
+    }
+
+    /**
      * Shared Inertia prop `brand`.
      *
-     * @return array{name: string, logoUrl: string|null, poweredBy: bool}
+     * @return array{name: string, logoUrl: string|null, licensorMark: bool, poweredBy: bool}
      */
     public function toArray(): array
     {
-        return ['name' => $this->nameForRequest(), 'logoUrl' => $this->logoUrl(), 'poweredBy' => $this->current()['poweredBy']];
+        return ['name' => $this->nameForRequest(), 'logoUrl' => $this->logoUrl(), 'licensorMark' => $this->licensorMark(), 'poweredBy' => $this->current()['poweredBy']];
     }
 
     /**

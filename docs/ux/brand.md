@@ -292,6 +292,7 @@ Note: Bosnian example strings show style only. The authoritative translations li
 - Product wordmark "PROJEKTRACK" is set in the same style as the company wordmark and supplied as SVG by PROJEKTRA.
 - Clear space: at least the height of the "P" mark's counter on every side (exact value fixed once assets arrive). Minimum size: mark 16 px, wordmark 80 px wide on screen.
 - Approved variants: ink on light, white on Night/Navy Deep/Beam.
+- In the application (23.11.2026): the supplied white mark (`resources/brand/mark-white.png`, scaled only) on Beam stands in the navigation after sign-in, while neither tenant nor instance has a brand of its own. Before sign-in and as tab icon the neutral mark stays (S-0986). SVG originals and the product wordmark are still open (A-02).
 - **Placeholder until assets arrive**: a neutral rounded-square tile (`--pt-color-line` fill, `--pt-color-text-muted` letter "P" set in Mona Sans) and the text wordmark "PROJEKTRACK" in Mona Sans, stored under `resources/brand/placeholder/` and labeled as placeholder in the design system. Listed as open item; replacing it requires no code change because all usages read from the brand configuration.
 
 ## 11. CSS custom properties
