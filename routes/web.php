@@ -96,8 +96,8 @@ Route::middleware(['auth', 'verified', 'permission:core.admin'])->group(function
     Route::post('admin/doctor', [DoctorController::class, 'store'])->middleware('throttle:6,1')->name('admin.doctor.store');
 });
 
-// Admin > License (S-0976): the license of the installation.
-Route::middleware(['auth', 'verified', 'permission:core.license.manage'])->group(function () {
+// Admin > License (S-0976): the license of the installation, behind a fresh password.
+Route::middleware(['auth', 'verified', 'permission:core.license.manage', RequirePassword::class])->group(function () {
     Route::get('admin/license', [LicenseController::class, 'show'])->name('admin.license.show');
     Route::post('admin/license', [LicenseController::class, 'store'])->middleware('throttle:6,1')->name('admin.license.store');
 });

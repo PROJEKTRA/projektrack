@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Licensing\InstanceId;
 use App\Licensing\InstanceLicense;
 use App\Licensing\InvalidLicense;
+use App\Licensing\License;
 use App\Licensing\LicenseAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,7 +56,8 @@ class LicenseController extends Controller
                 'full' => $license->fullSeats,
                 'light' => $license->lightSeats,
                 'expiresAt' => $license->expiresAt->toIso8601ZuluString(),
-                'readOnlyFrom' => $license->expiresAt->addDays($license->expiryGraceDays)->toIso8601ZuluString(),
+                'readOnlyFrom' => $license->readOnlyFrom()->toIso8601ZuluString(),
+                'trial' => $license->declaredStatus === 'trial',
                 'statusUntil' => $license->statusUntil?->toIso8601ZuluString(),
                 'addons' => $license->addons,
                 'features' => $license->features,
@@ -72,7 +74,13 @@ class LicenseController extends Controller
         $request->validate(['license' => ['required', 'string', 'max:16384']]);
 
         try {
-            $license = $licenses->install($request->string('license')->toString());
+            // Together or not at all: no license without its audit entry.
+            $license = DB::transaction(function () use ($request, $licenses, $audit, $user): License {
+                $license = $licenses->install($request->string('license')->toString());
+                $audit->record('license.installed', ['instance_licenses', $license->id], ['serial' => $license->serial, 'edition' => $license->edition->value], $user);
+
+                return $license;
+            }, 3);
         } catch (InvalidLicense $e) {
             $audit->record('license.refused', null, ['reason' => $e->reason], $user);
 
@@ -80,13 +88,15 @@ class LicenseController extends Controller
         }
 
         Log::notice('License installed', ['license_id' => $license->id, 'serial' => $license->serial]);
-        $audit->record('license.installed', ['instance_licenses', $license->id], ['serial' => $license->serial, 'edition' => $license->edition->value], $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('core:license.installed')]);
 
         return to_route('admin.license.show');
     }
 
-    /** Users of every tenant, as ADR-0003 section 2 counts them. */
+    /**
+     * Users of every tenant, as ADR-0003 section 2 counts them. Deactivated users are
+     * not billed: the story that adds them changes this query (BL-029).
+     */
     private function count(UserType $type): int
     {
         return DB::table('users')->where('user_type', $type->value)->count();

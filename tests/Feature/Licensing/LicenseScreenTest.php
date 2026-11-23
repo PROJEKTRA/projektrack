@@ -12,6 +12,7 @@ use App\Licensing\LicenseToken;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
@@ -27,6 +28,7 @@ beforeEach(function () {
     $this->pair = sodium_crypto_sign_keypair();
     config(['license-keys.keys' => [['kid' => 'k', 'public_key' => base64_encode(sodium_crypto_sign_publickey($this->pair)), 'valid_from' => '2026-11-01T00:00:00Z', 'valid_until' => '2027-12-31T00:00:00Z', 'status' => 'active']]]);
     $this->admin = licenseAdmin();
+    $this->withSession(['auth.password_confirmed_at' => now()->getTimestamp()]);
 });
 
 afterEach(fn () => @unlink($this->file));
@@ -135,7 +137,67 @@ it('is closed to administrators of other tenants', function () {
     $this->actingAs($this->admin)->post('/admin/license', ['license' => screenLicense()])->assertNotFound();
     $this->actingAs($this->admin)->get('/dashboard')->assertInertia(fn (AssertableInertia $page) => $page->where('licenseAccess', false));
 
+    expect(DB::table('instance_licenses')->count())->toBe(0)
+        ->and(DB::table('audit_log')->where('action', 'like', 'license.%')->count())->toBe(0);
+
     // Several tenants and no operator named: nobody.
     config(['doctor.operator_tenant' => '']);
     $this->actingAs($this->admin)->get('/admin/license')->assertNotFound();
+});
+
+it('asks for the password again and installs nothing before', function () {
+    $this->withSession(['auth.password_confirmed_at' => now()->subHours(1)->getTimestamp()]);
+
+    $this->actingAs($this->admin)->get('/admin/license')->assertRedirect(route('password.confirm'));
+    $this->actingAs($this->admin)->post('/admin/license', ['license' => screenLicense()])->assertRedirect(route('password.confirm'));
+    expect(DB::table('instance_licenses')->count())->toBe(0);
+});
+
+it('installs nothing when the audit entry cannot be written', function () {
+    DB::connection()->beforeExecuting(function (string $query): void {
+        if (str_contains($query, 'audit_log') && str_starts_with($query, 'insert')) {
+            throw new RuntimeException('audit down');
+        }
+    });
+
+    $this->actingAs($this->admin)->post('/admin/license', ['license' => screenLicense()])->assertServerError();
+    expect(DB::table('instance_licenses')->count())->toBe(0);
+});
+
+it('counts full and light users of every tenant for the operator tenant', function () {
+    config(['doctor.operator_tenant' => $this->tenant->slug]);
+    $other = Tenant::factory()->create();
+    app(TenantContext::class)->run($other, fn () => User::factory()->count(3)->create());
+    foreach (['full', 'light', 'portal'] as $i => $type) {
+        DB::table('users')->where('id', DB::table('users')->where('tenant_id', $other->id)->orderBy('id')->pluck('id')[$i])->update(['user_type' => $type]);
+    }
+
+    $this->actingAs($this->admin)->get('/admin/license')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('used.full', 2)
+        ->where('used.light', 1));
+});
+
+it('shows a damaged instance id and refuses to install on it', function () {
+    app(InstanceId::class)->get();
+    $license = screenLicense();
+    DB::table('instance_state')->update(['instance_id' => 'broken']);
+
+    $this->actingAs($this->admin)->get('/admin/license')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->where('instanceId', null));
+    $this->post('/admin/license', ['license' => $license])->assertSessionHasErrors('license');
+});
+
+it('names the earlier end of a pending payment', function () {
+    app(InstanceLicense::class)->install(screenLicense(['status' => 'pending_payment', 'status_until' => '2026-12-15T23:59:59Z']));
+    app()->forgetInstance(InstanceLicense::class);
+
+    $this->actingAs($this->admin)->get('/admin/license')->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('status', 'pending_payment')
+        ->where('license.readOnlyFrom', '2026-12-16T00:00:00Z'));
+});
+
+it('refuses a license with a broken signature', function () {
+    [$prefix, $payload] = explode('.', screenLicense());
+
+    $this->actingAs($this->admin)->post('/admin/license', ['license' => $prefix.'.'.$payload.'.'.explode('.', screenLicense(['serial' => 9]))[2]])
+        ->assertSessionHasErrors(['license' => __('core:license.refused.invalid')]);
 });

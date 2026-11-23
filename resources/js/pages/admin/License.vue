@@ -40,6 +40,7 @@ type License = {
     expiresAt: string;
     readOnlyFrom: string;
     statusUntil: string | null;
+    trial: boolean;
     addons: string[];
     features: string[];
     domains: string[];
@@ -72,7 +73,11 @@ const statusText = computed(() => {
 
     switch (props.status) {
         case 'active':
-            return t('core:license.status.active');
+            return license?.trial && license.statusUntil
+                ? t('core:license.status.trial', {
+                      date: formatDateTime(license.statusUntil),
+                  })
+                : t('core:license.status.active');
         case 'pending_payment':
             return t('core:license.status.pending_payment', {
                 date: license?.statusUntil
@@ -117,11 +122,14 @@ const over = computed(
 );
 
 async function readFile(event: Event): Promise<void> {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
 
     // A license is short; anything larger is another file.
     form.license = file && file.size <= 16384 ? (await file.text()).trim() : '';
     form.clearErrors();
+    // So that choosing the same file again reads it again.
+    input.value = '';
 
     if (file && form.license === '') {
         form.setError('license', t('core:license.refused.invalid'));
@@ -296,6 +304,8 @@ function install(): void {
                     type="file"
                     accept=".txt,.lic,text/plain"
                     class="text-sm"
+                    :aria-invalid="form.errors.license ? true : undefined"
+                    aria-describedby="license-error"
                     @change="readFile"
                 />
             </div>

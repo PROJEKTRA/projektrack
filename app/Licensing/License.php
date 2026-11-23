@@ -109,12 +109,21 @@ final readonly class License
         return $license;
     }
 
+    /** From then on commercial features are read-only. */
+    public function readOnlyFrom(): CarbonImmutable
+    {
+        $end = $this->expiresAt->addDays($this->expiryGraceDays);
+
+        return $this->declaredStatus !== 'active' && $this->statusUntil !== null && $this->statusUntil < $end
+            ? $this->statusUntil->addSecond()
+            : $end;
+    }
+
     public function status(CarbonImmutable $now): LicenseStatus
     {
         return match (true) {
             $now < $this->notBefore => LicenseStatus::NotYetValid,
-            $now >= $this->expiresAt->addDays($this->expiryGraceDays) => LicenseStatus::ReadOnly,
-            $this->declaredStatus !== 'active' && $this->statusUntil !== null && $now > $this->statusUntil => LicenseStatus::ReadOnly,
+            $now >= $this->readOnlyFrom() => LicenseStatus::ReadOnly,
             $now >= $this->expiresAt => LicenseStatus::Grace,
             $this->declaredStatus === 'pending_payment' => LicenseStatus::PendingPayment,
             default => LicenseStatus::Active,

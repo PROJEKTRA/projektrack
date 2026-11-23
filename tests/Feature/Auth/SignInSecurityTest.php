@@ -331,7 +331,7 @@ describe('re-authentication for sensitive actions', function () {
 
         expect($route)->not->toBeNull()
             ->and($route->gatherMiddleware())->toContain(RequirePassword::class);
-    })->with(['security.edit', 'sessions.destroy', 'users.two-factor.reset']);
+    })->with(['security.edit', 'sessions.destroy', 'users.two-factor.reset', 'admin.license.show', 'admin.license.store']);
 });
 
 describe('session handling', function () {

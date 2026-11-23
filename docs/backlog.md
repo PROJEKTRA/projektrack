@@ -39,3 +39,4 @@ Rules:
 | BL-026 | Settings in right to left languages: the gap between navigation and content is on the wrong side (`rtl:space-x-reverse` in `layouts/settings/Layout.vue`). | Screenshot review (S-0910), older than it | 23.11.2026 | 0.9.1 |
 | BL-027 | Docker: PHP extension pcntl in the image, so the queue worker finishes its job on stop; `install` verifies the image signature (with S-0929). | Security review (S-0927) | 23.11.2026 | 0.9.1 |
 | BL-028 | Licensing: threat model, CI check that files outside `ee` never reference `Ee\`, `ext-sodium` in composer.json, a test with two installs at the same time. | Security review (S-0974) | 23.11.2026 | 0.9.1 |
+| BL-029 | License: do not count deactivated users once they exist; names of add-ons and features, banner outside the license screen and support link for an invalid license (with S-0977 and S-0979). | Security review (S-0976) | 23.11.2026 | 0.9.1 |
