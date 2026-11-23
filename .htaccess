@@ -1,0 +1,17 @@
+# Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Safety net for plain hosting: if the web root points here by mistake instead
+# of public/, nothing is served. public/.htaccess allows its own folder again.
+ServerSignature Off
+<IfModule mod_headers.c>
+    Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate"
+    Header always set Referrer-Policy "no-referrer"
+</IfModule>
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

@@ -4,6 +4,15 @@
 Options -Indexes
 ServerSignature Off
 
+# The folder above denies everything (safety net); this one is the web root.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
+
 # Invisible by default (S-0985): static files served directly by Apache carry the
 # same headers as application responses. The application sets them itself for
 # everything it serves, so hosts without mod_headers stay covered for pages.

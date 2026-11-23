@@ -134,6 +134,8 @@ Scenario: Progressive fallbacks
   And Apache .htaccess and an Nginx sample config are shipped
 ```
 
+Implementation note (23.11.2026): the command line part only. `projektrack:install` checks the requirements in plain language, writes `.env`, migrates and creates the tenant; one cron entry also drains the database queue; the root `.htaccess` refuses everything if the web root is set wrongly. CI (`tests/amp/install.sh`) installs the ZIP on Apache with MariaDB and nothing else. Not built: the web installer, its lock, PDF generation, the Nginx sample. Guide: `docs/admin/plain-hosting.md`.
+
 ---
 
 ### S-0926 Docker one-command installer script

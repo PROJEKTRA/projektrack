@@ -247,5 +247,9 @@ Schedule::call(function (InstanceLicense $licenses): void {
     }
 })->name('license-check')->hourly();
 
+// Plain hosting (S-0925): no worker runs, so the one cron entry drains the queue.
+Schedule::command('queue:work database --stop-when-empty --max-time=50 --tries=3')
+    ->everyMinute()->withoutOverlapping(5)->when(fn (): bool => config('queue.default') === 'database');
+
 // Security baseline 8.2: weekly verification; failures are logged as critical.
 Schedule::command('projektrack:audit:verify')->weekly()->sundays()->at('03:00');
