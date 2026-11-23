@@ -7,18 +7,15 @@
 #   ./projektrack install --domain <host> --email <address> [--image <ref>]
 #   ./projektrack backup
 #   ./projektrack restore <backup folder name>
-#   ./projektrack update <image>@sha256:<digest>
+#   ./projektrack update <folder with the files of a release>
 #
-# update verifies the signature of the image, takes a backup and a snapshot,
+# update verifies the signature of the release, takes a backup and a snapshot,
 # enables maintenance mode, migrates, starts the new version and checks its
 # health. If any step fails, the snapshot is restored and the previous version
 # runs again. Guide: docs/admin/docker.md.
 set -Eeuo pipefail
 
 cd "$(dirname "$0")"
-
-IDENTITY='^https://github\.com/PROJEKTRA/projektrack/\.github/workflows/release\.yml@refs/tags/v[0-9]'
-ISSUER='https://token.actions.githubusercontent.com'
 
 log() { printf '%s projektrack: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2 || true; }
 fail() { log "$*"; exit 1; }
@@ -106,6 +103,7 @@ rollback() {
     trap - ERR
     trap '' INT TERM HUP PIPE
     set +e
+    unset PROJEKTRACK_IMAGE
     local ok=1
     log 'FAILED. Rolling back to the previous version.'
     one_off
@@ -138,32 +136,47 @@ rollback() {
 update() {
     require_stack
     lock
-    new="${1:-}"
     old="$(env_value PROJEKTRACK_IMAGE)"
     project="$(env_value COMPOSE_PROJECT_NAME)"
     project="${COMPOSE_PROJECT_NAME:-${project:-projektrack}}"
     restore_needed=0
     snapshot_started=0
-    local repository
+    local repository version
     repository="$(env_value PROJEKTRACK_REPOSITORY)"
     repository="${repository:-ghcr.io/projektra/projektrack}"
-
-    [[ "${new}" == "${repository}@sha256:"* && "${new##*@sha256:}" =~ ^[0-9a-f]{64}$ ]] \
-        || fail "Give the image by digest: ${repository}@sha256:<digest>."
     [[ -z "${PROJEKTRACK_IMAGE:-}" ]] || fail 'Unset PROJEKTRACK_IMAGE in your shell; it would override .env.'
     [[ ! -e .update-state ]] || fail 'An earlier update did not finish (.update-state). See docs/admin/docker.md.'
-    command -v cosign >/dev/null || fail 'cosign is not installed; the image cannot be verified.'
+    [[ -d "${1:-}" ]] || fail 'Give the folder with SHA256SUMS, SHA256SUMS.sig and projektrack-X.Y.Z.image.txt of the release.'
 
+    # A private copy, so nothing changes between the check and its use.
+    release="$(mktemp -d)"
+    trap 'rm -rf "${release}"' EXIT
+    chmod 0755 "${release}"
+    local names=("${1}"/projektrack-*.image.txt)
+    [[ ${#names[@]} -eq 1 && -f "${names[0]}" && -f "${1}/SHA256SUMS" && -f "${1}/SHA256SUMS.sig" ]] \
+        || fail 'The folder must hold SHA256SUMS, SHA256SUMS.sig and the image.txt of exactly one release.'
+    install -m 0444 "${names[0]}" "${1}/SHA256SUMS" "${1}/SHA256SUMS.sig" "${release}/"
+    local file="${names[0]##*/}"
+    version="${file#projektrack-}"
+    version="${version%.image.txt}"
+    [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || fail "${file} does not name a version."
+
+    # With the keys of the running version, inside its image.
     log 'verifying the signature'
-    cosign verify "${new}" --certificate-identity-regexp "${IDENTITY}" --certificate-oidc-issuer "${ISSUER}" >/dev/null \
-        || fail 'The image is not signed by the release workflow. Nothing was changed.'
+    dc run --rm -T --no-deps -v "${release}:/release:ro" app php artisan projektrack:release:verify "/release/${file}" \
+        || fail 'The release is not signed by a trusted key. Nothing was changed.'
+    new="$(cat "${release}/${file}")"
+    [[ "${new}" == "${repository}@sha256:"* && "${new##*@sha256:}" =~ ^[0-9a-f]{64}$ ]] \
+        || fail "The release names no image of ${repository}. Nothing was changed."
     docker pull -q "${new}" >/dev/null
 
-    # An older genuine release must not pass as an update.
+    # An older genuine release must not pass as an update. The running image
+    # compares, so no code of the new one runs for it.
     local from to
     from="$(version_of "${old}")"
     to="$(version_of "${new}")"
-    docker run --rm --network none --entrypoint php "${new}" -r \
+    [[ "${to}" == "${version}" ]] || fail "The image is version ${to}, the release names ${version}. Nothing was changed."
+    docker run --rm --network none --entrypoint php "${old}" -r \
         'exit(version_compare($argv[1], $argv[2], ">") ? 0 : 1);' "${to}" "${from}" \
         || fail "Version ${to} is not newer than ${from}. Nothing was changed."
     healthy || fail 'The instance is not healthy; fix that before an update.'
@@ -188,7 +201,9 @@ update() {
     restore_needed=1
 
     # The app container keeps showing the maintenance page during migrations.
-    PROJEKTRACK_IMAGE="${new}" dc run --rm -T --name "${project}-update-migrate" migrate
+    # As a child's environment, not before the function dc: the ERR trap runs inside
+    # a failing function and would roll back with the new image.
+    env PROJEKTRACK_IMAGE="${new}" docker compose run --rm -T --name "${project}-update-migrate" migrate
 
     # Nobody writes before the new version is healthy: the proxy is stopped.
     dc stop proxy

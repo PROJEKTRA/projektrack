@@ -27,7 +27,7 @@ Ubuntu 24.04 LTS, Docker Engine 27 or newer with Compose v2, 2 vCPU, 4 GB RAM, 4
 
 ## First installation
 
-1. Get the image. Until signed images are published (S-0924), build it from the repository root: `docker build -f deploy/docker/Dockerfile -t projektrack:local .`
+1. Get the image. Verify the first signed release (`docs/admin/releases.md`) and use the image named in its `image.txt`. Before that exists, build it from the repository root: `docker build -f deploy/docker/Dockerfile -t projektrack:local .`
 2. In `deploy/docker/`, write the secrets once:
 
    ```
@@ -96,15 +96,15 @@ Containers log to Docker (`docker compose logs`), rotated at 10 x 10 MB per cont
 
 ## Updates
 
-On the host, with [cosign](https://docs.sigstore.dev/) installed, in `deploy/docker/`:
+Download `SHA256SUMS`, `SHA256SUMS.sig` and `projektrack-X.Y.Z.image.txt` of the release into an empty folder on the host, then in `deploy/docker/`:
 
 ```
-./projektrack update ghcr.io/projektra/projektrack@sha256:<digest>
+./projektrack update /path/to/folder
 ```
 
-The digest is in `projektrack-X.Y.Z.image.txt` of the release (`docs/admin/releases.md`). The command:
+The command:
 
-1. verifies that the release workflow signed the image, and refuses a version that is not newer than the running one;
+1. verifies the signature with the release keys of the running version (`docs/admin/releases.md`), takes the image digest from the verified file, and refuses a version that is not newer than the running one;
 2. checks the health and the disk space, takes an encrypted backup, enables maintenance mode, ends running requests and jobs and stops the background services;
 3. takes a local snapshot of database and files, then runs the migrations of the new version (visitors see the maintenance page);
 4. stops the proxy, starts the new version, checks its health and opens it again.
@@ -121,13 +121,13 @@ Exit code 2 means the rollback failed too: the proxy stays stopped and the snaps
 2. If `.update-state` contains `committed=1`, the new version was healthy and may already hold new data: keep it and skip to step 5.
 3. Set `PROJEKTRACK_IMAGE` in `.env` to `previous` from `.update-state`.
 4. Restore: `docker compose --profile update run --rm snapshot projektrack-snapshot restore`. If it says that there is no complete snapshot, the database was not touched yet (without `committed=1`). If it says that the snapshot is damaged, restore the encrypted backup on a new host.
-5. Start only the application, with the proxy still stopped: `docker compose up -d --no-deps app`, `docker compose exec app php artisan up`, and check `docker compose exec app wget -q -O - http://127.0.0.1:8080/health` answers `OK`.
+5. Start only the application, with the proxy still stopped: `docker compose up -d --no-deps app`, `docker compose exec app php artisan up`, and check `docker compose exec app wget -q -O - http://127.0.0.1:8080/health` answers `OK` (it takes a few seconds after the start).
 6. Only when it is fine: `docker compose --profile update run --rm snapshot projektrack-snapshot drop`, delete `.update-state` and open the instance with `docker compose up -d`.
 
 The snapshot holds unencrypted data, like the database volume. Exclude the volume `projektrack_snapshot` from host backups.
 
 Pre-releases such as `0.9.0-rc1` count as older than `0.9.0` and can be installed like any signed release.
-The command does not update the files in `deploy/docker/` themselves; take those from the release when its notes say so.
+The command does not update the files in `deploy/docker/` themselves; take those from the release ZIP when its notes say so, after verifying it (`docs/admin/releases.md`).
 
 ## Commands
 
@@ -136,4 +136,4 @@ The command does not update the files in `deploy/docker/` themselves; take those
 | `./projektrack install --domain ... --email ... --image ...` | Writes the secrets (`setup.sh`) |
 | `./projektrack backup` | One encrypted backup now |
 | `./projektrack restore <backup>` | Restores a backup into an empty instance and starts it |
-| `./projektrack update <image>@sha256:<digest>` | Update with automatic rollback |
+| `./projektrack update <folder>` | Update with automatic rollback |

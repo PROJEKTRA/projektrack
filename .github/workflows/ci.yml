@@ -312,6 +312,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate
           bash tests/release/dry-run.sh
+          bash tests/release/approve.sh
 
   # S-0923: the production stack as an operator starts it, incl. the restore drill.
   docker:

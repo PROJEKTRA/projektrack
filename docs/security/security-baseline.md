@@ -245,10 +245,10 @@ Logins (success, failure, lockout, 2FA changes), sessions revoked, permission an
 | DAST | OWASP ZAP baseline scan on every PR against the CI instance; full active scan nightly | Baseline blocks merge on medium and above |
 | Container scanning | Image vulnerability scan of every built image | Fails on fixable critical |
 | SBOM | CycloneDX SBOM for Composer, npm and each container image, attached to every release | Release job fails without SBOM |
-| Signed images | cosign signature and provenance attestation for every image on GHCR, verified by `install.sh` and `projektrack update` | Release job; update refuses unsigned images |
-| Signed ZIPs | `SHA256SUMS` plus Ed25519 signature of the ZIP and checksum file (release key separate from license key), also cosign blob signature; the updater verifies with the public key shipped in the previous release | Release job; updater test with tampered ZIP must fail |
-| Reproducibility | Builds from tagged commits on CI runners only; no manual uploads | Release workflow protected by environment approval |
-| Branch protection | Required reviews, signed commits for release branches, status checks required | Repository settings, audited quarterly |
+| Signed images | The image digest is in a file covered by the signed `SHA256SUMS` (decision of 23.11.2026: one release key instead of cosign); build provenance in the registry. `projektrack update` takes the digest only from the verified file | Update refuses unsigned, changed and older releases (CI) |
+| Signed ZIPs | `SHA256SUMS` over every file, signed with the Ed25519 release key (separate from the license key), which is only with the maintainers, never on GitHub; instances verify with the keys shipped in the release that is running | CI dry run; tampered ZIP must fail |
+| Reproducibility | Builds from tagged commits on CI runners only; the approval signs exactly the files of that build. Base images are not pinned by digest yet (BL-018) | `deploy/release/approve.sh`, tested in CI |
+| Branch protection | Required reviews, signed commits for release branches, status checks required. Not enforceable on the current repository plan (23.11.2026) | Until then: releases are signed only for a commit id from the maintainer's own review (`deploy/release/approve.sh`) |
 | GitHub Actions hygiene | Actions pinned by commit SHA, least-privilege `permissions:` per job | Semgrep or linter rule on workflows |
 
 ## 10. Privacy: GDPR and CCPA/CPRA tooling
