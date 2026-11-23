@@ -9,6 +9,8 @@ namespace App\Http\Middleware;
 
 use App\Authorization\Permissions;
 use App\Branding\Brand;
+use App\Doctor\Doctor;
+use App\Doctor\DoctorAccess;
 use App\I18n\Formats;
 use App\I18n\Strings;
 use App\Models\AppNotification;
@@ -63,6 +65,11 @@ class HandleInertiaRequests extends Middleware
             'strings' => $this->strings(),
             // Regional format and time zone for dates and amounts (S-0919).
             'formats' => app(Formats::class)->current()->toArray(),
+            // Critical findings of the system check for operator administrators
+            // (S-0988); null hides the menu entry for everyone else.
+            'doctorAlerts' => fn (): ?int => $user instanceof User && app(DoctorAccess::class)->allows($user)
+                ? app(Doctor::class)->criticalProblems()
+                : null,
             // Unread notifications for the bell (S-0912).
             'unreadNotifications' => fn (): int => $user instanceof User
                 ? AppNotification::query()->where('user_id', $user->id)->whereNull('read_at')->count()

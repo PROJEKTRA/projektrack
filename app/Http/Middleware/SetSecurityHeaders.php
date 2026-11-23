@@ -21,7 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SetSecurityHeaders
 {
-    public const string ROBOTS = 'noindex, nofollow, noarchive, nosnippet, noimageindex';
+    // All six directives of INV-01.
+    public const string ROBOTS = 'noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate';
 
     public function handle(Request $request, Closure $next): Response
     {

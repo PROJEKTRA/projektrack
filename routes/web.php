@@ -7,6 +7,7 @@
 
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\Admin\BrandController;
+use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StringController;
@@ -85,6 +86,12 @@ Route::middleware(['auth', 'verified', 'permission:core.settings.manage'])
         Route::get('/', 'index')->name('index');
         Route::put('{component}', 'update')->name('update');
     });
+
+// Admin > System > Doctor (S-0988): last report of projektrack doctor, check again.
+Route::middleware(['auth', 'verified', 'permission:core.admin'])->group(function () {
+    Route::get('admin/doctor', [DoctorController::class, 'index'])->name('admin.doctor.index');
+    Route::post('admin/doctor', [DoctorController::class, 'store'])->middleware('throttle:6,1')->name('admin.doctor.store');
+});
 
 // Brand (S-0911): the tenant's brand profile, its logo (also before sign-in) and About.
 Route::middleware(['auth', 'verified', 'permission:core.branding.manage'])->group(function () {

@@ -31,6 +31,8 @@ declare module '@inertiajs/core' {
             strings: StringsMeta;
             formats: FormatsMeta;
             unreadNotifications: number;
+            /** Critical system check findings, for administrators (S-0988). */
+            doctorAlerts: number | null;
             /** Brand of the tenant (S-0911). */
             brand: { name: string; logoUrl: string | null; poweredBy: boolean };
             [key: string]: unknown;

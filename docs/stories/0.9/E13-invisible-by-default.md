@@ -131,3 +131,5 @@ Scenario: Doctor
   Then headers on pages and files, robots.txt and server signature are checked from outside
   And problems are reported in the admin UI
 ```
+
+Implementation note (23.11.2026): `tests/e2e/crawl.spec.ts` runs in the browser test job. It crawls anonymously and as an administrator to depth 3, checks every response, every rendered page and every browser request against the rules of security baseline 6.2, and fails the build on any finding. The JUnit report is kept as the `e2e-report` artifact for 30 days. In the test server a small proxy adds the `Header always set` lines of `public/.htaccess` to static files, as Apache does. `php artisan projektrack:doctor [--external=URL]` checks the primary address of the operator tenant from outside, plus debug mode, environment, application key and storage, and exits with 1 on critical findings. It runs every night and within a minute of "Check now". Admin > System check shows the last report, and a banner names critical findings. Both are shown only to administrators of the operator tenant (`DOCTOR_OPERATOR_TENANT`, or the only tenant of a single-company installation).

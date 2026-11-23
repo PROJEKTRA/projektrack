@@ -8,7 +8,7 @@ ServerSignature Off
 # same headers as application responses. The application sets them itself for
 # everything it serves, so hosts without mod_headers stay covered for pages.
 <IfModule mod_headers.c>
-    Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+    Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate"
     Header always set Referrer-Policy "no-referrer"
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"

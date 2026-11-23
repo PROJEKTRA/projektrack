@@ -6,6 +6,7 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import { Bell } from '@lucide/vue';
 import { computed } from 'vue';
+import DoctorController from '@/actions/App/Http/Controllers/Admin/DoctorController';
 import NotificationController from '@/actions/App/Http/Controllers/NotificationController';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -13,6 +14,8 @@ import type { BreadcrumbItem } from '@/types';
 
 // Unread notifications (S-0912), refreshed with every visit.
 const unread = computed(() => Number(usePage().props.unreadNotifications ?? 0));
+// Critical findings of the system check, for administrators (S-0988).
+const doctorAlerts = computed(() => Number(usePage().props.doctorAlerts ?? 0));
 
 withDefaults(
     defineProps<{
@@ -49,4 +52,17 @@ withDefaults(
             >
         </Link>
     </header>
+    <div
+        v-if="doctorAlerts > 0"
+        role="alert"
+        class="flex flex-wrap items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-6 py-2 text-sm"
+        data-test="doctor-banner"
+    >
+        <span>{{
+            $t('core:doctor.page.banner', { count: doctorAlerts })
+        }}</span>
+        <Link :href="DoctorController.index()" class="font-medium underline">{{
+            $t('core:doctor.page.banner_link')
+        }}</Link>
+    </div>
 </template>

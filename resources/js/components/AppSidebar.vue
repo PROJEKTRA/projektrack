@@ -4,10 +4,17 @@
 -->
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Languages, LayoutGrid, Palette, Settings } from '@lucide/vue';
+import {
+    Languages,
+    LayoutGrid,
+    Palette,
+    Settings,
+    Stethoscope,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import LanguageController from '@/actions/App/Http/Controllers/Admin/LanguageController';
 import BrandController from '@/actions/App/Http/Controllers/Admin/BrandController';
+import DoctorController from '@/actions/App/Http/Controllers/Admin/DoctorController';
 import SettingsController from '@/actions/App/Http/Controllers/Admin/SettingsController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -52,6 +59,17 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('core:nav.brand'),
                       href: BrandController.edit(),
                       icon: Palette,
+                  },
+              ]
+            : []),
+        // Operator administrators only; the server sends null to everyone else.
+        ...(page.props.doctorAlerts !== null &&
+        page.props.doctorAlerts !== undefined
+            ? [
+                  {
+                      title: t('core:nav.doctor'),
+                      href: DoctorController.index(),
+                      icon: Stethoscope,
                   },
               ]
             : []),

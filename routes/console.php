@@ -10,11 +10,14 @@ use App\Audit\AuditLog;
 use App\Audit\ChainVerifier;
 use App\Auth\LoginThrottle;
 use App\Authorization\PermissionCatalog;
+use App\Doctor\Doctor;
+use App\Doctor\Finding;
 use App\I18n\Locales;
 use App\I18n\StringCatalog;
 use App\Models\Tenant;
 use App\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
@@ -106,6 +109,34 @@ Artisan::command('projektrack:api:openapi {--check : Fail if the committed docum
 
     return 0;
 })->purpose('Write the OpenAPI 3.1 document of /api/v1 (S-0913)');
+
+Artisan::command('projektrack:doctor {--external= : Public URL to check; the report of the admin page stays as it is} {--requested : Run only when an administrator asked for a check}', function (Doctor $doctor) {
+    // The request is taken only by a run that really starts (S-0988).
+    if ($this->option('requested') && Cache::pull(Doctor::REQUESTED_KEY) !== true) {
+        return 0;
+    }
+    $external = $this->option('external');
+    $findings = is_string($external) && $external !== '' ? $doctor->run($external, store: false) : $doctor->run();
+    $critical = 0;
+
+    foreach ($findings as $finding) {
+        $status = $finding->ok ? 'OK  ' : strtoupper($finding->severity);
+        $this->line(sprintf('%-9s %s%s', $status, __($finding->title()), $finding->detail !== null ? " ($finding->detail)" : ''));
+
+        if (! $finding->ok) {
+            $this->line('          '.__($finding->fix()));
+            $critical += $finding->severity === Finding::CRITICAL ? 1 : 0;
+        }
+    }
+
+    // Non-zero on critical findings, so operators can run it from their monitoring.
+    return $critical === 0 ? 0 : 1;
+})->purpose('Check this installation from outside: headers, robots.txt, error pages, web root (S-0988)');
+
+// S-0988: daily, so the admin page and banner are current, and within a minute
+// of "Check now" (no queue worker needed on plain hosting).
+Schedule::command('projektrack:doctor')->dailyAt('04:30')->withoutOverlapping(10);
+Schedule::command('projektrack:doctor --requested')->everyMinute()->withoutOverlapping(10);
 
 // Security baseline 8.2: weekly verification; failures are logged as critical.
 Schedule::command('projektrack:audit:verify')->weekly()->sundays()->at('03:00');

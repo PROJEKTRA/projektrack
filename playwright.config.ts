@@ -18,6 +18,8 @@ export const BASE_URL = `http://127.0.0.1:${PORT}`;
 // database and tenant host, never the database of the .env file.
 export const E2E_ENV: Record<string, string> = {
     APP_ENV: 'local',
+    // Error pages as on a production server, so the crawl (S-0988) checks those.
+    APP_DEBUG: 'false',
     APP_URL: BASE_URL,
     DB_CONNECTION: 'sqlite',
     DB_DATABASE: resolve('database/e2e.sqlite'),
@@ -35,7 +37,14 @@ export default defineConfig({
     workers: 1,
     forbidOnly: !!process.env.CI,
     retries: 0,
-    reporter: process.env.CI ? [['github'], ['list']] : 'list',
+    // JUnit report kept as a CI artifact (S-0988).
+    reporter: process.env.CI
+        ? [
+              ['github'],
+              ['list'],
+              ['junit', { outputFile: 'test-results/junit.xml' }],
+          ]
+        : 'list',
     // Screenshots are compared with baselines rendered on Linux (CI).
     snapshotPathTemplate: '{testDir}/__screenshots__/{arg}-{projectName}{ext}',
     expect: {
