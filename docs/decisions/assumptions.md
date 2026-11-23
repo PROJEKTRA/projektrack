@@ -15,6 +15,8 @@ Status as of 17.11.2026 (Phase 0). Each entry is either **confirmed** by the pro
 | C-07 | **Development runs on the PROJEKTRA development workstation** (Windows, per-user toolchain: PHP 8.4 with Composer, Node LTS, Git, GitHub CLI). The full database matrix (MySQL, MariaDB, PostgreSQL) runs in GitHub Actions only. Replaces the dev server of C-01. | 17.11.2026 | Product owner |
 | C-08 | Repository: `PROJEKTRA/projektrack` on GitHub, private. | 17.11.2026 | Product owner |
 | C-09 | **PROJEKTRA's existing 1blu webhosting is the test and production environment for the PROJEKTRA instance**, running the AMP profile (no Docker, no Redis, cron-driven queue). This makes PROJEKTRA's own instance the reference installation for plain hosting. The license signing private key is never stored on this host; licenses are signed offline or on a separate machine. | 17.11.2026 | Product owner |
+| C-10 | **Releases are approved by signing on a maintainer's machine**, not by an approval on GitHub, whose plan for this private repository cannot enforce one. One Ed25519 release key covers ZIP and image; cosign is not used (S-0924). | 23.11.2026 | Product owner |
+| C-11 | **Online activation and the daily check-in are deferred** (cut 4 of 17.11.2026 confirmed for S-0976 and S-0977). On 1.12.2026 a license is installed from a file. Seat warnings, soft enforcement and edition gating stay in S-0977. | 23.11.2026 | Product owner |
 
 ## Assumptions
 
