@@ -96,4 +96,44 @@ Containers log to Docker (`docker compose logs`), rotated at 10 x 10 MB per cont
 
 ## Updates
 
-Until the update command exists (S-0927), update by pulling or building the new image, changing `PROJEKTRACK_IMAGE` in `.env` if the tag changes, taking a backup and running `docker compose up -d`. `migrate` runs before the application starts.
+On the host, with [cosign](https://docs.sigstore.dev/) installed, in `deploy/docker/`:
+
+```
+./projektrack update ghcr.io/projektra/projektrack@sha256:<digest>
+```
+
+The digest is in `projektrack-X.Y.Z.image.txt` of the release (`docs/admin/releases.md`). The command:
+
+1. verifies that the release workflow signed the image, and refuses a version that is not newer than the running one;
+2. checks the health and the disk space, takes an encrypted backup, enables maintenance mode, ends running requests and jobs and stops the background services;
+3. takes a local snapshot of database and files, then runs the migrations of the new version (visitors see the maintenance page);
+4. stops the proxy, starts the new version, checks its health and opens it again.
+
+If a step fails, it restores the snapshot, starts the previous version, checks its health and ends with exit code 1. The snapshot is needed because the private key of the backups is off the host; it sits in its own Docker volume only while an update runs.
+
+If the new version is healthy but a service does not start afterwards, there is no rollback any more, because users may already have written data; the command says so.
+
+### When an update was interrupted
+
+Exit code 2 means the rollback failed too: the proxy stays stopped and the snapshot is kept. A power loss leaves the file `.update-state` with the previous image. The command refuses further updates until this is resolved:
+
+1. Stop everything that writes: `docker compose stop proxy app worker scheduler backup`, and remove leftovers with `docker rm -f projektrack-update-snapshot projektrack-update-migrate`.
+2. If the new version was already open to users (the log says "Updated to", or it ran normally), keep its data: skip to step 5.
+3. Set `PROJEKTRACK_IMAGE` in `.env` to `previous` from `.update-state`.
+4. Restore: `docker compose --profile update run --rm snapshot projektrack-snapshot restore`. If it says that there is no complete snapshot, the database was not touched yet. If it says that the snapshot is damaged, restore the encrypted backup on a new host.
+5. Start: `docker compose up -d`, then `docker compose exec app php artisan up`, and check the instance.
+6. Only when it is fine: `docker compose --profile update run --rm snapshot projektrack-snapshot drop` and delete `.update-state`.
+
+The snapshot holds unencrypted data, like the database volume. Exclude the volume `projektrack_snapshot` from host backups.
+
+Pre-releases such as `0.9.0-rc1` count as older than `0.9.0` and can be installed like any signed release.
+The command does not update the files in `deploy/docker/` themselves; take those from the release when its notes say so.
+
+## Commands
+
+| Command | Does |
+|---|---|
+| `./projektrack install --domain ... --email ... --image ...` | Writes the secrets (`setup.sh`) |
+| `./projektrack backup` | One encrypted backup now |
+| `./projektrack restore <backup>` | Restores a backup into an empty instance and starts it |
+| `./projektrack update <image>@sha256:<digest>` | Update with automatic rollback |
