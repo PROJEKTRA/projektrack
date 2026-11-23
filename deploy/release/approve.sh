@@ -2,70 +2,100 @@
 # Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
 # SPDX-License-Identifier: AGPL-3.0-only
 #
-# Approves a release offline (S-0924): a maintainer signs what the release
-# workflow built, on their own machine. The private key never leaves it, so
-# signing is the approval. Run from a clean, current clone that you trust.
+# Approves a release (S-0924): a maintainer signs what the release workflow
+# built, on their own machine. The private key is never on GitHub, so signing
+# is the approval.
 #
-#   deploy/release/approve.sh vX.Y.Z <private key, PEM>
+#   approve.sh vX.Y.Z <reviewed commit> <commit of the previous release, or "first"> <private key, PEM>
 #
-# Needs git, gh (signed in), openssl 3 and the key. It refuses a tag that is not
-# on main, a build that did not come from the release workflow of exactly that
-# commit, changed files, and a key that this or the previous release does not
-# trust. Nothing is published before the last question is answered.
+# Keep a copy of this file and verify.sh next to the key and run that copy from
+# inside a clone: whoever can write to the repository could change the files
+# there. The two full commit ids come from your own notes of the review, not
+# from GitHub at the time of approval; tags can be set by anyone with write
+# access and prove nothing.
+#
+# Needs git, gh (signed in) and OpenSSL 3. Nothing is signed or published
+# before the last question is answered.
 set -Eeuo pipefail
 
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tag="${1:-}"
-key="${2:-}"
+commit="${2:-}"
+previous="${3:-}"
+key="${4:-}"
 fail() { echo "approve: $*" >&2; exit 1; }
-[[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ && -f "${key}" ]] || fail 'Usage: approve.sh vX.Y.Z <private key, PEM>'
+# Commit titles are written by others; they must not control the terminal.
+plain() { LC_ALL=C tr -cd '[:print:]\n'; }
+
+[[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ && "${commit}" =~ ^[0-9a-f]{40}$ \
+    && "${previous}" =~ ^([0-9a-f]{40}|first)$ && -f "${key}" ]] \
+    || fail 'Usage: approve.sh vX.Y.Z <reviewed commit> <commit of the previous release, or "first"> <private key, PEM>'
 version="${tag#v}"
 key="$(realpath "${key}")"
 cd "$(git rev-parse --show-toplevel)"
 repo=PROJEKTRA/projektrack
 
+umask 077
 work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
-umask 077
 
-git fetch -q origin main "refs/tags/${tag}:refs/tags/${tag}"
-commit="$(git rev-parse "${tag}^{commit}")"
-git merge-base --is-ancestor "${commit}" origin/main || fail "${tag} is not on main."
+tag_commit() { git ls-remote origin "refs/tags/${tag}" "refs/tags/${tag}^{}" | tail -n 1 | cut -f1; }
+
+git fetch -q --no-tags origin main
+[[ "$(tag_commit)" == "${commit}" ]] || fail "${tag} does not point to the reviewed commit."
+git merge-base --is-ancestor "${commit}" FETCH_HEAD || fail "${commit} is not on main."
+if [[ "${previous}" != 'first' ]]; then
+    [[ "${previous}" != "${commit}" ]] && git merge-base --is-ancestor "${previous}" "${commit}" \
+        || fail 'The previous release is not an ancestor of this one.'
+fi
 
 ci="$(gh run list --repo "${repo}" --workflow ci.yml --branch main --event push --commit "${commit}" --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')"
 [[ "${ci}" -ge 1 ]] || fail "CI on main is not green for ${commit}."
 
-# The files of the run itself: its artifact cannot be replaced afterwards.
+# The artifact of a run of the release workflow at exactly this commit.
 run="$(gh run list --repo "${repo}" --workflow release.yml --event push --branch "${tag}" --commit "${commit}" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
-[[ -n "${run}" ]] || fail "No successful release build of ${tag} at ${commit}."
+[[ "${run}" =~ ^[0-9]+$ ]] || fail "No successful release build of ${tag} at ${commit}."
 gh run download "${run}" --repo "${repo}" --name release-bundle --dir "${work}/dist"
-[[ -s "${work}/dist/projektrack-${version}.zip" && -s "${work}/dist/projektrack-${version}.image.txt" ]] || fail 'The build is incomplete.'
-(cd "${work}/dist" && sha256sum --strict -c SHA256SUMS >/dev/null) || fail 'The files do not match the checksums of the build.'
-cp "${work}/dist/SHA256SUMS" "${work}/built"
 
-deploy/release/sign.sh "${work}/dist" "${key}" >/dev/null
-cmp -s "${work}/built" "${work}/dist/SHA256SUMS" || fail 'The checksums of the build do not name exactly its files.'
-
-# An update is checked with the keys of the running release, so this release
-# and the newest earlier one with keys must both trust the signing key.
-git show "${commit}:resources/release/public-keys.txt" > "${work}/keys"
-deploy/release/verify.sh "${work}/dist" "${work}/keys" >/dev/null || fail "${tag} does not ship the public key of this private key."
-previous=''
-for candidate in $(git tag --list 'v[0-9]*' --sort=-v:refname --merged "${commit}^"); do
-    git show "${candidate}:resources/release/public-keys.txt" > "${work}/keys" 2>/dev/null || continue
-    grep -qve '^#' -e '^[[:space:]]*$' "${work}/keys" || continue
-    deploy/release/verify.sh "${work}/dist" "${work}/keys" >/dev/null || fail "${candidate} does not trust this key; its instances could not update."
-    previous="${candidate}"
-    break
+dist="${work}/dist"
+name="projektrack-${version}"
+for file in zip cdx.json image.cdx.json image.txt; do
+    [[ -s "${dist}/${name}.${file}" ]] || fail "The build has no ${name}.${file}."
 done
+[[ "$(cat "${dist}/${name}.image.txt")" =~ ^ghcr\.io/projektra/projektrack@sha256:[0-9a-f]{64}$ ]] || fail 'The build names no image of the project.'
+named="$(sed 's/^[0-9a-f]\{64\} [ *]//' "${dist}/SHA256SUMS" | LC_ALL=C sort)"
+there="$(cd "${dist}" && for file in *; do [[ "${file}" == 'SHA256SUMS' ]] || printf '%s\n' "${file}"; done | LC_ALL=C sort)"
+[[ "${named}" == "${there}" ]] || fail 'The checksums do not name exactly the files of the build.'
+(cd "${dist}" && sha256sum --strict -c SHA256SUMS >/dev/null) || fail 'The files do not match the checksums.'
+
+# An update is checked with the keys of the running release, so both releases
+# must trust this key.
+public="$(openssl pkey -in "${key}" -pubout -outform DER | tail -c 32 | base64)"
+trusts() { git show "$1:resources/release/public-keys.txt" 2>/dev/null | tr -d '\r' | grep -qxF "${public}"; }
+trusts "${commit}" || fail 'This release does not ship the public key of this private key.'
+if [[ "${previous}" != 'first' ]]; then
+    trusts "${previous}" || fail 'The previous release does not trust this key; its instances could not update.'
+fi
 
 echo "Release:   ${tag}"
-echo "Commit:    ${commit}  $(git log -1 --format=%s "${commit}")"
-echo "Since:     ${previous:-(first release with keys)}"
+echo "Commit:    ${commit}"
+echo "Previous:  ${previous}"
 echo "Build:     https://github.com/${repo}/actions/runs/${run}"
-echo "Image:     $(cat "${work}/dist/projektrack-${version}.image.txt")"
-[[ -z "${previous}" ]] || git log --oneline "${previous}..${commit}"
-read -r -p "Publish ${tag} signed with this key? Type ${tag} to approve: " answer
-[[ "${answer}" == "${tag}" ]] || fail 'Not approved. Nothing was published.'
+echo "Image:     $(cat "${dist}/${name}.image.txt")"
+if [[ "${previous}" != 'first' ]]; then
+    echo 'Changes:'
+    git --no-pager log --format='%h %an: %s' "${previous}..${commit}" | plain
+    git --no-pager diff --stat=100 "${previous}" "${commit}" | plain
+    echo 'What decides about trust, in full:'
+    git --no-pager diff --no-color "${previous}" "${commit}" -- resources/release deploy/release .github | plain
+fi
+read -r -p "Sign and publish ${tag}? Type ${tag} to approve: " answer
+[[ "${answer}" == "${tag}" ]] || fail 'Not approved. Nothing was signed or published.'
+
+openssl pkeyutl -sign -inkey "${key}" -rawin -in "${dist}/SHA256SUMS" -out "${dist}/SHA256SUMS.sig"
+printf '%s\n' "${public}" > "${work}/keys"
+"${here}/verify.sh" "${dist}" "${work}/keys" >/dev/null || fail 'The signature does not verify.'
+[[ "$(tag_commit)" == "${commit}" ]] || fail "${tag} was moved in the meantime. Nothing was published."
 
 gh release create "${tag}" --repo "${repo}" --verify-tag --title "Projektrack ${version}" \
-    --notes 'Verify before installing or updating: see docs/admin/releases.md.' "${work}/dist/"*
+    --notes 'Verify before installing or updating: see docs/admin/releases.md. The source archives below are not signed.' "${dist}/"*

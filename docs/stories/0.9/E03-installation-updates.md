@@ -92,8 +92,8 @@ Implementation note (23.11.2026): `.github/workflows/release.yml` runs on a tag 
 - **For S-0927 and S-0928:** the updater uses this check and must also refuse a version that is not newer than the running one. The CI job "Release ZIP and signature (dry run)" builds the ZIP, signs it with a throwaway key and checks that the verification accepts it and refuses a changed ZIP or checksum list.
 - **Version:** set by the build in `VERSION`.
 - **Guide:** `docs/admin/releases.md`.
-- **Offline approval (decision of 23.11.2026):** GitHub cannot enforce an approval on this repository's plan, so no key exists there. `deploy/release/approve.sh` signs the artifact of the build on a maintainer's machine. The image is covered by its digest in the signed `SHA256SUMS`; cosign is no longer used, which differs from the criterion above. The notes above on the `release` environment, cosign, attestation and tagging no longer apply.
-- **Open, for the product owner:** generate the release key and commit its public key. Until then no release can be approved.
+- **Offline approval (decision of 23.11.2026):** GitHub cannot enforce an approval on this repository's plan, so no key exists there. `deploy/release/approve.sh` signs the files of the build on a maintainer's machine, for a commit id from the maintainer's own review (`tests/release/approve.sh` tests it). The image is covered by its digest in the signed `SHA256SUMS`; cosign is no longer used, which differs from the criterion above. The notes above on the `release` environment, cosign, attestation and tagging no longer apply.
+- **Open, for the product owner:** generate the release key and a standby key and commit their public keys. Until then no release can be approved.
 - **Not in this story:** base images pinned by digest and `npm ci --ignore-scripts` (BL-018).
 
 ---

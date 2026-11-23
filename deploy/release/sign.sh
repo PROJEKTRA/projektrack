@@ -8,8 +8,7 @@
 #
 #   deploy/release/sign.sh <release folder> <private key, PEM>
 #
-# The key never enters the repository or an instance; in the release workflow
-# it comes from the secret RELEASE_SIGNING_KEY of the "release" environment.
+# Used by the CI tests with throwaway keys; releases are signed by approve.sh.
 set -Eeuo pipefail
 
 dir="${1:-}"

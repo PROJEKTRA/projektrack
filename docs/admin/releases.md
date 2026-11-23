@@ -19,7 +19,7 @@ The image is pushed by digest and scanned in exactly that form (the build stops 
 
 ## Verify a ZIP for a new installation
 
-Do not run anything from the ZIP before it is verified: a forged ZIP would bring its own keys and its own verifier. Take the release key from a source that is not the ZIP: the line in `resources/release/public-keys.txt` of the repository at github.com/PROJEKTRA/projektrack, which projektra.net also publishes. Then, with `SHA256SUMS` and `SHA256SUMS.sig` next to the ZIP:
+Do not run anything from the ZIP before it is verified: a forged ZIP would bring its own keys and its own verifier. Take the release key from a source that is neither the ZIP nor the repository: the delivery contract or projektra.net. Anyone with write access to the repository could replace both. Then, with `SHA256SUMS` and `SHA256SUMS.sig` next to the ZIP:
 
 ```
 KEY='<the base64 key>'
@@ -47,26 +47,31 @@ Verify `projektrack-X.Y.Z.image.txt` as above (`sha256sum -c` then names it), an
 
 ## Release key (maintainers)
 
-The Ed25519 release key is separate from the license key and never exists on an instance or in the repository.
+The Ed25519 release key is separate from the license key. It is never on GitHub, not even as a secret, and never on an instance. It is used on the maintainer's machine.
 
-1. On an offline or otherwise trusted machine:
+1. Make two keys with a passphrase on a trusted machine, one for use and one standby:
 
    ```
-   openssl genpkey -algorithm ed25519 -out release-signing.pem
+   openssl genpkey -algorithm ed25519 -aes-256-cbc -out release-signing.pem
+   openssl genpkey -algorithm ed25519 -aes-256-cbc -out release-standby.pem
    openssl pkey -in release-signing.pem -pubout -outform DER | tail -c 32 | base64
+   openssl pkey -in release-standby.pem -pubout -outform DER | tail -c 32 | base64
    ```
 
-2. Add the printed public key as a line to `resources/release/public-keys.txt` and commit it.
-3. Keep the PEM file encrypted, offline (for example on a USB drive) with a copy in the password vault. It never goes to GitHub, not even as a secret.
+2. Add both public keys to `resources/release/public-keys.txt` before the first release. A standby key cannot be added after a loss: instances only accept what their running release trusts.
+3. Keep the two private keys in separate places, not on the same machine. Publish both public keys on projektra.net and in the delivery contract.
+4. Read `deploy/release/approve.sh` and `verify.sh`, and keep a copy of both next to the key. Use only that copy. Replace it only after reading the difference.
 
-Rotation: add the new public key next to the old one, ship a release signed with the old key, switch the secret to the new key, and remove the old public key only after a release signed with the new key has shipped. `approve.sh` enforces the order: it checks each release also with the keys of the previous release. After a suspected compromise, remove the old key at once and publish a security advisory.
+Rotation: add the new public key, ship a release signed with the old one, then sign with the new key, and remove the old public key only after that release has shipped. `approve.sh` refuses a key that the previous release does not trust.
+
+Stolen or lost key: sign the next release with the standby key, remove the old public key and add a new standby in it, and publish a security advisory. Instances trust a stolen key until they run that release, so every operator must update at once.
 
 ## Cutting a release
 
-1. Make sure CI is green on the `main` commit.
-2. `git tag -s vX.Y.Z <commit>` and `git push origin vX.Y.Z`.
-3. When the build is green, check what is in it, and sign it from a clean clone of `main`: `deploy/release/approve.sh vX.Y.Z /path/to/release-signing.pem`. It shows tag, commit, changes, build and image, and publishes only after you type the tag.
+1. Review every change since the previous release and note the full id of the reviewed commit and of the previous release. CI on `main` must be green for it.
+2. `git tag vX.Y.Z <reviewed commit>` and `git push origin vX.Y.Z`.
+3. When the build is green, run your own copy inside a clone: `/path/to/approve.sh vX.Y.Z <reviewed commit> <commit of the previous release> /path/to/release-signing.pem` (for the first release `first` instead of the previous commit). It shows every change, and in full those to keys, release scripts and workflows. It signs and publishes only after you type the tag.
 
-The workflow refuses a tag that is not a version, a commit that is not on `main` or whose CI on `main` is not green, and a missing SBOM. `approve.sh` checks tag, commit and CI again on the maintainer's machine, takes the files from the artifact of the build and not from anything that can be replaced later, and refuses a key that this or the previous release does not trust.
+The workflow refuses a tag that is not a version, a commit that is not on `main` or whose CI is not green, and a missing SBOM. `approve.sh` checks the tag against the reviewed commit, repeats the other checks, and refuses files that the build did not name.
 
-GitHub cannot enforce branch or tag rules on this repository's plan, so the offline key is what protects a release. Anyone with write access can push a tag and start a build; nobody can publish a release that instances accept without the key.
+GitHub cannot enforce branch or tag rules on this repository's plan. Anyone with write access can push to `main`, set tags and start builds. What protects existing instances is the key together with the review: nobody can give them an update they accept without a maintainer signing it.

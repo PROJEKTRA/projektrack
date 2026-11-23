@@ -27,7 +27,7 @@ Ubuntu 24.04 LTS, Docker Engine 27 or newer with Compose v2, 2 vCPU, 4 GB RAM, 4
 
 ## First installation
 
-1. Get the image. Until signed images are published (S-0924), build it from the repository root: `docker build -f deploy/docker/Dockerfile -t projektrack:local .`
+1. Get the image. Verify the first signed release (`docs/admin/releases.md`) and use the image named in its `image.txt`. Before that exists, build it from the repository root: `docker build -f deploy/docker/Dockerfile -t projektrack:local .`
 2. In `deploy/docker/`, write the secrets once:
 
    ```
@@ -127,7 +127,7 @@ Exit code 2 means the rollback failed too: the proxy stays stopped and the snaps
 The snapshot holds unencrypted data, like the database volume. Exclude the volume `projektrack_snapshot` from host backups.
 
 Pre-releases such as `0.9.0-rc1` count as older than `0.9.0` and can be installed like any signed release.
-The command does not update the files in `deploy/docker/` themselves; take those from the release when its notes say so.
+The command does not update the files in `deploy/docker/` themselves; take those from the release ZIP when its notes say so, after verifying it (`docs/admin/releases.md`).
 
 ## Commands
 
