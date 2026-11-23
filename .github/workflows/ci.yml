@@ -281,3 +281,16 @@ jobs:
           name: playwright-results
           path: test-results/
           retention-days: 7
+
+  # S-0923: the production stack as an operator starts it, incl. the restore drill.
+  docker:
+    name: Docker Compose stack (secrets, headers, rights, backup and restore)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build, start, check, back up and restore
+        run: bash tests/docker/stack.sh

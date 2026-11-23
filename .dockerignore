@@ -1,0 +1,36 @@
+# Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+# SPDX-License-Identifier: AGPL-3.0-only
+# Build context of deploy/docker/Dockerfile: source only, no secrets, no local state.
+.git
+.github
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+auth.json
+node_modules
+vendor
+public/build
+public/hot
+public/storage
+public/fonts-manifest.dev.json
+bootstrap/cache/*.php
+bootstrap/cache/strings
+storage
+database/*.sqlite
+deploy/docker/.env
+deploy/docker/backups
+deploy/docker/backup-identity.txt
+docs
+tests
+coverage
+playwright-report
+test-results
+.phpunit.cache
+.phpunit.result.cache
+.idea
+.vscode
+.fleet
+.zed
+*.log

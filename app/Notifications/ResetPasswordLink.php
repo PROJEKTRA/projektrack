@@ -10,6 +10,7 @@ namespace App\Notifications;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 
@@ -17,8 +18,10 @@ use Illuminate\Notifications\Messages\MailMessage;
  * The password reset link, sent from the queue (S-0903): the request returns
  * as fast for a known address as for an unknown one, so its timing does not
  * reveal accounts. Single use, valid for auth.passwords.users.expire minutes.
+ * The queued job is encrypted, so the token is readable neither in the queue
+ * store nor in failed jobs (S-0923).
  */
-class ResetPasswordLink extends ResetPassword implements ShouldQueue
+class ResetPasswordLink extends ResetPassword implements ShouldBeEncrypted, ShouldQueue
 {
     use Queueable;
 

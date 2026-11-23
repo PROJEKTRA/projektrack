@@ -26,6 +26,8 @@
 *.key
 /storage/keys/
 /auth.json
+/deploy/docker/backup-identity.txt
+/deploy/docker/backups/
 
 # Tooling
 .phpunit.result.cache
