@@ -58,34 +58,37 @@ final class LicenseToken
             throw new InvalidLicense('This is not a license.');
         }
 
-        // Re-encoding must give the same bytes: no duplicate keys, floats or spaces.
-        try {
-            $canonical = is_array($payload) ? self::canonical($payload) : null;
-        } catch (InvalidArgumentException|JsonException) {
-            $canonical = null;
-        }
-        if (! is_array($payload) || $canonical !== $json) {
-            throw new InvalidLicense('The license is not in canonical form.');
-        }
+        // Before the signature is checked, only the key id and the time are read.
+        $kid = is_array($payload) ? ($payload['kid'] ?? null) : null;
+        $issued = is_array($payload) ? ($payload['issued_at'] ?? null) : null;
+        $public = is_string($kid) && is_string($issued) ? $keys->find($kid, License::time($issued)) : null;
 
-        $license = License::fromPayload($payload);
-        $public = $keys->find($license->kid, $license->issuedAt);
-
-        if ($public === null) {
+        if (! is_array($payload) || $public === null) {
             throw new InvalidLicense('The license is signed with a key this release does not trust.');
         }
         if (! sodium_crypto_sign_verify_detached($signature, self::PREFIX.'.'.$parts[1], $public)) {
             throw new InvalidLicense('The signature of the license is not valid.');
         }
 
-        return $license;
+        // Re-encoding must give the same bytes: no duplicate keys, floats or spaces.
+        try {
+            $canonical = self::canonical($payload);
+        } catch (InvalidArgumentException|JsonException) {
+            $canonical = null;
+        }
+        if ($canonical !== $json) {
+            throw new InvalidLicense('The license is not in canonical form.');
+        }
+
+        return License::fromPayload($payload);
     }
 
     /** @param  array<array-key, mixed>  $payload */
     private static function canonical(array $payload): string
     {
-        // Line separators stay literal, as RFC 8785 asks.
-        return str_replace(['\u2028', '\u2029'], ["\u{2028}", "\u{2029}"], CanonicalJson::encode($payload));
+        // RFC 8785 for what a license holds: ASCII keys, integers, strings, lists and objects.
+        return json_encode(json_decode(CanonicalJson::encode($payload), false, 16, JSON_THROW_ON_ERROR),
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_LINE_TERMINATORS | JSON_THROW_ON_ERROR);
     }
 
     private static function base64url(string $bytes): string

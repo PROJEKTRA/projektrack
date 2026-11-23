@@ -13,8 +13,9 @@ A license is refused if it was changed, is signed with an unknown or revoked key
 |---|---|
 | `active`, `pending_payment`, `grace` | Commercial features work. Grace follows the expiry, for the days the license names |
 | `read_only`, `not_yet_valid` | Commercial features can be viewed and exported. Their enforcement comes with S-0977 |
+| `invalid` | The installed license was changed, or its key is not trusted any more: like `read_only`, with the reason in `license:show` and the log |
 
-The state is computed from the system clock. If the clock is more than 48 hours behind a time seen earlier, `license:show` warns and the log says so; nothing is locked.
+The state is computed from the system clock. If the clock is more than 48 hours behind a time seen earlier, `license:show` warns and the log says so; nothing is locked. After a clock that ran wild into the future, clear it with `UPDATE instance_state SET latest_time = NULL`. Installations with several tenants set `DOCTOR_OPERATOR_TENANT`, so that a new license is recorded in that tenant's audit log.
 
 ## Issue a license (licensor)
 
@@ -30,4 +31,4 @@ php ee/licensing/issue.php issue /safe/place/license-key.json payload.json > lic
 
 The payload is the example of ADR-0003 section 3. `kid` and `issued_at` are set by the tool, which also checks the result as an instance would. Give every new issue of the same `license_id` a higher `serial`.
 
-Rotation: ship the new key one release before it is used, set the old one to `retired` when the new one is in use. After a compromise set it to `revoked`, ship a release, and issue every affected license anew: instances lose a license whose key is revoked.
+Rotation: ship the new key one release before it is used, set the old one to `retired` when the new one is in use. After a compromise set it to `revoked`, ship a release, and issue every affected license anew: on instances a license whose key is revoked becomes `invalid`. Use `revoked`, never `retired`, for a stolen key: who holds it can date a license back into its validity.

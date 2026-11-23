@@ -24,6 +24,13 @@ final readonly class LicenseKeys
     public function find(string $kid, CarbonImmutable $issuedAt): ?string
     {
         foreach ($this->keys as $key) {
+            // Revoked once is revoked, whatever other entry is left for it.
+            if (is_array($key) && ($key['kid'] ?? null) === $kid && ($key['status'] ?? null) === 'revoked') {
+                return null;
+            }
+        }
+
+        foreach ($this->keys as $key) {
             if (! is_array($key) || ($key['kid'] ?? null) !== $kid || ! in_array($key['status'] ?? null, ['active', 'retired'], true)) {
                 continue;
             }

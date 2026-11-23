@@ -188,7 +188,10 @@ Artisan::command('projektrack:license:install {file : License file}', function (
     }
 
     $tenant = $operator->operatorTenant();
-    if ($tenant !== null) {
+    Log::notice('License installed', ['license_id' => $license->id, 'serial' => $license->serial]);
+    if ($tenant === null) {
+        $this->warn('Not recorded in an audit log: set DOCTOR_OPERATOR_TENANT to the tenant that operates this installation.');
+    } else {
         $context->run($tenant, fn () => app(AuditLog::class)->record('license.installed', ['instance_licenses', $license->id], ['serial' => $license->serial, 'edition' => $license->edition->value]));
     }
     $this->info("License {$license->id} (issue {$license->serial}) installed for {$license->customer}.");
@@ -197,8 +200,17 @@ Artisan::command('projektrack:license:install {file : License file}', function (
 })->purpose('Validate a license file offline and install it (S-0974)');
 
 Artisan::command('projektrack:license:show', function (InstanceLicense $licenses, InstanceId $instance) {
-    $this->line('Instance: '.$instance->get());
+    try {
+        $this->line('Instance: '.$instance->get());
+    } catch (InvalidLicense $e) {
+        $this->error($e->getMessage());
+
+        return 1;
+    }
     $license = $licenses->current();
+    if ($licenses->problem() !== null) {
+        $this->error('The installed license is not valid: '.$licenses->problem());
+    }
     $this->line('Edition:  '.($license->edition->value ?? 'community'));
 
     if ($license !== null) {
@@ -222,9 +234,15 @@ Schedule::command('projektrack:doctor --requested')->everyMinute()->withoutOverl
 
 // S-0974: the license is validated anew and the clock watched; problems are logged as critical.
 Schedule::call(function (InstanceLicense $licenses): void {
-    $licenses->current();
-    if ($licenses->clockProblem()) {
-        Log::critical('The system clock is far behind a time seen earlier');
+    try {
+        if ($licenses->problem() !== null) {
+            Log::critical('The installed license is not valid', ['reason' => $licenses->problem()]);
+        }
+        if ($licenses->clockProblem()) {
+            Log::critical('The system clock is far behind a time seen earlier');
+        }
+    } catch (InvalidLicense $e) {
+        Log::critical($e->getMessage());
     }
 })->name('license-check')->hourly();
 

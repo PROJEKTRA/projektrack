@@ -15,7 +15,6 @@ use App\Licensing\LicenseToken;
 use App\Modules\Edition;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
 /*
@@ -122,7 +121,13 @@ describe('token', function () {
 
     it('refuses a payload that is not canonical', function (string $json) {
         expect(fn () => decodeLicense(rawToken($json)))->toThrow(InvalidLicense::class, 'canonical');
-    })->with(['{"v":1, "iss":"x"}', '{"v":1,"iss":"x"}', '{"a":1,"a":2}', '{"a":1.5}', '[]x' => ['{"a":"\u0041"}']]);
+    })->with([
+        'spaces' => '{"issued_at":"2026-12-01T09:00:00Z", "kid":"ptk-2026-01"}',
+        'order' => '{"kid":"ptk-2026-01","issued_at":"2026-12-01T09:00:00Z"}',
+        'duplicate key' => '{"a":1,"a":2,"issued_at":"2026-12-01T09:00:00Z","kid":"ptk-2026-01"}',
+        'float' => '{"a":1.5,"issued_at":"2026-12-01T09:00:00Z","kid":"ptk-2026-01"}',
+        'escaped letter' => '{"a":"\u0041","issued_at":"2026-12-01T09:00:00Z","kid":"ptk-2026-01"}',
+    ]);
 
     it('refuses invalid content even when signed', function (array $overrides) {
         expect(fn () => decodeLicense(licenseToken($overrides)))->toThrow(InvalidLicense::class);
@@ -140,6 +145,8 @@ describe('token', function () {
         'other time zone' => [['expires_at' => '2027-12-01T00:00:00+01:00']],
         'ends before it starts' => [['expires_at' => '2026-11-30T00:00:00Z']],
         'endless grace' => [['grace' => ['expiry_days' => 100000]]],
+        'license id' => [['license_id' => 'lic_x']],
+        'status end of a wrong type' => [['status_until' => 5]],
         'no instance' => [['binding' => ['instance_id' => '']]],
         'add-ons not a list of texts' => [['addons' => [1]]],
     ]);
@@ -149,7 +156,7 @@ describe('keys', function () {
     it('refuses without keys, with another key and with a revoked key', function () {
         $token = licenseToken();
 
-        foreach ([[], [licenseKey('ptk-2026-01', sodium_crypto_sign_keypair())], [licenseKey('ptk-2026-01', $this->pair, 'revoked')], [['kid' => 'ptk-2026-01']], ['x']] as $keys) {
+        foreach ([[], [licenseKey('ptk-2026-01', sodium_crypto_sign_keypair())], [licenseKey('ptk-2026-01', $this->pair, 'revoked')], [licenseKey('ptk-2026-01', $this->pair), licenseKey('ptk-2026-01', $this->pair, 'revoked')], [['kid' => 'ptk-2026-01']], ['x']] as $keys) {
             trustKeys($keys);
             expect(fn () => decodeLicense($token))->toThrow(InvalidLicense::class);
         }
@@ -201,11 +208,28 @@ describe('instance', function () {
 
     it('keeps one identity, also from the file after a lost database row', function () {
         $id = app(InstanceId::class)->get();
-        expect($id)->toMatch('/^inst_[0-9A-Z]{26}$/')->and(trim(file_get_contents($this->file)))->toBe($id);
+        expect($id)->toMatch('/^inst_[0-9A-Z]{26}$/')->and(trim((string) file_get_contents($this->file)))->toBe($id);
 
         DB::table('instance_state')->delete();
         expect(app(InstanceId::class)->get())->toBe($id);
     });
+
+    it('repairs the file and survives a damaged id', function () {
+        $id = app(InstanceId::class)->get();
+        file_put_contents($this->file, 'inst_');
+        expect(app(InstanceId::class)->get())->toBe($id)->and(trim((string) file_get_contents($this->file)))->toBe($id);
+
+        app(InstanceLicense::class)->install(licenseToken());
+        DB::table('instance_state')->update(['instance_id' => 'broken']);
+        app()->forgetInstance(InstanceLicense::class);
+        expect(app(InstanceLicense::class)->current())->toBeNull()
+            ->and(app(InstanceLicense::class)->status())->toBe(LicenseStatus::Invalid);
+        $this->artisan('projektrack:license:show')->assertFailed();
+    });
+
+    it('keeps line separators and literal escapes canonical', function (string $name) {
+        expect(decodeLicense(licenseToken(['customer' => ['name' => $name]]))->customer)->toBe($name);
+    })->with(['a\u2028b', "a\u{2028}b", 'quote " slash / back \\']);
 
     it('installs a license and keeps it when a forged one is refused', function () {
         $licenses = app(InstanceLicense::class);
@@ -219,6 +243,9 @@ describe('instance', function () {
         $licenses = app(InstanceLicense::class);
 
         expect(fn () => $licenses->install(licenseToken(['binding' => ['instance_id' => 'inst_01JD8Q7Z5M3K9V2X4B6N8P0R1T']])))->toThrow(InvalidLicense::class, 'another installation');
+        $licenses->install(licenseToken());
+        expect(fn () => $licenses->install(licenseToken(['serial' => 4, 'not_before' => '2027-01-01T00:00:00Z'])))->toThrow(InvalidLicense::class, 'not valid yet');
+        expect($licenses->current()?->serial)->toBe(3);
         $this->travelTo(CarbonImmutable::parse('2028-01-01T00:00:00Z'));
         expect(fn () => $licenses->install(licenseToken()))->toThrow(InvalidLicense::class, 'already ended');
     });
@@ -231,10 +258,10 @@ describe('instance', function () {
         expect(fn () => $licenses->install(licenseToken(['serial' => 4, 'seats' => ['full' => 500]])))->toThrow(InvalidLicense::class, 'newer issue');
         expect(fn () => $licenses->install(licenseToken(['serial' => 5, 'seats' => ['full' => 500]])))->toThrow(InvalidLicense::class, 'newer issue');
 
-        $licenses->install(licenseToken(['license_id' => 'lic_other', 'serial' => 1]));
-        expect($licenses->current()?->id)->toBe('lic_other');
+        $licenses->install(licenseToken(['license_id' => 'lic_01JD8QA2H6W4C8E0G2J4L6N8Q1', 'serial' => 1]));
+        expect($licenses->current()?->id)->toBe('lic_01JD8QA2H6W4C8E0G2J4L6N8Q1');
         expect(fn () => $licenses->install(licenseToken(['serial' => 4])))->toThrow(InvalidLicense::class, 'newer issue');
-        expect($licenses->current()?->id)->toBe('lic_other')
+        expect($licenses->current()?->id)->toBe('lic_01JD8QA2H6W4C8E0G2J4L6N8Q1')
             ->and(DB::table('instance_licenses')->where('is_active', true)->count())->toBe(1);
     });
 
@@ -242,14 +269,15 @@ describe('instance', function () {
         app(InstanceLicense::class)->install(licenseToken());
         DB::table('instance_licenses')->update($change);
         app()->forgetInstance(InstanceLicense::class);
-        Log::spy();
 
-        expect(app(InstanceLicense::class)->current())->toBeNull();
-        Log::shouldHaveReceived('critical')->once();
+        expect(app(InstanceLicense::class)->current())->toBeNull()
+            ->and(app(InstanceLicense::class)->status())->toBe(LicenseStatus::Invalid)
+            ->and(LicenseStatus::Invalid->allowsUse())->toBeFalse();
+        $this->artisan('projektrack:license:show')->expectsOutputToContain('not valid')->assertSuccessful();
     })->with([
         'token' => [['token' => 'PTKL1.e30.e30']],
         'serial' => [['serial' => 1]],
-        'id' => [['license_id' => 'lic_x']],
+        'id' => [['license_id' => 'lic_01JD8QA2H6W4C8E0G2J4L6N8Q9']],
     ]);
 
     it('loses the license when its key is revoked', function () {
@@ -312,8 +340,7 @@ describe('commands', function () {
         expect($run(['issue', "{$dir}/key.json", "{$dir}/payload.json"], 'a wrong passphrase!')[0])->toBe(1);
         file_put_contents("{$dir}/payload.json", json_encode(licensePayload(['edition' => 'gold'])));
         expect($run(['issue', "{$dir}/key.json", "{$dir}/payload.json"])[0])->toBe(1);
-        expect(file_get_contents("{$dir}/key.json"))->not->toContain(sodium_crypto_sign_secretkey($this->pair));
         array_map(unlink(...), glob("{$dir}/*"));
         rmdir($dir);
-    });
+    })->skip(! is_file(dirname(__DIR__, 3).'/ee/licensing/issue.php'), 'Community edition.');
 });

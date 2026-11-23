@@ -49,7 +49,10 @@ if ($command === 'keygen' && preg_match('/^[a-z0-9-]{3,40}$/', $first) === 1 && 
     $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
     $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
     $box = sodium_crypto_secretbox(sodium_crypto_sign_secretkey($pair), $nonce, keyFrom($passphrase, $salt));
-    fwrite($handle, json_encode(['kid' => $first, 'salt' => base64_encode($salt), 'nonce' => base64_encode($nonce), 'key' => base64_encode($box)], JSON_THROW_ON_ERROR)."\n");
+    $json = json_encode(['kid' => $first, 'salt' => base64_encode($salt), 'nonce' => base64_encode($nonce), 'key' => base64_encode($box)], JSON_THROW_ON_ERROR)."\n";
+    if (fwrite($handle, $json) !== strlen($json) || ! fclose($handle)) {
+        stop('The key file could not be written.');
+    }
     echo "['kid' => '{$first}', 'public_key' => '".base64_encode(sodium_crypto_sign_publickey($pair))."',\n"
         ." 'valid_from' => '".gmdate('Y-m-d\T00:00:00\Z')."', 'valid_until' => '".gmdate('Y-m-d\T00:00:00\Z', time() + 400 * 86400)."', 'status' => 'active'],\n";
     exit(0);
@@ -76,9 +79,18 @@ if (! is_array($payload) || array_is_list($payload)) {
 $payload['kid'] = $file['kid'];
 $payload['issued_at'] = gmdate('Y-m-d\TH:i:s\Z');
 
+// As an instance of this checkout would check it; without an entry for this
+// key no instance can accept the license yet.
+$config = require dirname(__DIR__, 2).'/config/license-keys.php';
+$shipped = is_array($config) && is_array($config['keys'] ?? null) ? $config['keys'] : [];
+$known = array_filter($shipped, fn (mixed $key): bool => is_array($key) && ($key['kid'] ?? null) === $file['kid']) !== [];
+if (! $known) {
+    fwrite(STDERR, "Warning: config/license-keys.php of this checkout has no key {$file['kid']}.\n");
+}
+
 try {
     $token = LicenseToken::encode($payload, $secret);
-    LicenseToken::decode($token, new LicenseKeys([[
+    LicenseToken::decode($token, new LicenseKeys($known ? $shipped : [[
         'kid' => $file['kid'],
         'public_key' => base64_encode(sodium_crypto_sign_publickey_from_secretkey($secret)),
         'valid_from' => '2000-01-01T00:00:00Z', 'valid_until' => '2100-01-01T00:00:00Z', 'status' => 'active',

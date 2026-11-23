@@ -13,8 +13,8 @@ use Throwable;
 
 /**
  * Content of a license token (S-0974, ADR-0003 section 3). Built only from a
- * verified payload; every field is checked here, so nothing later has to
- * trust an unchecked value.
+ * verified payload; every field that is kept is checked here, so nothing later
+ * has to trust an unchecked value. Fields of later stories are ignored.
  */
 final readonly class License
 {
@@ -74,9 +74,16 @@ final readonly class License
             throw new InvalidLicense('The license does not say until when its status holds.');
         }
 
+        if (preg_match('/^lic_[0-9A-Z]{26}$/D', self::string($data, 'license_id')) !== 1) {
+            throw new InvalidLicense('The license has no valid "license_id".');
+        }
+        if ($until !== null && ! is_string($until)) {
+            throw new InvalidLicense('The license has no valid "status_until".');
+        }
+
         $license = new self(
             id: self::string($data, 'license_id'),
-            serial: self::integer($data, 'serial', 1, PHP_INT_MAX),
+            serial: self::integer($data, 'serial', 1, 9_007_199_254_740_991),
             kid: self::string($data, 'kid'),
             customer: self::string(self::map($data, 'customer'), 'name'),
             edition: $edition,
@@ -165,7 +172,7 @@ final readonly class License
             : throw new InvalidLicense("The license has no valid \"{$key}\".");
     }
 
-    private static function time(string $value): CarbonImmutable
+    public static function time(string $value): CarbonImmutable
     {
         try {
             $time = CarbonImmutable::createFromFormat('!Y-m-d\TH:i:s\Z', $value, 'UTC');

@@ -15,6 +15,8 @@ enum LicenseStatus: string
     case Grace = 'grace';
     case ReadOnly = 'read_only';
     case NotYetValid = 'not_yet_valid';
+    // Changed, or signed with a key that is not trusted any more: read-only, nothing hidden.
+    case Invalid = 'invalid';
 
     /** Commercial features may be used, not only viewed and exported. */
     public function allowsUse(): bool

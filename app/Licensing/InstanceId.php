@@ -8,8 +8,8 @@
 namespace App\Licensing;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Random identity of this installation, to which licenses are bound (ADR-0003).
@@ -20,6 +20,7 @@ final readonly class InstanceId
 {
     public function __construct(private string $file) {}
 
+    /** @throws InvalidLicense when the stored id is damaged */
     public function get(): string
     {
         $stored = DB::table('instance_state')->where('id', 1)->value('instance_id');
@@ -37,10 +38,11 @@ final readonly class InstanceId
         }
 
         if (! is_string($stored) || ! self::isValid($stored)) {
-            throw new RuntimeException('The instance id is not readable.');
+            throw new InvalidLicense('The instance id in the database is damaged.');
         }
-        if (! is_file($this->file)) {
-            @file_put_contents($this->file, $stored."\n", LOCK_EX);
+        if ((! is_file($this->file) || trim((string) file_get_contents($this->file)) !== $stored)
+            && @file_put_contents($this->file, $stored."\n", LOCK_EX) === false) {
+            Log::warning('The file with the instance id cannot be written');
         }
 
         return $stored;

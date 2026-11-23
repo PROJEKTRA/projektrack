@@ -10,7 +10,6 @@ namespace App\Licensing;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * The license of this installation (S-0974). Validated offline, with the keys
@@ -26,6 +25,8 @@ final class InstanceLicense
 
     private ?License $license = null;
 
+    private ?string $problem = null;
+
     public function __construct(private readonly LicenseKeys $keys, private readonly InstanceId $instance) {}
 
     /** @throws InvalidLicense */
@@ -37,11 +38,17 @@ final class InstanceLicense
         if ($license->instanceId !== $this->instance->get()) {
             throw new InvalidLicense('The license belongs to another installation.');
         }
-        if ($license->status(CarbonImmutable::now('UTC')) === LicenseStatus::ReadOnly) {
+        $status = $license->status(CarbonImmutable::now('UTC'));
+        if ($status === LicenseStatus::NotYetValid) {
+            throw new InvalidLicense('The license is not valid yet. Install it when it starts, or check the system clock.');
+        }
+        if ($status === LicenseStatus::ReadOnly) {
             throw new InvalidLicense('The license has already ended.');
         }
 
         DB::transaction(function () use ($license, $token): void {
+            // A write on the row that always exists: installs run one after the other on every engine.
+            DB::table('instance_state')->where('id', 1)->update(['updated_at' => now()]);
             $row = DB::table('instance_licenses')->where('license_id', $license->id)->lockForUpdate()->first(['serial', 'token']);
 
             // Never back to an earlier, perhaps larger, issue of the same license.
@@ -57,7 +64,7 @@ final class InstanceLicense
                 'is_active' => true,
                 'installed_at' => now(),
             ]);
-        });
+        }, 3);
 
         $this->loaded = false;
 
@@ -72,6 +79,7 @@ final class InstanceLicense
         }
 
         $this->license = null;
+        $this->problem = null;
         $row = DB::table('instance_licenses')->where('is_active', true)->first(['license_id', 'serial', 'token']);
 
         if ($row !== null && is_string($row->token)) {
@@ -85,7 +93,7 @@ final class InstanceLicense
                 }
                 $this->license = $license;
             } catch (InvalidLicense $e) {
-                Log::critical('The installed license is not valid', ['reason' => $e->getMessage()]);
+                $this->problem = $e->getMessage();
             }
         }
         $this->loaded = true;
@@ -93,9 +101,18 @@ final class InstanceLicense
         return $this->license;
     }
 
+    /** Why the installed license is not valid, or null. */
+    public function problem(): ?string
+    {
+        $this->current();
+
+        return $this->problem;
+    }
+
+    /** Null without a license; Invalid when one is installed that does not verify. */
     public function status(): ?LicenseStatus
     {
-        return $this->current()?->status(CarbonImmutable::now('UTC'));
+        return $this->problem() !== null ? LicenseStatus::Invalid : $this->current()?->status(CarbonImmutable::now('UTC'));
     }
 
     /** Remembers the latest time seen; true when the clock is far behind it. */
