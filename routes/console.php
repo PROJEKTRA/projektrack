@@ -15,6 +15,7 @@ use App\Doctor\Finding;
 use App\I18n\Locales;
 use App\I18n\StringCatalog;
 use App\Models\Tenant;
+use App\Release\ReleaseVerifier;
 use App\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -132,6 +133,36 @@ Artisan::command('projektrack:doctor {--external= : Public URL to check; the rep
     // Non-zero on critical findings, so operators can run it from their monitoring.
     return $critical === 0 ? 0 : 1;
 })->purpose('Check this installation from outside: headers, robots.txt, error pages, web root (S-0988)');
+
+Artisan::command('projektrack:release:verify {file : Release file, for example projektrack-0.9.0.zip} {--sums= : Checksum list (default: SHA256SUMS next to the file)} {--signature= : Signature of the list (default: SHA256SUMS.sig next to it)}', function () {
+    $file = $this->argument('file');
+    if (! is_string($file) || $file === '') {
+        $this->error('Give the release file.');
+
+        return 1;
+    }
+    $dir = dirname($file);
+    $sums = $this->option('sums');
+    $signature = $this->option('signature');
+    $keys = config('release.public_keys');
+
+    $verifier = new ReleaseVerifier(is_array($keys) ? array_values(array_filter($keys, 'is_string')) : []);
+    $problem = $verifier->verify(
+        $file,
+        is_string($sums) && $sums !== '' ? $sums : $dir.'/SHA256SUMS',
+        is_string($signature) && $signature !== '' ? $signature : $dir.'/SHA256SUMS.sig',
+    );
+
+    if ($problem !== null) {
+        $this->error('Refused: '.$problem);
+
+        return 1;
+    }
+
+    $this->info(basename($file).' is a genuine release.');
+
+    return 0;
+})->purpose('Check the signature and checksum of a release file before installing it (S-0924)');
 
 // S-0988: daily, so the admin page and banner are current, and within a minute
 // of "Check now" (no queue worker needed on plain hosting).

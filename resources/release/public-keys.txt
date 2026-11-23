@@ -1,0 +1,5 @@
+# Trusted Ed25519 release keys (S-0924): one base64 public key per line.
+# A release ZIP is installed or applied only if SHA256SUMS carries a valid
+# signature of one of them. Add the new key before a rotation; remove the old
+# one only after a release signed with the new key has shipped.
+# Lines starting with # are comments. No key: every release is refused.

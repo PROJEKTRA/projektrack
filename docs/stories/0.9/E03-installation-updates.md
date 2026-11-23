@@ -83,6 +83,16 @@ Scenario: Verification
   Then the update and install verification rejects it
 ```
 
+Implementation note (23.11.2026): `.github/workflows/release.yml` runs on a tag `vX.Y.Z` of a commit whose CI on `main` is green.
+- **ZIP:** built from the committed files only (`deploy/release/build-zip.sh`), with `vendor/` and compiled assets. Comes with a CycloneDX SBOM of Composer and npm.
+- **Image:** pushed to GHCR after a scan that fails on fixable critical findings. It carries provenance, a CycloneDX SBOM attestation and a keyless cosign signature.
+- **Checksums:** `SHA256SUMS` over all files, signed with the Ed25519 release key in the `release` environment and also by cosign.
+- **Verification:** `projektrack:release:verify` checks the signature against the keys shipped in `resources/release/public-keys.txt` and the checksum of the file, and fails closed. The CI job "Release ZIP and signature (dry run)" builds the ZIP, signs it with a throwaway key and checks that the verification accepts it and refuses a changed ZIP or checksum list.
+- **Version:** set by the build in `VERSION`.
+- **Guide:** `docs/admin/releases.md`.
+- **Open, for the product owner:** generate the release key, commit its public key, and create the `release` environment with reviewers and the secret. Until then every release stops at signing.
+- **Not in this story:** base images pinned by digest and `npm ci --ignore-scripts` (BL-018).
+
 ---
 
 ### S-0925 AMP release ZIP with web installer and fallbacks
