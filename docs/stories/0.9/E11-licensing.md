@@ -74,6 +74,8 @@ Scenario: Keys outside the database
   And key rotation is documented and tested with two public keys accepted during rotation
 ```
 
+Implementation note (23.11.2026): `App\Licensing` reads, verifies and installs licenses offline (`projektrack:license:install` and `license:show`, hourly check). `ee/licensing/issue.php` issues them on a machine of the licensor with an encrypted key file; it is not part of a release. Built before S-0973, which needs the CRM, so that a signed license can be issued on 1 December. Not in this story: license screen and online activation (S-0976), check-in, seat counting and gating (S-0977), key-status document, issuing as a queued and audited job on the PROJEKTRA instance (S-0973, S-0975). Open for the product owner: generate the license key and ship its public key. Guide: `docs/admin/licensing.md`.
+
 ---
 
 ### S-0975 Direct sale flow (order, invoice, pending payment, activation email)

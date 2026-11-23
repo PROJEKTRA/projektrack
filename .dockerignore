@@ -26,6 +26,7 @@ deploy/docker/backups
 deploy/docker/backup-identity.txt
 docs
 tests
+ee/licensing
 coverage
 playwright-report
 test-results
