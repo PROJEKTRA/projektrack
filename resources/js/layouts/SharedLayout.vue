@@ -23,7 +23,7 @@ const { title = '', description = '' } = defineProps<{
                         class="mb-1 flex h-9 w-9 items-center justify-center rounded-md"
                     >
                         <AppLogoIcon
-                            class="size-9 fill-current text-[var(--foreground)] dark:text-white"
+                            class="size-9 fill-current text-foreground"
                         />
                     </div>
                     <div class="space-y-2 text-center">

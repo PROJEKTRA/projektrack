@@ -90,7 +90,7 @@ it('names built assets by content hash only', function () {
     $manifest = json_decode((string) file_get_contents(public_path('build/manifest.json')), true);
 
     foreach ($manifest as $entry) {
-        expect($entry['file'])->toMatch('/^assets\/[A-Za-z0-9_-]+\.(js|css)$/');
+        expect($entry['file'])->toMatch('/^assets\/[A-Za-z0-9_-]+\.(js|css|woff2)$/');
         foreach ($entry['css'] ?? [] as $css) {
             expect($css)->toMatch('/^assets\/[A-Za-z0-9_-]+\.css$/');
         }

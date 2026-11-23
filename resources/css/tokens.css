@@ -1,0 +1,215 @@
+/*
+ * Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+/*
+ * Design tokens (S-0910, docs/ux/brand.md sections 4 to 7 and 11). Brand
+ * constants, then roles per mode, then the names the components use, which
+ * only point to roles. A white-label theme swaps values here and nothing else.
+ *
+ * Everything is in the cascade layer "theme": an unlayered rule, such as the
+ * brand color of a tenant in the page head (S-0911), always wins over it.
+ * resources/js/theme/tokens.test.ts checks the contrast of both modes.
+ */
+@layer theme {
+    :root {
+        /* Brand constants */
+        --pt-ink: #000d0e;
+        --pt-bg: #f5f7f7;
+        --pt-surface: #ffffff;
+        --pt-line: #000d0e1a;
+        --pt-blue: #005eff;
+        --pt-blue-light: #4d8dff;
+        --pt-navy: #0e285c;
+        --pt-indigo: #3358dd;
+        --pt-cyan: #6ad7ec;
+        --pt-navy-deep: #050b1f;
+        --pt-night: #000012;
+        --pt-gradient-beam: linear-gradient(
+            160deg,
+            #0e285c 0%,
+            #1646b8 58%,
+            #2c7bff 100%
+        );
+        --pt-gradient-signal: linear-gradient(
+            to right,
+            #3358dd 0%,
+            #6ad7ec 100%
+        );
+
+        /* Roles: light */
+        color-scheme: light;
+        --pt-color-bg: var(--pt-bg);
+        --pt-color-surface: var(--pt-surface);
+        --pt-color-surface-raised: var(--pt-surface);
+        --pt-color-text: var(--pt-ink);
+        --pt-color-text-muted: #4a5a63;
+        --pt-color-heading: var(--pt-navy);
+        --pt-color-line: var(--pt-line);
+        --pt-color-line-strong: #7a878d;
+        --pt-color-primary: var(--pt-blue);
+        --pt-color-on-primary: #ffffff;
+        --pt-color-link: var(--pt-blue);
+        --pt-color-focus: var(--pt-blue);
+        --pt-color-secondary: var(--pt-navy);
+        --pt-color-accent: var(--pt-cyan);
+        --pt-color-overlay: #000012b3;
+        /* Derived: quiet fills for muted areas and for hover and secondary */
+        --pt-color-fill: #eaeef0;
+        --pt-color-fill-strong: #e3ecff;
+        /* The sidebar has its own roles: navy in light, navy deep in dark */
+        --pt-color-sidebar: var(--pt-navy);
+        --pt-color-on-sidebar: #e6ecf5;
+        --pt-color-sidebar-fill: #1d3b7a;
+        --pt-color-sidebar-line: #e6ecf533;
+
+        --pt-success: #0a7a4f;
+        --pt-success-subtle: #e6f4ee;
+        --pt-success-solid: #0a7a4f;
+        --pt-on-success: #ffffff;
+        --pt-warning: #9a5b00;
+        --pt-warning-subtle: #fdf1dc;
+        --pt-warning-solid: #f2b544;
+        --pt-on-warning: #000d0e;
+        --pt-danger: #c42b3c;
+        --pt-danger-subtle: #fce8ea;
+        --pt-danger-solid: #c42b3c;
+        --pt-on-danger: #ffffff;
+        --pt-info: #0b6e8a;
+        --pt-info-subtle: #e3f5fa;
+        --pt-info-solid: #0b6e8a;
+        --pt-on-info: #ffffff;
+
+        --pt-chart-1: #005eff;
+        --pt-chart-2: #b86e00;
+        --pt-chart-3: #0e285c;
+        --pt-chart-4: #0f8fa8;
+        --pt-chart-5: #5e6e78;
+        --pt-chart-6: #3358dd;
+
+        /* Typography */
+        --pt-font-display:
+            'Mona Sans Variable', 'Golos Text Variable', system-ui, sans-serif;
+        --pt-font-body: 'Golos Text Variable', system-ui, sans-serif;
+        --pt-font-mono:
+            ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+        /* Shape */
+        --pt-radius-button: 16px;
+        --pt-radius-input: 12px;
+        --pt-radius-card: 22px;
+        --pt-radius-sm: 8px;
+        --pt-radius-full: 9999px;
+        --pt-shadow-1: 0 1px 2px #000d0e14, 0 1px 1px #000d0e0a;
+        --pt-shadow-2: 0 8px 24px #000d0e1f;
+
+        /* Motion */
+        --pt-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+        --pt-ease-move: cubic-bezier(0.65, 0, 0.35, 1);
+        --pt-duration-fast: 150ms;
+        --pt-duration-base: 200ms;
+        --pt-duration-slow: 250ms;
+
+        /* Names used by the components */
+        --background: var(--pt-color-bg);
+        --foreground: var(--pt-color-text);
+        --heading: var(--pt-color-heading);
+        --card: var(--pt-color-surface);
+        --card-foreground: var(--pt-color-text);
+        --popover: var(--pt-color-surface-raised);
+        --popover-foreground: var(--pt-color-text);
+        --primary: var(--pt-color-primary);
+        --primary-foreground: var(--pt-color-on-primary);
+        --link: var(--pt-color-link);
+        --secondary: var(--pt-color-fill-strong);
+        --secondary-foreground: var(--pt-color-secondary);
+        --muted: var(--pt-color-fill);
+        --muted-foreground: var(--pt-color-text-muted);
+        --accent: var(--pt-color-fill-strong);
+        --accent-foreground: var(--pt-color-secondary);
+        --destructive: var(--pt-danger-solid);
+        --destructive-foreground: var(--pt-on-danger);
+        --border: var(--pt-color-line);
+        --input: var(--pt-color-line-strong);
+        --ring: var(--pt-color-focus);
+        --overlay: var(--pt-color-overlay);
+        --radius: 0.625rem;
+        --sidebar: var(--pt-color-sidebar);
+        --sidebar-foreground: var(--pt-color-on-sidebar);
+        --sidebar-primary: var(--pt-color-primary);
+        --sidebar-primary-foreground: var(--pt-color-on-primary);
+        --sidebar-accent: var(--pt-color-sidebar-fill);
+        --sidebar-accent-foreground: #ffffff;
+        --sidebar-border: var(--pt-color-sidebar-line);
+        --sidebar-ring: var(--pt-cyan);
+    }
+
+    .dark {
+        /* Roles: dark */
+        color-scheme: dark;
+        --pt-color-bg: var(--pt-night);
+        --pt-color-surface: var(--pt-navy-deep);
+        --pt-color-surface-raised: #0b1530;
+        --pt-color-text: #e6ecf5;
+        --pt-color-text-muted: #9aa8bf;
+        --pt-color-heading: #e6ecf5;
+        --pt-color-line: #e6ecf51f;
+        --pt-color-line-strong: #6e7fa0;
+        --pt-color-link: var(--pt-blue-light);
+        --pt-color-focus: var(--pt-blue-light);
+        --pt-color-secondary: #e6ecf5;
+        --pt-color-fill: #0b1530;
+        --pt-color-fill-strong: #16244a;
+        --pt-color-sidebar: var(--pt-navy-deep);
+        --pt-color-sidebar-fill: #16244a;
+        --pt-color-sidebar-line: #e6ecf51f;
+
+        --pt-success: #3fd28f;
+        --pt-success-subtle: #0a2a20;
+        --pt-success-solid: #3fd28f;
+        --pt-on-success: #000012;
+        --pt-warning: #f2b544;
+        --pt-warning-subtle: #2e2108;
+        --pt-warning-solid: #f2b544;
+        --pt-on-warning: #000012;
+        --pt-danger: #ff7a86;
+        --pt-danger-subtle: #33111a;
+        --pt-danger-solid: #ff7a86;
+        --pt-on-danger: #000012;
+        --pt-info: #6ad7ec;
+        --pt-info-subtle: #062a33;
+        --pt-info-solid: #6ad7ec;
+        --pt-on-info: #000012;
+
+        --pt-chart-1: #4d8dff;
+        --pt-chart-2: #e0952b;
+        --pt-chart-3: #c9d6ff;
+        --pt-chart-4: #6ad7ec;
+        --pt-chart-5: #a9b6c2;
+        --pt-chart-6: #8ea2ff;
+
+        /* No shadow; "none" would void a list that also holds the focus ring. */
+        --pt-shadow-1: 0 0 #0000;
+        --pt-shadow-2: 0 0 0 1px #e6ecf51f;
+    }
+
+    [dir='rtl'] {
+        --pt-gradient-signal: linear-gradient(
+            to left,
+            #3358dd 0%,
+            #6ad7ec 100%
+        );
+    }
+
+    /* Arabic script replaces both families (docs/ux/brand.md section 6). */
+    :lang(ar) {
+        --pt-font-display: 'Noto Naskh Arabic Variable', system-ui, sans-serif;
+        --pt-font-body: 'Noto Naskh Arabic Variable', system-ui, sans-serif;
+    }
+
+    :lang(fa) {
+        --pt-font-display: 'Vazirmatn Variable', system-ui, sans-serif;
+        --pt-font-body: 'Vazirmatn Variable', system-ui, sans-serif;
+    }
+}

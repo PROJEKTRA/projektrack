@@ -64,7 +64,7 @@ function save(component: string): void {
 }
 
 const inputClass =
-    'mt-1 block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none';
+    'mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-hidden';
 </script>
 
 <template>

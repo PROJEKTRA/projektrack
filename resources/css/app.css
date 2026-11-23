@@ -6,6 +6,14 @@
 
 @import 'tw-animate-css';
 
+/* Self-hosted fonts (S-0910): the build copies the WOFF2 files, no font CDN. */
+@import '@fontsource-variable/mona-sans';
+@import '@fontsource-variable/golos-text';
+@import '@fontsource-variable/noto-naskh-arabic';
+@import '@fontsource-variable/vazirmatn';
+
+@import './tokens.css';
+
 @import './rtl.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -14,16 +22,30 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-sans:
-        ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: var(--pt-font-body);
+    --font-display: var(--pt-font-display);
+    --font-mono: var(--pt-font-mono);
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
-    --radius-sm: calc(var(--radius) - 4px);
+    --radius-sm: var(--pt-radius-sm);
+    --radius-button: var(--pt-radius-button);
+    --radius-input: var(--pt-radius-input);
+    --radius-card: var(--pt-radius-card);
+
+    --ease-enter: var(--pt-ease-enter);
+    --ease-move: var(--pt-ease-move);
+    --default-transition-duration: var(--pt-duration-fast);
+    --default-transition-timing-function: var(--pt-ease-move);
+
+    --shadow-xs: var(--pt-shadow-1);
+    --shadow-sm: var(--pt-shadow-1);
+    --shadow-md: var(--pt-shadow-2);
+    --shadow-lg: var(--pt-shadow-2);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
+    --color-heading: var(--heading);
 
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
@@ -33,6 +55,7 @@
 
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
+    --color-link: var(--link);
 
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
@@ -49,12 +72,31 @@
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
+    --color-overlay: var(--overlay);
 
-    --color-chart-1: var(--chart-1);
-    --color-chart-2: var(--chart-2);
-    --color-chart-3: var(--chart-3);
-    --color-chart-4: var(--chart-4);
-    --color-chart-5: var(--chart-5);
+    --color-success: var(--pt-success);
+    --color-success-subtle: var(--pt-success-subtle);
+    --color-success-solid: var(--pt-success-solid);
+    --color-on-success: var(--pt-on-success);
+    --color-warning: var(--pt-warning);
+    --color-warning-subtle: var(--pt-warning-subtle);
+    --color-warning-solid: var(--pt-warning-solid);
+    --color-on-warning: var(--pt-on-warning);
+    --color-danger: var(--pt-danger);
+    --color-danger-subtle: var(--pt-danger-subtle);
+    --color-danger-solid: var(--pt-danger-solid);
+    --color-on-danger: var(--pt-on-danger);
+    --color-info: var(--pt-info);
+    --color-info-subtle: var(--pt-info-subtle);
+    --color-info-solid: var(--pt-info-solid);
+    --color-on-info: var(--pt-on-info);
+
+    --color-chart-1: var(--pt-chart-1);
+    --color-chart-2: var(--pt-chart-2);
+    --color-chart-3: var(--pt-chart-3);
+    --color-chart-4: var(--pt-chart-4);
+    --color-chart-5: var(--pt-chart-5);
+    --color-chart-6: var(--pt-chart-6);
 
     --color-sidebar: var(--sidebar);
     --color-sidebar-foreground: var(--sidebar-foreground);
@@ -66,83 +108,73 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
-:root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+@utility bg-beam {
+    background-image: var(--pt-gradient-beam);
 }
 
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
+@utility bg-signal {
+    background-image: var(--pt-gradient-signal);
 }
 
 @layer base {
     * {
-        @apply border-border outline-ring/50;
+        @apply border-border outline-ring;
     }
 
     body {
         @apply bg-background text-foreground;
+    }
+
+    h1,
+    h2,
+    h3 {
+        @apply font-display text-heading;
+    }
+
+    /* Amounts, hours and dates line up (docs/ux/brand.md section 6). */
+    table,
+    time,
+    .pt-num {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+/* Arabic script: no tracking (it breaks joining), more line height, one step larger. */
+:is(:lang(ar), :lang(fa)) {
+    --text-xs: 0.875rem;
+    --text-xs--line-height: 1.6;
+    --text-sm: 1rem;
+    --text-sm--line-height: 1.6;
+    --text-base: 1.125rem;
+    --text-base--line-height: 1.6;
+    --text-lg--line-height: 1.6;
+    --text-xl--line-height: 1.6;
+    --text-2xl--line-height: 1.6;
+}
+
+:is(:lang(ar), :lang(fa)) * {
+    letter-spacing: 0 !important;
+}
+
+/* Naskh clips in tight lines. */
+:is(:lang(ar), :lang(fa)) :is(.leading-none, .leading-tight) {
+    line-height: 1.6;
+}
+
+/* Reduced motion: no movement, changes are immediate. */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --pt-duration-fast: 0ms;
+        --pt-duration-base: 0ms;
+        --pt-duration-slow: 0ms;
+    }
+
+    *,
+    ::before,
+    ::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }

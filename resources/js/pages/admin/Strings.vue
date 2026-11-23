@@ -111,7 +111,7 @@ function reset(): void {
 }
 
 const selectClass =
-    'block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none';
+    'block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-hidden';
 </script>
 
 <template>
@@ -408,7 +408,7 @@ const selectClass =
                         maxlength="5000"
                         :lang="language.locale"
                         :dir="language.direction"
-                        class="block w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                        class="block w-full rounded-input border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-hidden"
                     />
                     <InputError
                         class="whitespace-pre-line"

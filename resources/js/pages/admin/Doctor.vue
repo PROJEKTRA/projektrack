@@ -59,7 +59,7 @@ function checkNow(): void {
             }}</Button>
         </div>
 
-        <p class="text-sm text-muted-foreground">
+        <p class="text-sm text-muted-foreground tabular-nums">
             {{
                 checkedAt
                     ? $t('core:doctor.page.checked_at', {
