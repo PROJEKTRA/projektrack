@@ -71,6 +71,7 @@ set_env DB_PASSWORD synthetic-password
 # A test installation without a mail server: the link lands in the log.
 set_env APP_ENV staging
 set_env MAIL_MAILER log
+set_env LOG_LEVEL debug
 set_env MAIL_FROM_ADDRESS noreply@example.test
 check 'second run installs' php_ projektrack:install --slug=test --name='Test d.o.o.' --admin-email=admin@example.test --admin-name='Test Admin'
 

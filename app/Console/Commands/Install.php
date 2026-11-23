@@ -89,7 +89,7 @@ class Install extends Command
 
         // Never over an existing file, and readable by its owner only.
         $handle = is_string($template) ? @fopen($env, 'x') : false;
-        if ($handle === false || ! is_string($template)) {
+        if ($handle === false) {
             $this->error("{$env} cannot be written.");
 
             return self::FAILURE;
