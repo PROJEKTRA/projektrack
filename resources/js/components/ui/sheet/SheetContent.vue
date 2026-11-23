@@ -41,7 +41,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
             data-slot="sheet-content"
             :class="
                 cn(
-                    'fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500',
+                    'fixed z-50 flex flex-col gap-4 bg-popover text-popover-foreground shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-(--pt-duration-slow) data-[state=open]:animate-in data-[state=open]:duration-(--pt-duration-slow)',
                     /* i18n-physical-ok-begin: follows the physical side prop */
                     physicalSide === 'right' &&
                         'inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm',
@@ -60,7 +60,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
             <slot />
 
             <DialogClose
-                class="absolute end-4 top-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary"
+                class="absolute end-4 top-4 rounded-xs opacity-70 ring-offset-popover transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary"
             >
                 <X class="size-4" />
                 <span class="sr-only">{{ $t('core:common.close') }}</span>

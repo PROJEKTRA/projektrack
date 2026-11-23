@@ -37,10 +37,12 @@ const tabs = computed(
         <button
             v-for="{ value, Icon, label } in tabs"
             :key="value"
+            type="button"
+            :aria-pressed="appearance === value"
             :class="[
                 'flex items-center rounded-md px-3.5 py-1.5 transition-colors',
                 appearance === value
-                    ? 'bg-card text-card-foreground shadow-xs'
+                    ? 'bg-card text-card-foreground shadow-xs ring-1 ring-input'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
             ]"
             @click="updateAppearance(value)"

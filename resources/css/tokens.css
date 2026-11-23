@@ -189,7 +189,8 @@
         --pt-chart-5: #a9b6c2;
         --pt-chart-6: #8ea2ff;
 
-        --pt-shadow-1: none;
+        /* No shadow; "none" would void a list that also holds the focus ring. */
+        --pt-shadow-1: 0 0 #0000;
         --pt-shadow-2: 0 0 0 1px #e6ecf51f;
     }
 

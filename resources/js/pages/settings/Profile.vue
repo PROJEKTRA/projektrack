@@ -122,7 +122,7 @@ const user = computed(() => page.props.auth.user);
                 <select
                     id="locale"
                     name="locale"
-                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
+                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-hidden"
                     aria-describedby="locale-help"
                 >
                     <option value="" :selected="locale === null">
@@ -151,7 +151,7 @@ const user = computed(() => page.props.auth.user);
                 <select
                     id="format_locale"
                     name="format_locale"
-                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
+                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-hidden"
                     aria-describedby="format-help"
                 >
                     <option value="" :selected="formatLocale === null">
@@ -184,7 +184,7 @@ const user = computed(() => page.props.auth.user);
                 <select
                     id="timezone"
                     name="timezone"
-                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
+                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-hidden"
                     aria-describedby="timezone-help"
                 >
                     <option value="" :selected="timezone === null">

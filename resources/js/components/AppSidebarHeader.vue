@@ -46,7 +46,7 @@ withDefaults(
             <Bell class="size-5" />
             <span
                 v-if="unread > 0"
-                class="absolute -end-0.5 -top-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 text-primary-foreground tabular-nums"
+                class="absolute -end-0.5 -top-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-xs leading-4 text-primary-foreground tabular-nums"
                 aria-hidden="true"
                 >{{ unread > 99 ? '99+' : unread }}</span
             >

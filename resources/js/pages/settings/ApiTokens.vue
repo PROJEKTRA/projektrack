@@ -171,7 +171,7 @@ function copy(): void {
                             $t('core:api_tokens.expired')
                         }}</Badge>
                     </p>
-                    <p class="text-xs text-muted-foreground">
+                    <p class="text-xs text-muted-foreground tabular-nums">
                         <bdi>{{ token.scopes.join(', ') }}</bdi>
                         ·
                         {{

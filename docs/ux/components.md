@@ -35,7 +35,7 @@ How the theme of `docs/ux/brand.md` is built (S-0910) and which base components 
 | `ui/alert`, `ui/badge`, `ui/card`, `ui/skeleton`, `ui/spinner` | Status and layout |
 
 ```vue
-<Table>
+<Table :label="$t('...')">
     <TableHeader>
         <TableRow>
             <TableHead>{{ $t('...') }}</TableHead>

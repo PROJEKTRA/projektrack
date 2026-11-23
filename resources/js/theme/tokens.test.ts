@@ -139,7 +139,7 @@ describe.each(Object.entries(modes))('%s mode', (_, tokens) => {
     it('paints the page in the mode before the stylesheet arrives', () => {
         const rule = tokens === modes.dark ? 'html.dark' : 'html';
         const early = new RegExp(
-            `${rule.replace('.', '\\.')} \\{\\s*background-color: (#[0-9a-f]{6});`,
+            `${rule.replace('.', '\\.')} \\{\\s*background-color: var\\(--background, (#[0-9a-f]{6})\\);`,
         ).exec(read('resources/views/app.blade.php'));
 
         expect(color(tokens, early?.[1] ?? '')).toEqual(

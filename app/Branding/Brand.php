@@ -91,7 +91,7 @@ final class Brand
 
         $foreground = self::readableOn($color);
 
-        return ":root{--primary:{$color};--primary-foreground:{$foreground};--sidebar-primary:{$color};--sidebar-primary-foreground:{$foreground};--ring:{$color};}";
+        return ":root{--primary:{$color};--primary-foreground:{$foreground};--sidebar-primary:{$color};--sidebar-primary-foreground:{$foreground};}";
     }
 
     public function profile(): ?BrandProfile

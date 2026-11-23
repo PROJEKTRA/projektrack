@@ -28,13 +28,20 @@
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
-    --radius-sm: calc(var(--radius) - 4px);
+    --radius-sm: var(--pt-radius-sm);
     --radius-button: var(--pt-radius-button);
     --radius-input: var(--pt-radius-input);
     --radius-card: var(--pt-radius-card);
 
     --ease-enter: var(--pt-ease-enter);
     --ease-move: var(--pt-ease-move);
+    --default-transition-duration: var(--pt-duration-fast);
+    --default-transition-timing-function: var(--pt-ease-move);
+
+    --shadow-xs: var(--pt-shadow-1);
+    --shadow-sm: var(--pt-shadow-1);
+    --shadow-md: var(--pt-shadow-2);
+    --shadow-lg: var(--pt-shadow-2);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -138,11 +145,20 @@
     --text-xs--line-height: 1.6;
     --text-sm: 1rem;
     --text-sm--line-height: 1.6;
+    --text-base: 1.125rem;
     --text-base--line-height: 1.6;
+    --text-lg--line-height: 1.6;
+    --text-xl--line-height: 1.6;
+    --text-2xl--line-height: 1.6;
 }
 
 :is(:lang(ar), :lang(fa)) * {
     letter-spacing: 0 !important;
+}
+
+/* Naskh clips in tight lines. */
+:is(:lang(ar), :lang(fa)) :is(.leading-none, .leading-tight) {
+    line-height: 1.6;
 }
 
 /* Reduced motion: no movement, changes are immediate. */
