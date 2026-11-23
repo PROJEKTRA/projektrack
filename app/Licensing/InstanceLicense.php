@@ -36,14 +36,14 @@ final class InstanceLicense
         $license = LicenseToken::decode($token, $this->keys);
 
         if ($license->instanceId !== $this->instance->get()) {
-            throw new InvalidLicense('The license belongs to another installation.');
+            throw new InvalidLicense('The license belongs to another installation.', 'other_instance');
         }
         $status = $license->status(CarbonImmutable::now('UTC'));
         if ($status === LicenseStatus::NotYetValid) {
-            throw new InvalidLicense('The license is not valid yet. Install it when it starts, or check the system clock.');
+            throw new InvalidLicense('The license is not valid yet. Install it when it starts, or check the system clock.', 'not_started');
         }
         if ($status === LicenseStatus::ReadOnly) {
-            throw new InvalidLicense('The license has already ended.');
+            throw new InvalidLicense('The license has already ended.', 'ended');
         }
 
         DB::transaction(function () use ($license, $token): void {
@@ -54,7 +54,7 @@ final class InstanceLicense
             // Never back to an earlier, perhaps larger, issue of the same license.
             $serial = $row !== null && is_numeric($row->serial) ? (int) $row->serial : 0;
             if ($license->serial < $serial || ($license->serial === $serial && $row?->token !== $token)) {
-                throw new InvalidLicense('A newer issue of this license is already installed.');
+                throw new InvalidLicense('A newer issue of this license is already installed.', 'older');
             }
 
             DB::table('instance_licenses')->update(['is_active' => false]);

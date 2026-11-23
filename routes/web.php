@@ -9,6 +9,7 @@ use App\Http\Controllers\AboutController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\LanguageController;
+use App\Http\Controllers\Admin\LicenseController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StringController;
 use App\Http\Controllers\Admin\UserTwoFactorController;
@@ -93,6 +94,12 @@ Route::middleware(['auth', 'verified', 'permission:core.settings.manage'])
 Route::middleware(['auth', 'verified', 'permission:core.admin'])->group(function () {
     Route::get('admin/doctor', [DoctorController::class, 'index'])->name('admin.doctor.index');
     Route::post('admin/doctor', [DoctorController::class, 'store'])->middleware('throttle:6,1')->name('admin.doctor.store');
+});
+
+// Admin > License (S-0976): the license of the installation.
+Route::middleware(['auth', 'verified', 'permission:core.license.manage'])->group(function () {
+    Route::get('admin/license', [LicenseController::class, 'show'])->name('admin.license.show');
+    Route::post('admin/license', [LicenseController::class, 'store'])->middleware('throttle:6,1')->name('admin.license.store');
 });
 
 // Brand (S-0911): the tenant's brand profile, its logo (also before sign-in) and About.

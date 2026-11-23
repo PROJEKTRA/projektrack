@@ -141,6 +141,8 @@ Scenario: Clear license screen
   Then the screen shows edition, full and light users used vs licensed, expiry, add-ons, last check-in and "What does my plan include?" in the admin's language
 ```
 
+Implementation note (23.11.2026): Admin > License (`/admin/license`) for administrators of the operator tenant with `core.license.manage`: state, users in use and licensed, expiry, add-ons, address and clock warnings, and installation from a file or pasted text, checked offline and audited (also a refused one). Not built: online activation with a code, which needs the licensing service (S-0975), so the screen says that the installation sends nothing; names of add-ons and features instead of their keys (with the first commercial module); the "Add users" request (S-0979). As for the other admin screens there is no REST endpoint yet.
+
 ---
 
 ### S-0977 Check-in, soft enforcement and edition gating
