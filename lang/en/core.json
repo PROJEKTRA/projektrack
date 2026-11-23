@@ -654,5 +654,14 @@
     "users.invited": "Invitation sent.",
     "users.invited_no_mail": "The person was added, but the mail could not be sent. They can use \"Forgot password\".",
     "users.saved": "Roles saved.",
-    "users.last_admin": "The last administrator keeps the role."
+    "users.last_admin": "The last administrator keeps the role.",
+    "roles.admin": "Administrator",
+    "roles.controller": "Controller",
+    "roles.project_lead": "Project lead",
+    "roles.employee": "Employee",
+    "roles.external": "External",
+    "roles.customer": "Customer",
+    "project_roles.project_lead": "Project lead",
+    "project_roles.project_member": "Member",
+    "project_roles.project_viewer": "Viewer"
 }

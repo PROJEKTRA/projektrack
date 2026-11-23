@@ -83,6 +83,14 @@ defineOptions({
     }),
 });
 
+/** "1.0000" as "1", "1500.0000" as "1500.00". */
+function plain(value: string | null, least: number): string {
+    const [whole, fraction = ''] = (value ?? '').split('.');
+    const short = fraction.replace(/0+$/, '').padEnd(least, '0');
+
+    return short ? `${whole}.${short}` : whole;
+}
+
 const isDraft = computed(() => props.invoice.status === 'draft');
 const money = (minor: number) => formatMoney(minor, props.invoice.currency);
 const dialog = ref<
@@ -132,7 +140,7 @@ function openEdit(): void {
         .filter((l) => l.minutes === null)
         .map((l) => ({
             description: l.description,
-            quantity: l.quantity ?? '1',
+            quantity: plain(l.quantity, 0) ?? '1',
             unit: l.unit,
             unit_price: l.unit_price,
             rate_class: l.rate_class ?? 'standard',
@@ -303,7 +311,7 @@ function openEdit(): void {
                             >
                         </td>
                         <td class="px-4 py-2 text-end tabular-nums">
-                            <bdi>{{ l.unit_price }}</bdi>
+                            <bdi>{{ plain(l.unit_price, 2) }}</bdi>
                         </td>
                         <td class="px-4 py-2 text-end tabular-nums">
                             <bdi>{{ money(l.net_minor) }}</bdi>

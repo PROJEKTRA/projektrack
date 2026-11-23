@@ -67,8 +67,13 @@ Remaining `CHANGE-ME` values of the mail server do not matter then. After cron r
 | Brand, settings, light and dark mode | ready |
 | License screen (works without a license as Community) | ready |
 | System check, audit log, notifications, API tokens | ready |
-| Customers, projects, time, service reports, quotes, invoices | not built yet |
-| Web installer, PDF, backup on plain hosting, Nginx sample | not built yet |
+| Users and roles, dashboard | ready |
+| Customers, projects, contracts, work packages | ready |
+| Weekly timesheet, approval, corrections, month close | ready |
+| Hourly rates, service reports (PDF, CSV) | ready |
+| Invoices for sellers in DE and BA, cancellation, payments (PDF) | ready; legal notices must be confirmed by an accountant |
+| E-invoices, quotes, expenses, absences, timer, DOCX and XLSX | not built yet |
+| Web installer, backup on plain hosting, Nginx sample | not built yet |
 
 ## Newer ZIP
 
@@ -77,7 +82,7 @@ There is no automatic update or backup on plain hosting yet.
 1. Verify a signed release from the old folder (`docs/admin/releases.md`), then back up the database and the folder in the hosting panel.
 2. `php artisan down`
 3. Unpack the new ZIP into a new folder. Copy `.env` (`cp -p`, so it stays readable by you only) and `storage/app` from the old one.
-4. In the new folder: `php artisan projektrack:install`. It migrates and keeps the data.
+4. In the new folder: `php artisan projektrack:install`. It migrates and keeps the data. A company that existed before the modules: `php artisan projektrack:modules:enable <slug> service_reports` and the same with `invoices` (both bring what they need).
 5. Point the domain and cron to the new folder.
 
 If step 4 fails: restore the database, run `php artisan up` in the old folder and keep the domain on it.

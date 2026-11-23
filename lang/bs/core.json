@@ -654,5 +654,14 @@
     "users.invited": "Pozivnica je poslana.",
     "users.invited_no_mail": "Osoba je dodana, ali e-mail nije poslan. Može koristiti \"Zaboravljena lozinka\".",
     "users.saved": "Uloge su sačuvane.",
-    "users.last_admin": "Posljednji administrator zadržava ulogu."
+    "users.last_admin": "Posljednji administrator zadržava ulogu.",
+    "roles.admin": "Administrator",
+    "roles.controller": "Kontroler",
+    "roles.project_lead": "Voditelj projekata",
+    "roles.employee": "Zaposlenik",
+    "roles.external": "Vanjski saradnik",
+    "roles.customer": "Klijent",
+    "project_roles.project_lead": "Voditelj projekta",
+    "project_roles.project_member": "Član",
+    "project_roles.project_viewer": "Posmatrač"
 }
