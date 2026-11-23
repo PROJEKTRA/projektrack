@@ -56,7 +56,9 @@ printf 'tampered' >> "${zip}"
 check 'a changed ZIP is refused' refuses "${public}" "${zip}"
 
 cp "${work}/original.zip" "${zip}"
-sha256sum "${zip}" | sed "s#${dist}/##" > "${dist}/SHA256SUMS"
+check 'the restored ZIP is accepted again' accepts "${public}" "${zip}"
+# The ZIP's line stays correct; only an added line changes the signed list.
+printf '%064d  extra.zip\n' 0 >> "${dist}/SHA256SUMS"
 check 'a changed checksum list is refused' refuses "${public}" "${zip}"
 
 printf '\nResult: %s failed\n' "${failures}"
