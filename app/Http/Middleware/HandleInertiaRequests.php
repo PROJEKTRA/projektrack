@@ -13,6 +13,7 @@ use App\Doctor\Doctor;
 use App\Doctor\DoctorAccess;
 use App\I18n\Formats;
 use App\I18n\Strings;
+use App\Licensing\LicenseAccess;
 use App\Models\AppNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -65,6 +66,8 @@ class HandleInertiaRequests extends Middleware
             'strings' => $this->strings(),
             // Regional format and time zone for dates and amounts (S-0919).
             'formats' => app(Formats::class)->current()->toArray(),
+            // Menu entry of the license, for operator administrators (S-0976).
+            'licenseAccess' => fn (): bool => $user instanceof User && app(LicenseAccess::class)->allows($user),
             // Critical findings of the system check for operator administrators
             // (S-0988); null hides the menu entry for everyone else.
             'doctorAlerts' => fn (): ?int => $user instanceof User && app(DoctorAccess::class)->allows($user)

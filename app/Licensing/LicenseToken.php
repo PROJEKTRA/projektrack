@@ -64,7 +64,7 @@ final class LicenseToken
         $public = is_string($kid) && is_string($issued) ? $keys->find($kid, License::time($issued)) : null;
 
         if (! is_array($payload) || $public === null) {
-            throw new InvalidLicense('The license is signed with a key this release does not trust.');
+            throw new InvalidLicense('The license is signed with a key this release does not trust.', 'untrusted_key');
         }
         if (! sodium_crypto_sign_verify_detached($signature, self::PREFIX.'.'.$parts[1], $public)) {
             throw new InvalidLicense('The signature of the license is not valid.');

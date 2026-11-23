@@ -33,6 +33,8 @@ declare module '@inertiajs/core' {
             unreadNotifications: number;
             /** Critical system check findings, for administrators (S-0988). */
             doctorAlerts: number | null;
+            /** May open Admin > License (S-0976). */
+            licenseAccess: boolean;
             /** Brand of the tenant (S-0911). */
             brand: { name: string; logoUrl: string | null; poweredBy: boolean };
             [key: string]: unknown;

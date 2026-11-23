@@ -4,6 +4,8 @@ A license is a signed text (`PTKL1...`) that an instance checks offline with the
 
 ## Install a license
 
+In the browser: **Admin > License** shows the instance id, edition, users in use and licensed, expiry and what the plan includes, and installs a license from a file or pasted text. It is open to administrators of the operator tenant with the permission `core.license.manage`. On the console:
+
 1. `php artisan projektrack:license:show` prints the instance id (`inst_...`). Send it and the host name to PROJEKTRA. The id stays the same after an update and after a restore.
 2. Put the license you receive into a file and run `php artisan projektrack:license:install <file>`. With Docker: `docker compose exec -T app php artisan ...`, with the file in the storage volume.
 

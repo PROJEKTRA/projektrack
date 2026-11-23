@@ -5,6 +5,7 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
+    KeyRound,
     Languages,
     LayoutGrid,
     Palette,
@@ -15,6 +16,7 @@ import { computed } from 'vue';
 import LanguageController from '@/actions/App/Http/Controllers/Admin/LanguageController';
 import BrandController from '@/actions/App/Http/Controllers/Admin/BrandController';
 import DoctorController from '@/actions/App/Http/Controllers/Admin/DoctorController';
+import LicenseController from '@/actions/App/Http/Controllers/Admin/LicenseController';
 import SettingsController from '@/actions/App/Http/Controllers/Admin/SettingsController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -59,6 +61,15 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('core:nav.brand'),
                       href: BrandController.edit(),
                       icon: Palette,
+                  },
+              ]
+            : []),
+        ...(page.props.licenseAccess
+            ? [
+                  {
+                      title: t('core:nav.license'),
+                      href: LicenseController.show(),
+                      icon: KeyRound,
                   },
               ]
             : []),
