@@ -103,6 +103,7 @@ rollback() {
     trap - ERR
     trap '' INT TERM HUP PIPE
     set +e
+    unset PROJEKTRACK_IMAGE
     local ok=1
     log 'FAILED. Rolling back to the previous version.'
     one_off
@@ -200,7 +201,9 @@ update() {
     restore_needed=1
 
     # The app container keeps showing the maintenance page during migrations.
-    PROJEKTRACK_IMAGE="${new}" dc run --rm -T --name "${project}-update-migrate" migrate
+    # As a child's environment, not before the function dc: the ERR trap runs inside
+    # a failing function and would roll back with the new image.
+    env PROJEKTRACK_IMAGE="${new}" docker compose run --rm -T --name "${project}-update-migrate" migrate
 
     # Nobody writes before the new version is healthy: the proxy is stopped.
     dc stop proxy
