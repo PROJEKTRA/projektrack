@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -88,14 +89,14 @@ class Install extends Command
         $key = 'base64:'.base64_encode(Encrypter::generateKey(config()->string('app.cipher')));
 
         // Never over an existing file, and readable by its owner only.
+        $mask = umask(0077);
         $handle = is_string($template) ? @fopen($env, 'x') : false;
-        if ($handle === false) {
+        umask($mask);
+        if ($handle === false || fwrite($handle, str_replace('APP_KEY=', 'APP_KEY='.$key, $template)) === false) {
             $this->error("{$env} cannot be written.");
 
             return self::FAILURE;
         }
-        @chmod($env, 0600);
-        fwrite($handle, str_replace('APP_KEY=', 'APP_KEY='.$key, $template));
         fclose($handle);
 
         $this->info("Written {$env}.");
@@ -126,9 +127,16 @@ class Install extends Command
             }
         }
 
+        // Scheduled tasks start each job as a process.
+        if (! function_exists('proc_open')) {
+            $problems[] = 'PHP does not allow proc_open. Enable it in the hosting panel for the command line.';
+        }
+
         $key = config('app.key');
         if (! is_string($key) || $key === '') {
             $problems[] = 'APP_KEY is empty.';
+        } elseif (! Encrypter::supported((string) base64_decode(Str::after($key, 'base64:'), true), config()->string('app.cipher'))) {
+            $problems[] = 'APP_KEY is not a valid key.';
         }
 
         $url = config('app.url');
@@ -145,6 +153,17 @@ class Install extends Command
         }
         if (config('app.debug') === true && ! $local) {
             $problems[] = 'APP_DEBUG must be false.';
+        }
+        if (config('app.env') !== 'production' && ! $local) {
+            $problems[] = 'APP_ENV must be production.';
+        }
+        if (config('mail.default') === 'smtp') {
+            foreach (['mail.mailers.smtp.host' => 'MAIL_HOST', 'mail.mailers.smtp.username' => 'MAIL_USERNAME', 'mail.mailers.smtp.password' => 'MAIL_PASSWORD', 'mail.from.address' => 'MAIL_FROM_ADDRESS'] as $path => $name) {
+                $value = config($path);
+                if (is_string($value) && str_contains($value, self::PLACEHOLDER)) {
+                    $problems[] = "{$name} is not filled in.";
+                }
+            }
         }
 
         if ($problems === []) {

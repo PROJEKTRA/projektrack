@@ -68,6 +68,9 @@ it('refuses with a plain reason', function (array $config, string $reason) {
     'http' => [['app.url' => 'http://app.example.com'], 'must start with https'],
     'debug' => [['app.url' => 'https://app.example.com', 'app.debug' => true], 'APP_DEBUG must be false'],
     'no key' => [['app.key' => ''], 'APP_KEY is empty'],
+    'broken key' => [['app.key' => 'base64:CHANGE-ME'], 'APP_KEY is not a valid key'],
+    'test mode on a reachable host' => [['app.url' => 'https://app.example.com', 'app.env' => 'staging'], 'APP_ENV must be production'],
+    'mail placeholder' => [['mail.default' => 'smtp', 'mail.mailers.smtp.host' => 'CHANGE-ME'], 'MAIL_HOST is not filled in'],
 ]);
 
 it('keeps the data of an existing installation', function () {

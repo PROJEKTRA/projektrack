@@ -8,7 +8,9 @@
 # runs the installation again. Usage: tests/amp/install.sh <folder for the ZIP>
 set -Eeuo pipefail
 
-printf 'resolve = "test.localhost:8080:127.0.0.1"\nresolve = "test.localhost:8081:127.0.0.1"\n' > "${HOME}/.curlrc"
+CURL_HOME="$(mktemp -d)"
+export CURL_HOME
+printf 'resolve = "test.localhost:8080:127.0.0.1"\nresolve = "test.localhost:8081:127.0.0.1"\npath-as-is\n' > "${CURL_HOME}/.curlrc"
 
 out="${1:?folder for the ZIP}"
 mkdir -p "${out}"
@@ -95,9 +97,10 @@ check 'health' test "$(curl -s "${url}/health")" = OK
 check 'robots.txt' bash -c 'curl -s "$1/robots.txt" | grep -q "^Disallow: /$"' _ "${url}"
 check '/.env is not served' bash -c '[[ "$(curl -s -o /dev/null -w "%{http_code}" "$1/.env")" =~ ^40[34]$ ]]' _ "${url}"
 wrong=http://test.localhost:8081
-for path in / /.env /composer.json /artisan /storage/logs/ /config/app.php /public/; do
-    check "web root on the wrong folder: ${path} is refused" bash -c '[[ "$(curl -s -o /dev/null -w "%{http_code}" "$1")" =~ ^40[34]$ ]] || [[ "$1" == */public/ ]]' _ "${wrong}${path}"
+for path in / /.env /composer.json /artisan /storage/logs/ /config/app.php /vendor/autoload.php /deploy/amp/env.example /public/../.env; do
+    check "web root on the wrong folder: ${path} is refused" bash -c '[[ "$(curl -s -o /dev/null -w "%{http_code}" "$1")" =~ ^40[34]$ ]]' _ "${wrong}${path}"
 done
+check 'the refusal is noindex' bash -c 'curl -s -o /dev/null -D - "$1/" | grep -qi "^x-robots-tag: noindex"' _ "${wrong}"
 
 say 'Again, as for a newer ZIP'
 check 'running it again keeps the data' bash -c 'docker exec -u www-data -w /srv/site amp-web php artisan projektrack:install | grep -q "data is kept"'

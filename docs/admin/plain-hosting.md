@@ -8,16 +8,16 @@ For operators of shared or plain AMP hosting (S-0925): Apache, PHP, MySQL or Mar
 - MySQL 8.4 or MariaDB 11.4 with an empty database and an account that may create tables in it.
 - Apache with `mod_rewrite` and `AllowOverride`. The domain must point to a subfolder (`public/`).
 - Shell access (SSH) and a cron entry every minute. A web installer does not exist yet.
-- A host name of its own (not a subfolder of a site) with a certificate. Turn on "force HTTPS" in the hosting panel.
+- A host name of its own (not a subfolder of a site) with a certificate. Turn on "force HTTPS" in the hosting panel and check that `http://` redirects.
 - A mail server account. The first administrator gets the setup link by mail.
 
 ## Get the ZIP
 
-Until the first signed release exists, there is a **test ZIP** (for test installations with synthetic data only, not signed): in GitHub, open the latest run of the workflow `ci`, section Artifacts, `test-zip` (kept 14 days). GitHub wraps it once more; unpack the outer file first. Signed releases: `docs/admin/releases.md`.
+Until the first signed release exists, there is a **test ZIP** (for test installations with synthetic data only, not signed): in GitHub, open the latest successful run of the workflow `ci` on branch `main` (event push, never a pull request), section Artifacts, `test-zip` (kept 14 days). GitHub wraps it once more; unpack the outer file first. Signed releases: `docs/admin/releases.md`.
 
 ## Install
 
-Commands run in the folder with the file `artisan`. If the hosting calls PHP 8.4 differently (for example `php8.4`), use that name everywhere.
+Commands run in the folder with the file `artisan`. If the hosting calls PHP 8.4 differently (for example `php8.4`), use that name everywhere. An IP or password restriction belongs into the hosting panel; `public/.htaccess` opens its folder and is replaced by updates.
 
 1. Unpack the ZIP into a folder outside every other web root and point the domain to its `public` folder, never to the folder itself.
 2. First run. It writes `.env`, readable by you only, with a generated key:
@@ -74,9 +74,9 @@ Remaining `CHANGE-ME` values of the mail server do not matter then. After cron r
 
 There is no automatic update or backup on plain hosting yet.
 
-1. Back up the database and the folder in the hosting panel.
+1. Verify a signed release from the old folder (`docs/admin/releases.md`), then back up the database and the folder in the hosting panel.
 2. `php artisan down`
-3. Unpack the new ZIP into a new folder. Copy `.env` and `storage/app` from the old one.
+3. Unpack the new ZIP into a new folder. Copy `.env` (`cp -p`, so it stays readable by you only) and `storage/app` from the old one.
 4. In the new folder: `php artisan projektrack:install`. It migrates and keeps the data.
 5. Point the domain and cron to the new folder.
 
