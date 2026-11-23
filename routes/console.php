@@ -210,6 +210,7 @@ Artisan::command('projektrack:license:show', function (InstanceLicense $licenses
     $license = $licenses->current();
     if ($licenses->problem() !== null) {
         $this->error('The installed license is not valid: '.$licenses->problem());
+        $this->line('Status:   invalid');
     }
     $this->line('Edition:  '.($license->edition->value ?? 'community'));
 

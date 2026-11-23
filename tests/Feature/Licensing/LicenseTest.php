@@ -284,7 +284,8 @@ describe('instance', function () {
         app(InstanceLicense::class)->install(licenseToken());
         trustKeys([licenseKey('ptk-2026-01', $this->pair, 'revoked')]);
 
-        expect(app(InstanceLicense::class)->current())->toBeNull();
+        expect(app(InstanceLicense::class)->current())->toBeNull()
+            ->and(app(InstanceLicense::class)->status())->toBe(LicenseStatus::Invalid);
     });
 
     it('warns about a clock far behind, without changing the license', function () {

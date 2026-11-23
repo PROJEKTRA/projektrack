@@ -111,7 +111,8 @@ jobs:
 
   image:
     name: Image by digest, scan and SBOM
-    needs: gate
+    # After the ZIP, which refuses a release without license keys.
+    needs: [gate, zip]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:

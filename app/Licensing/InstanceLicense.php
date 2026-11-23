@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The license of this installation (S-0974). Validated offline, with the keys
- * of the release, each time it is read: a changed row in the database counts
- * as no license. A refused token never replaces the installed one.
+ * of the release, each time it is read: a changed row in the database makes the
+ * license invalid. A refused token never replaces the installed one.
  */
 final class InstanceLicense
 {

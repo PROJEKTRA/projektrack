@@ -7,6 +7,7 @@
 
 namespace App\Licensing;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -41,7 +42,8 @@ final readonly class InstanceId
             throw new InvalidLicense('The instance id in the database is damaged.');
         }
         if ((! is_file($this->file) || trim((string) file_get_contents($this->file)) !== $stored)
-            && @file_put_contents($this->file, $stored."\n", LOCK_EX) === false) {
+            && @file_put_contents($this->file, $stored."\n", LOCK_EX) === false
+            && Cache::add('licensing.instance-id-file', true, 3600)) {
             Log::warning('The file with the instance id cannot be written');
         }
 

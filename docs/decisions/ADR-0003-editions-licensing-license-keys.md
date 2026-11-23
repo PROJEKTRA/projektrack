@@ -208,6 +208,8 @@ The 30-day Business trial and self-service checkout are not in 0.9 (assumption A
 - Domain binding as warning only allows reuse of a license on a second instance for a time; the licensing service flags duplicate `license_id` check-ins from different `instance_id`s.
 - MoR seller eligibility for a BiH company is unverified; if Paddle does not onboard BiH sellers, the default changes before 1.0.
 
+Implementation differences of 0.9 are listed in the note of S-0974 (`docs/stories/0.9/E11-licensing.md`).
+
 ## Open questions
 
 1. **Legal (product owner with lawyer):** text of the proprietary EULA and the CLA for external contributions; governing law and venue (BiH, or configurable per contract as the US terms require).
