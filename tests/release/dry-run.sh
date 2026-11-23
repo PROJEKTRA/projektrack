@@ -39,20 +39,25 @@ openssl genpkey -algorithm ed25519 -out "${work}/key.pem" 2>/dev/null
 public="$(openssl pkey -in "${work}/key.pem" -pubout -outform DER | tail -c 32 | base64)"
 deploy/release/sign.sh "${dist}" "${work}/key.pem" >/dev/null
 
-verify() { RELEASE_PUBLIC_KEYS="$1" php artisan projektrack:release:verify "$2" >/dev/null 2>&1; }
-check 'a genuine release is accepted' verify "${public}" "${zip}"
+# The key override counts only with APP_ENV=testing.
+accepts() { APP_ENV=testing RELEASE_PUBLIC_KEYS="$1" php artisan projektrack:release:verify "$2" "${@:3}" >/dev/null 2>&1; }
+refuses() { ! accepts "$@"; }
+
+check 'a genuine release is accepted' accepts "${public}" "${zip}" --release="${version}"
+check 'another expected release is refused' refuses "${public}" "${zip}" --release=0.0.1
 
 other="$(openssl genpkey -algorithm ed25519 2>/dev/null | openssl pkey -pubout -outform DER | tail -c 32 | base64)"
-check 'another key is refused' bash -c '! RELEASE_PUBLIC_KEYS="$1" php artisan projektrack:release:verify "$2" >/dev/null 2>&1' _ "${other}" "${zip}"
-check 'no configured key refuses' bash -c '! RELEASE_PUBLIC_KEYS= php artisan projektrack:release:verify "$1" >/dev/null 2>&1' _ "${zip}"
+check 'another key is refused' refuses "${other}" "${zip}"
+check 'no configured key refuses' refuses '' "${zip}"
+check 'outside tests the key override is ignored' bash -c '! APP_ENV=production RELEASE_PUBLIC_KEYS="$1" php artisan projektrack:release:verify "$2" >/dev/null 2>&1' _ "${public}" "${zip}"
 
 cp "${zip}" "${work}/original.zip"
 printf 'tampered' >> "${zip}"
-check 'a changed ZIP is refused' bash -c '! RELEASE_PUBLIC_KEYS="$1" php artisan projektrack:release:verify "$2" >/dev/null 2>&1' _ "${public}" "${zip}"
+check 'a changed ZIP is refused' refuses "${public}" "${zip}"
 
 cp "${work}/original.zip" "${zip}"
 sha256sum "${zip}" | sed "s#${dist}/##" > "${dist}/SHA256SUMS"
-check 'a changed checksum list is refused' bash -c '! RELEASE_PUBLIC_KEYS="$1" php artisan projektrack:release:verify "$2" >/dev/null 2>&1' _ "${public}" "${zip}"
+check 'a changed checksum list is refused' refuses "${public}" "${zip}"
 
 printf '\nResult: %s failed\n' "${failures}"
 [[ ${failures} -eq 0 ]]

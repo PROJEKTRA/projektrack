@@ -19,10 +19,16 @@ final class ReleaseVerifier
     /** @param list<string> $publicKeys base64 of 32-byte Ed25519 public keys */
     public function __construct(private readonly array $publicKeys) {}
 
+    /** Larger checksum lists or signatures are refused unread. */
+    private const int MAX_BYTES = 65536;
+
     /**
+     * @param  string|null  $expectedVersion  when given, the file must be the ZIP of exactly
+     *                                        this version (name and VERSION inside), so an older
+     *                                        genuine release cannot be passed off as an update
      * @return string|null null when the file is genuine, else why it is refused
      */
-    public function verify(string $file, string $sums, string $signature): ?string
+    public function verify(string $file, string $sums, string $signature, ?string $expectedVersion = null): ?string
     {
         $keys = $this->keys();
         if ($keys === []) {
@@ -33,6 +39,10 @@ final class ReleaseVerifier
             if (! is_file($path) || ! is_readable($path)) {
                 return 'Not readable: '.basename($path);
             }
+        }
+
+        if (filesize($sums) > self::MAX_BYTES || filesize($signature) > self::MAX_BYTES) {
+            return 'The checksum list or signature is too large.';
         }
 
         $list = (string) file_get_contents($sums);
@@ -65,7 +75,25 @@ final class ReleaseVerifier
             return 'The checksum of '.basename($file).' does not match: it was changed after signing.';
         }
 
-        return null;
+        return $expectedVersion === null ? null : $this->checkVersion($file, $expectedVersion);
+    }
+
+    /** The signed file is the release ZIP of exactly this version. */
+    private function checkVersion(string $file, string $version): ?string
+    {
+        $name = 'projektrack-'.$version;
+        if (basename($file) !== $name.'.zip') {
+            return 'This is not the release '.$version.'.';
+        }
+
+        $zip = new \ZipArchive;
+        if ($zip->open($file, \ZipArchive::RDONLY) !== true) {
+            return 'The release ZIP cannot be opened.';
+        }
+        $inside = $zip->getFromName($name.'/VERSION');
+        $zip->close();
+
+        return is_string($inside) && trim($inside) === $version ? null : 'This is not the release '.$version.'.';
     }
 
     /** @return list<non-empty-string> raw public keys */

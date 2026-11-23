@@ -16,17 +16,37 @@ A tag `vX.Y.Z` on a commit of `main` whose CI is green starts `.github/workflows
 | `SHA256SUMS.sig` | Ed25519 signature of `SHA256SUMS` with the release key. |
 | `SHA256SUMS.cosign.bundle` | A second, keyless signature of `SHA256SUMS` by the release workflow. |
 
-The image `ghcr.io/projektra/projektrack:X.Y.Z` is scanned before it is pushed (the release stops on a fixable critical vulnerability), carries a build provenance attestation and an SBOM attestation, and is signed with cosign.
+The image is pushed by digest, scanned in exactly that form (the release stops on a fixable critical vulnerability) and carries a build provenance attestation. Only after a reviewer approved the release is it signed with cosign, given an SBOM attestation and tagged `ghcr.io/projektra/projektrack:X.Y.Z`.
 
-## Verify a ZIP before installing it
+## Verify a ZIP for a new installation
 
-Put `SHA256SUMS` and `SHA256SUMS.sig` next to the ZIP. With a running Projektrack (for an update), or from the unpacked ZIP itself (for a new installation):
+Do not run anything from the ZIP before it is verified: a forged ZIP would bring its own keys and its own verifier. Take the release key from a source that is not the ZIP: the line in `resources/release/public-keys.txt` of the repository at github.com/PROJEKTRA/projektrack, which projektra.net also publishes. Then, with `SHA256SUMS` and `SHA256SUMS.sig` next to the ZIP:
 
 ```
-php artisan projektrack:release:verify projektrack-X.Y.Z.zip
+KEY='<the base64 key>'
+(printf '\x30\x2a\x30\x05\x06\x03\x2b\x65\x70\x03\x21\x00'; printf '%s' "$KEY" | base64 -d) > release.der
+openssl pkey -pubin -inform DER -in release.der -out release.pub
+openssl pkeyutl -verify -pubin -inkey release.pub -rawin -in SHA256SUMS -sigfile SHA256SUMS.sig
+sha256sum -c --ignore-missing SHA256SUMS
 ```
 
-It checks the signature with the release keys that ship in `resources/release/public-keys.txt` and the checksum of the ZIP, and refuses on any difference: a changed ZIP, a changed checksum list, an unknown key or no key at all. The updater (S-0927, S-0928) runs the same check with the keys of the release that is running, so a key is trusted only after a signed release brought it.
+Both must succeed (`Signature Verified Successfully` and `OK` for the ZIP). The keyless second signature can be checked too:
+
+```
+cosign verify-blob SHA256SUMS --bundle SHA256SUMS.cosign.bundle \
+  --certificate-identity-regexp '^https://github.com/PROJEKTRA/projektrack/\.github/workflows/release\.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+## Verify a ZIP for an update
+
+On a running instance, with `SHA256SUMS` and `SHA256SUMS.sig` next to the ZIP:
+
+```
+php artisan projektrack:release:verify projektrack-X.Y.Z.zip --release=X.Y.Z
+```
+
+It checks the signature with the release keys shipped with the running release, the checksum of the ZIP, and that the ZIP is exactly release X.Y.Z (name and `VERSION` inside), so an older genuine release cannot be passed off as an update. It refuses on any difference, and when no key is shipped. No setting or environment variable on an instance can change the trusted keys. The updater (S-0927, S-0928) runs the same check and must also refuse a version that is not newer than the running one.
 
 ## Verify an image before running it
 
@@ -34,9 +54,12 @@ It checks the signature with the release keys that ship in `resources/release/pu
 cosign verify ghcr.io/projektra/projektrack@sha256:<digest> \
   --certificate-identity-regexp '^https://github.com/PROJEKTRA/projektrack/\.github/workflows/release\.yml@refs/tags/v' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
+cosign verify-attestation --type cyclonedx ghcr.io/projektra/projektrack@sha256:<digest> \
+  --certificate-identity-regexp '^https://github.com/PROJEKTRA/projektrack/\.github/workflows/release\.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-Run images by digest, not by tag. `docs/admin/docker.md` describes the stack.
+The digest is in `projektrack-X.Y.Z.image.txt`, which `SHA256SUMS` covers. Run images by digest, not by tag. `docs/admin/docker.md` describes the stack.
 
 ## Release key (maintainers)
 
@@ -50,10 +73,13 @@ The Ed25519 release key is separate from the license key and never exists on an 
    ```
 
 2. Add the printed public key as a line to `resources/release/public-keys.txt` and commit it.
-3. In the repository settings, create the environment `release` with required reviewers, and store the private key as its secret: `gh secret set RELEASE_SIGNING_KEY --env release < release-signing.pem`
+3. In the repository settings:
+   - create the environment `release` with required reviewers, "Prevent self-review" on, and deployments limited to tags matching `v*`;
+   - store the private key as its secret: `gh secret set RELEASE_SIGNING_KEY --env release < release-signing.pem`;
+   - add a tag ruleset so only maintainers can create, move or delete tags matching `v*`.
 4. Keep the PEM file in the password vault only, then delete it from the machine.
 
-Rotation: add the new public key next to the old one, ship a release signed with the old key, switch the secret to the new key, and remove the old public key only after a release signed with the new key has shipped. After a suspected compromise, remove the old key at once and publish a security advisory.
+Rotation: add the new public key next to the old one, ship a release signed with the old key, switch the secret to the new key, and remove the old public key only after a release signed with the new key has shipped. The release workflow enforces the order: it verifies each release also with the keys of the previous release. After a suspected compromise, remove the old key at once and publish a security advisory.
 
 ## Cutting a release
 
@@ -61,4 +87,4 @@ Rotation: add the new public key next to the old one, ship a release signed with
 2. `git tag -s vX.Y.Z <commit>` and `git push origin vX.Y.Z`.
 3. Approve the `release` environment when the workflow asks.
 
-The workflow refuses a tag that is not a version, a commit whose CI on `main` is not green, a missing release key, and a ZIP that its own verification rejects.
+The workflow refuses a tag that is not a version, a commit that is not on `main` or whose CI on `main` is not green, a missing SBOM, a missing release key, and a ZIP that the verification with this or the previous release's keys rejects. Nothing is signed or tagged before the approval.

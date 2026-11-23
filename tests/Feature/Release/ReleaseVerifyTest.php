@@ -18,16 +18,20 @@ use Illuminate\Support\Str;
  *
  * @return array{dir: string, zip: string, public: string, secret: string}
  */
-function signedRelease(): array
+function signedRelease(string $name = '0.9.0', string $inside = '0.9.0'): array
 {
     $dir = sys_get_temp_dir().'/release-'.Str::random(12);
     mkdir($dir);
-    $zip = $dir.'/projektrack-0.9.0.zip';
-    file_put_contents($zip, 'release content '.Str::random(32));
+    $zip = $dir.'/projektrack-'.$name.'.zip';
+    $archive = new ZipArchive;
+    $archive->open($zip, ZipArchive::CREATE);
+    $archive->addFromString('projektrack-'.$name.'/VERSION', $inside."\n");
+    $archive->addFromString('projektrack-'.$name.'/artisan', 'release content '.Str::random(32));
+    $archive->close();
     file_put_contents($dir.'/projektrack-0.9.0.cdx.json', '{"bomFormat":"CycloneDX"}');
 
     $pair = sodium_crypto_sign_keypair();
-    $sums = hash_file('sha256', $zip).'  projektrack-0.9.0.zip'."\n"
+    $sums = hash_file('sha256', $zip).'  '.basename($zip)."\n"
         .hash_file('sha256', $dir.'/projektrack-0.9.0.cdx.json').'  projektrack-0.9.0.cdx.json'."\n";
     file_put_contents($dir.'/SHA256SUMS', $sums);
     file_put_contents($dir.'/SHA256SUMS.sig', sodium_crypto_sign_detached($sums, sodium_crypto_sign_secretkey($pair)));
@@ -105,6 +109,28 @@ it('refuses a file the signed list does not name, or names twice', function () {
     expect(verifyRelease($release))->toContain('does not name');
 });
 
+it('binds the check to the expected release, so an older one cannot pass as an update', function () {
+    $release = signedRelease();
+    $verifier = new ReleaseVerifier([$release['public']]);
+    $sums = $release['dir'].'/SHA256SUMS';
+    $sig = $release['dir'].'/SHA256SUMS.sig';
+
+    expect($verifier->verify($release['zip'], $sums, $sig, '0.9.0'))->toBeNull()
+        ->and($verifier->verify($release['zip'], $sums, $sig, '0.9.1'))->toBe('This is not the release 0.9.1.');
+
+    // A genuinely signed 0.9.0 renamed to 0.9.1 still says 0.9.0 inside.
+    $renamed = signedRelease('0.9.1', '0.9.0');
+    expect((new ReleaseVerifier([$renamed['public']]))->verify($renamed['zip'], $renamed['dir'].'/SHA256SUMS', $renamed['dir'].'/SHA256SUMS.sig', '0.9.1'))
+        ->toBe('This is not the release 0.9.1.');
+});
+
+it('refuses an oversized checksum list unread', function () {
+    $release = signedRelease();
+    file_put_contents($release['dir'].'/SHA256SUMS', str_repeat('x', 70000), FILE_APPEND);
+
+    expect(verifyRelease($release))->toBe('The checksum list or signature is too large.');
+});
+
 it('refuses a signature file that is no signature', function () {
     $release = signedRelease();
     file_put_contents($release['dir'].'/SHA256SUMS.sig', 'garbage');
@@ -119,6 +145,10 @@ it('verifies from the command line with the configured keys', function () {
     $this->artisan('projektrack:release:verify', ['file' => $release['zip']])
         ->expectsOutputToContain('is a genuine release')
         ->assertSuccessful();
+
+    $this->artisan('projektrack:release:verify', ['file' => $release['zip'], '--release' => '0.9.2'])
+        ->expectsOutputToContain('This is not the release 0.9.2.')
+        ->assertFailed();
 
     file_put_contents($release['zip'], 'x', FILE_APPEND);
 

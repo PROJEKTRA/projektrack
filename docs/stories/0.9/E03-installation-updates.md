@@ -85,9 +85,11 @@ Scenario: Verification
 
 Implementation note (23.11.2026): `.github/workflows/release.yml` runs on a tag `vX.Y.Z` of a commit whose CI on `main` is green.
 - **ZIP:** built from the committed files only (`deploy/release/build-zip.sh`), with `vendor/` and compiled assets. Comes with a CycloneDX SBOM of Composer and npm.
-- **Image:** pushed to GHCR after a scan that fails on fixable critical findings. It carries provenance, a CycloneDX SBOM attestation and a keyless cosign signature.
-- **Checksums:** `SHA256SUMS` over all files, signed with the Ed25519 release key in the `release` environment and also by cosign.
-- **Verification:** `projektrack:release:verify` checks the signature against the keys shipped in `resources/release/public-keys.txt` and the checksum of the file, and fails closed. The CI job "Release ZIP and signature (dry run)" builds the ZIP, signs it with a throwaway key and checks that the verification accepts it and refuses a changed ZIP or checksum list.
+- **Image:** pushed by digest only, and exactly that digest is scanned (fails on fixable critical findings). It carries provenance and a CycloneDX SBOM.
+- **Approval:** nothing is signed or tagged before a reviewer approves the `release` environment. The approved job signs `SHA256SUMS` with the Ed25519 release key and by cosign, and signs and attests the image; it runs no third-party package code. A job without write rights then verifies with the keys of this and the previous release before the image is tagged and the release published.
+- **What is signed:** `SHA256SUMS` only. It covers the ZIP and the other files, which is how baseline 9 is met.
+- **Verification:** `projektrack:release:verify --release=X.Y.Z` checks the signature against the keys shipped in `resources/release/public-keys.txt`, the checksum and the version (name and `VERSION` inside), and fails closed. The key override `RELEASE_PUBLIC_KEYS` counts only in tests. A new installation is verified with OpenSSL and the key from the repository, without running code from the ZIP.
+- **For S-0927 and S-0928:** the updater uses this check and must also refuse a version that is not newer than the running one. The CI job "Release ZIP and signature (dry run)" builds the ZIP, signs it with a throwaway key and checks that the verification accepts it and refuses a changed ZIP or checksum list.
 - **Version:** set by the build in `VERSION`.
 - **Guide:** `docs/admin/releases.md`.
 - **Open, for the product owner:** generate the release key, commit its public key, and create the `release` environment with reviewers and the secret. Until then every release stops at signing.

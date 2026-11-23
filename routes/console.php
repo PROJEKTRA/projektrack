@@ -134,7 +134,7 @@ Artisan::command('projektrack:doctor {--external= : Public URL to check; the rep
     return $critical === 0 ? 0 : 1;
 })->purpose('Check this installation from outside: headers, robots.txt, error pages, web root (S-0988)');
 
-Artisan::command('projektrack:release:verify {file : Release file, for example projektrack-0.9.0.zip} {--sums= : Checksum list (default: SHA256SUMS next to the file)} {--signature= : Signature of the list (default: SHA256SUMS.sig next to it)}', function () {
+Artisan::command('projektrack:release:verify {file : Release file, for example projektrack-0.9.0.zip} {--sums= : Checksum list (default: SHA256SUMS next to the file)} {--signature= : Signature of the list (default: SHA256SUMS.sig next to it)} {--release= : Expected version: the file must be exactly that release}', function () {
     $file = $this->argument('file');
     if (! is_string($file) || $file === '') {
         $this->error('Give the release file.');
@@ -151,6 +151,7 @@ Artisan::command('projektrack:release:verify {file : Release file, for example p
         $file,
         is_string($sums) && $sums !== '' ? $sums : $dir.'/SHA256SUMS',
         is_string($signature) && $signature !== '' ? $signature : $dir.'/SHA256SUMS.sig',
+        is_string($this->option('release')) && $this->option('release') !== '' ? $this->option('release') : null,
     );
 
     if ($problem !== null) {
