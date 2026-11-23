@@ -101,7 +101,7 @@ const user = computed(() => page.props.auth.user);
                     <Link
                         :href="send()"
                         as="button"
-                        class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                        class="text-foreground underline decoration-muted-foreground underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current!"
                     >
                         {{ $t('core:settings.profile.resend_verification') }}
                     </Link>
@@ -109,7 +109,7 @@ const user = computed(() => page.props.auth.user);
 
                 <div
                     v-if="page.props.status === 'verification-link-sent'"
-                    class="mt-2 text-sm font-medium text-green-600"
+                    class="mt-2 text-sm font-medium text-success"
                 >
                     {{ $t('core:settings.profile.verification_link_sent') }}
                 </div>
@@ -122,7 +122,7 @@ const user = computed(() => page.props.auth.user);
                 <select
                     id="locale"
                     name="locale"
-                    class="mt-1 block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                     aria-describedby="locale-help"
                 >
                     <option value="" :selected="locale === null">
@@ -151,7 +151,7 @@ const user = computed(() => page.props.auth.user);
                 <select
                     id="format_locale"
                     name="format_locale"
-                    class="mt-1 block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                     aria-describedby="format-help"
                 >
                     <option value="" :selected="formatLocale === null">
@@ -184,7 +184,7 @@ const user = computed(() => page.props.auth.user);
                 <select
                     id="timezone"
                     name="timezone"
-                    class="mt-1 block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    class="mt-1 block h-9 w-full rounded-input border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                     aria-describedby="timezone-help"
                 >
                     <option value="" :selected="timezone === null">

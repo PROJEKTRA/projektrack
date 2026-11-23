@@ -4,7 +4,9 @@
 -->
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
+import { Bell } from '@lucide/vue';
 import NotificationController from '@/actions/App/Http/Controllers/NotificationController';
+import EmptyState from '@/components/EmptyState.vue';
 import Heading from '@/components/Heading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,12 +66,11 @@ function readAll(): void {
             >
         </div>
 
-        <p
+        <EmptyState
             v-if="notifications.length === 0"
-            class="text-sm text-muted-foreground"
-        >
-            {{ $t('core:notifications.empty') }}
-        </p>
+            :icon="Bell"
+            :title="$t('core:notifications.empty')"
+        />
 
         <ul v-else class="divide-y rounded-lg border">
             <li

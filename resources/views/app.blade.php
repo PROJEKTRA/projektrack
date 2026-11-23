@@ -31,11 +31,11 @@
 
         <style nonce="{{ Vite::cspNonce() }}">
             html {
-                background-color: oklch(1 0 0);
+                background-color: #f5f7f7;
             }
 
             html.dark {
-                background-color: oklch(0.145 0 0);
+                background-color: #000012;
             }
         </style>
 

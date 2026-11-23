@@ -399,6 +399,8 @@ Scenario: App shell and base components
 
 Notes: official PROJEKTRA logo SVGs are pending (assumption A-02); a neutral placeholder is used and listed as open item.
 
+Implementation note (23.11.2026): tokens in `resources/css/tokens.css` (cascade layer `theme`, so a tenant theme wins), four self-hosted fonts from Fontsource packages (OFL, see `THIRD_PARTY_NOTICES.md`), contrast of both modes checked in `resources/js/theme/tokens.test.ts`, browser checks in `tests/e2e/theme.spec.ts`. New components: `ui/table` and `EmptyState`. Guide and open points: `docs/ux/components.md`.
+
 ---
 
 ### S-0911 Central brand and legal entity configuration
