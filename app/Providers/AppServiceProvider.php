@@ -10,6 +10,9 @@ namespace App\Providers;
 use App\Auth\NotCommonPassword;
 use App\Branding\Brand;
 use App\Branding\SetMailSender;
+use App\Licensing\InstanceId;
+use App\Licensing\InstanceLicense;
+use App\Licensing\LicenseKeys;
 use App\Models\ApiToken;
 use App\Models\User;
 use App\Settings\Settings;
@@ -38,6 +41,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(Settings::class);
         // Shareable object types; modules register theirs (S-0987).
         $this->app->singleton(SharedLinkTargets::class);
+        // License of this installation (S-0974).
+        $this->app->bind(LicenseKeys::class, fn (): LicenseKeys => new LicenseKeys(config()->array('license-keys.keys')));
+        $this->app->bind(InstanceId::class, fn (): InstanceId => new InstanceId(storage_path('app/private/instance-id')));
+        $this->app->scoped(InstanceLicense::class);
         // Brand of the current tenant (S-0911).
         $this->app->scoped(Brand::class);
     }

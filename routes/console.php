@@ -11,9 +11,13 @@ use App\Audit\ChainVerifier;
 use App\Auth\LoginThrottle;
 use App\Authorization\PermissionCatalog;
 use App\Doctor\Doctor;
+use App\Doctor\DoctorAccess;
 use App\Doctor\Finding;
 use App\I18n\Locales;
 use App\I18n\StringCatalog;
+use App\Licensing\InstanceId;
+use App\Licensing\InstanceLicense;
+use App\Licensing\InvalidLicense;
 use App\Models\Tenant;
 use App\Release\ReleaseVerifier;
 use App\Tenancy\TenantContext;
@@ -165,10 +169,83 @@ Artisan::command('projektrack:release:verify {file : Release file, for example p
     return 0;
 })->purpose('Check the signature and checksum of a release file before installing it (S-0924)');
 
+Artisan::command('projektrack:license:install {file : License file}', function (InstanceLicense $licenses, DoctorAccess $operator, TenantContext $context) {
+    $file = $this->argument('file');
+    $token = is_string($file) && is_file($file) && filesize($file) <= 65536 ? file_get_contents($file) : false;
+
+    if (! is_string($token)) {
+        $this->error('The license file is not readable.');
+
+        return 1;
+    }
+
+    try {
+        $license = $licenses->install($token);
+    } catch (InvalidLicense $e) {
+        $this->error('Not installed: '.$e->getMessage());
+
+        return 1;
+    }
+
+    $tenant = $operator->operatorTenant();
+    Log::notice('License installed', ['license_id' => $license->id, 'serial' => $license->serial]);
+    if ($tenant === null) {
+        $this->warn('Not recorded in an audit log: set DOCTOR_OPERATOR_TENANT to the tenant that operates this installation.');
+    } else {
+        $context->run($tenant, fn () => app(AuditLog::class)->record('license.installed', ['instance_licenses', $license->id], ['serial' => $license->serial, 'edition' => $license->edition->value]));
+    }
+    $this->info("License {$license->id} (issue {$license->serial}) installed for {$license->customer}.");
+
+    return 0;
+})->purpose('Validate a license file offline and install it (S-0974)');
+
+Artisan::command('projektrack:license:show', function (InstanceLicense $licenses, InstanceId $instance) {
+    try {
+        $this->line('Instance: '.$instance->get());
+    } catch (InvalidLicense $e) {
+        $this->error($e->getMessage());
+
+        return 1;
+    }
+    $license = $licenses->current();
+    if ($licenses->problem() !== null) {
+        $this->error('The installed license is not valid: '.$licenses->problem());
+        $this->line('Status:   invalid');
+    }
+    $this->line('Edition:  '.($license->edition->value ?? 'community'));
+
+    if ($license !== null) {
+        $this->line('Customer: '.$license->customer);
+        $this->line('License:  '.$license->id.', issue '.$license->serial);
+        $this->line('Seats:    '.$license->fullSeats.' full, '.$license->lightSeats.' light');
+        $this->line('Expires:  '.$license->expiresAt->toIso8601ZuluString());
+        $this->line('Status:   '.($licenses->status()->value ?? ''));
+    }
+    if ($licenses->clockProblem()) {
+        $this->warn('The system clock is far behind a time seen earlier. Check it.');
+    }
+
+    return 0;
+})->purpose('Show the instance id and the installed license (S-0974)');
+
 // S-0988: daily, so the admin page and banner are current, and within a minute
 // of "Check now" (no queue worker needed on plain hosting).
 Schedule::command('projektrack:doctor')->dailyAt('04:30')->withoutOverlapping(10);
 Schedule::command('projektrack:doctor --requested')->everyMinute()->withoutOverlapping(10);
+
+// S-0974: the license is validated anew and the clock watched; problems are logged as critical.
+Schedule::call(function (InstanceLicense $licenses): void {
+    try {
+        if ($licenses->problem() !== null) {
+            Log::critical('The installed license is not valid', ['reason' => $licenses->problem()]);
+        }
+        if ($licenses->clockProblem()) {
+            Log::critical('The system clock is far behind a time seen earlier');
+        }
+    } catch (InvalidLicense $e) {
+        Log::critical($e->getMessage());
+    }
+})->name('license-check')->hourly();
 
 // Security baseline 8.2: weekly verification; failures are logged as critical.
 Schedule::command('projektrack:audit:verify')->weekly()->sundays()->at('03:00');
