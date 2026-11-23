@@ -32,7 +32,7 @@ class TimesheetController extends Controller
         $date = $request->query('date');
         $date = is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}\z/', $date) === 1 && strtotime($date) !== false ? $date : now($user->timezone ?? $tenant->current()->timezone)->toDateString();
         [$from, $to] = Timesheets::week($date);
-        $entries = TimeEntry::query()->where('user_id', $user->id)->whereBetween('work_date', [$from, $to])->orderBy('id')->get();
+        $entries = TimeEntry::query()->where('user_id', $user->id)->whereDate('work_date', '>=', $from)->whereDate('work_date', '<=', $to)->orderBy('id')->get();
 
         // Packages of the week: what can be booked on any of its days, and what was booked.
         $packages = [];

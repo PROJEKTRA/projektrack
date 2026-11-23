@@ -62,7 +62,7 @@ class E2eSeeder extends Seeder
         app(TenantContext::class)->run($tenant, function (): void {
             $admin = Role::query()->where('key', Role::ADMIN)->firstOrFail();
             $users = [];
-            app(TenantModules::class)->enable('timesheets');
+            app(TenantModules::class)->enable('rates');
             app(Companies::class)->create(['company' => ['name' => 'E2E Customer GmbH', 'kind' => 'customer', 'document_locale' => 'en', 'currency' => 'EUR', 'payment_days' => 14, 'einvoice_format' => 'pdf']], User::factory()->create(['email' => 'e2e-seed@example.test']));
 
             foreach (self::USERS as $key => $user) {

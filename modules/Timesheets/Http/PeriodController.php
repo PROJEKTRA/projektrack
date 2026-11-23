@@ -29,7 +29,7 @@ class PeriodController extends Controller
     {
         $month = $request->query('month');
         $start = CarbonImmutable::parse(is_string($month) && preg_match('/^20\d{2}-(0[1-9]|1[0-2])\z/', $month) === 1 ? "{$month}-01" : now($tenant->current()->timezone)->startOfMonth()->toDateString(), 'UTC');
-        $entries = TimeEntry::query()->whereBetween('work_date', [$start->toDateString(), $start->endOfMonth()->toDateString()])->orderBy('work_date')->orderBy('id')->limit(2000)->get();
+        $entries = TimeEntry::query()->whereDate('work_date', '>=', $start->toDateString())->whereDate('work_date', '<=', $start->endOfMonth()->toDateString())->orderBy('work_date')->orderBy('id')->limit(2000)->get();
         $names = User::query()->whereIn('id', $entries->pluck('user_id')->unique()->values())->get()->keyBy('id');
         $packages = $projects->workPackages(array_values($entries->map(fn (TimeEntry $e): string => $e->work_package_id)->unique()->all()));
 

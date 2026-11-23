@@ -8,6 +8,7 @@ import {
     Building2,
     CalendarCheck,
     Clock,
+    Coins,
     FolderKanban,
     KeyRound,
     Languages,
@@ -28,6 +29,7 @@ import ProjectController from '@/actions/Modules/Projects/Http/ProjectController
 import ApprovalController from '@/actions/Modules/Timesheets/Http/ApprovalController';
 import PeriodController from '@/actions/Modules/Timesheets/Http/PeriodController';
 import TimesheetController from '@/actions/Modules/Timesheets/Http/TimesheetController';
+import RateController from '@/actions/Modules/Rates/Http/RateController';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -100,6 +102,15 @@ const mainNavItems = computed<NavItem[]>(() => {
                       title: t('timesheets:periods.title'),
                       href: PeriodController.index(),
                       icon: CalendarCheck,
+                  },
+              ]
+            : []),
+        ...(permissions.includes('rates.manage')
+            ? [
+                  {
+                      title: t('rates:title'),
+                      href: RateController.index(),
+                      icon: Coins,
                   },
               ]
             : []),

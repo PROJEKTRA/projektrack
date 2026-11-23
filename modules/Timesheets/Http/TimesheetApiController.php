@@ -30,7 +30,7 @@ class TimesheetApiController extends Controller
         $last = CarbonImmutable::parse($request->string('from')->toString(), 'UTC')->addDays(93)->toDateString();
         $request->validate(['to' => ["before_or_equal:{$last}"]]);
         $entries = TimeEntry::query()->where('user_id', $this->currentUser($request)->id)
-            ->whereBetween('work_date', [$request->string('from')->toString(), $request->string('to')->toString()])->orderBy('work_date')->orderBy('id')->get();
+            ->whereDate('work_date', '>=', $request->string('from')->toString())->whereDate('work_date', '<=', $request->string('to')->toString())->orderBy('work_date')->orderBy('id')->get();
 
         return response()->json(['data' => $entries->map($this->row(...))->all()]);
     }

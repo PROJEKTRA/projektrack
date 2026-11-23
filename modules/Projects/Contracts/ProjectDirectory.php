@@ -37,6 +37,12 @@ interface ProjectDirectory
     /** @return list<array{id: string, name: string, number: string, company_id: string, currency: string}> active projects by name */
     public function active(): array;
 
+    /** The contract of a work package, if any. */
+    public function contractOf(string $workPackageId): ?string;
+
+    /** @return array{id: string, number: string, project_id: string}|null */
+    public function contract(string $id): ?array;
+
     /** @return array{rounding: int, minimum: int} minutes, from the contract of the work package */
     public function rounding(string $workPackageId): array;
 }

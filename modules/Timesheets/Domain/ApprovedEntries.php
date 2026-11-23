@@ -15,7 +15,7 @@ final class ApprovedEntries implements ApprovedTime
     public function between(string $projectId, string $from, string $to): array
     {
         $entries = TimeEntry::query()->where('project_id', $projectId)->where('status', 'approved')
-            ->whereBetween('work_date', [$from, $to])->orderBy('work_date')->orderBy('id')->get();
+            ->whereDate('work_date', '>=', $from)->whereDate('work_date', '<=', $to)->orderBy('work_date')->orderBy('id')->get();
         $users = User::query()->whereIn('id', $entries->pluck('user_id')->unique()->values())->get()->keyBy('id');
 
         return array_values($entries->map(fn (TimeEntry $e): array => [
@@ -27,6 +27,6 @@ final class ApprovedEntries implements ApprovedTime
 
     public function openCount(string $projectId, string $from, string $to): int
     {
-        return TimeEntry::query()->where('project_id', $projectId)->where('status', '!=', 'approved')->whereBetween('work_date', [$from, $to])->count();
+        return TimeEntry::query()->where('project_id', $projectId)->where('status', '!=', 'approved')->whereDate('work_date', '>=', $from)->whereDate('work_date', '<=', $to)->count();
     }
 }

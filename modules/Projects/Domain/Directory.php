@@ -41,6 +41,18 @@ final class Directory implements ProjectDirectory
         return array_values($this->list(Project::query()->where('status', 'active')->orderBy('name')->get()));
     }
 
+    public function contractOf(string $workPackageId): ?string
+    {
+        return WorkPackage::query()->findOrFail($workPackageId)->contract_id;
+    }
+
+    public function contract(string $id): ?array
+    {
+        $c = Contract::query()->find($id);
+
+        return $c === null ? null : ['id' => $c->id, 'number' => $c->number, 'project_id' => $c->project_id];
+    }
+
     public function rounding(string $workPackageId): array
     {
         $contractId = WorkPackage::query()->findOrFail($workPackageId)->contract_id;
@@ -53,11 +65,11 @@ final class Directory implements ProjectDirectory
     private function open(string $userId, string $onDate): Builder
     {
         $members = ProjectMember::query()->where('user_id', $userId)
-            ->where(fn (Builder $q) => $q->whereNull('joined_on')->orWhere('joined_on', '<=', $onDate))
-            ->where(fn (Builder $q) => $q->whereNull('left_on')->orWhere('left_on', '>=', $onDate));
+            ->where(fn (Builder $q) => $q->whereNull('joined_on')->orWhereDate('joined_on', '<=', $onDate))
+            ->where(fn (Builder $q) => $q->whereNull('left_on')->orWhereDate('left_on', '>=', $onDate));
         $projects = Project::query()->where('status', 'active')
-            ->where(fn (Builder $q) => $q->whereNull('start_date')->orWhere('start_date', '<=', $onDate))
-            ->where(fn (Builder $q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $onDate));
+            ->where(fn (Builder $q) => $q->whereNull('start_date')->orWhereDate('start_date', '<=', $onDate))
+            ->where(fn (Builder $q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $onDate));
 
         return WorkPackage::query()->where('status', 'open')
             ->whereIn('project_id', $members->select('project_id'))

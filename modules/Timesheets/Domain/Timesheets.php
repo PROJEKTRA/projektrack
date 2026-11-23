@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Projects\Contracts\ProjectDirectory;
+use Modules\Timesheets\Contracts\TimeApproved;
 
 /**
  * Booking, submitting, approving and correcting time.
@@ -83,7 +84,7 @@ final class Timesheets
         [$from, $to] = self::week($date);
 
         return DB::transaction(function () use ($user, $from, $to): int {
-            $entries = TimeEntry::query()->where('user_id', $user->id)->whereBetween('work_date', [$from, $to])->whereIn('status', TimeEntry::EDITABLE)->lockForUpdate()->get();
+            $entries = TimeEntry::query()->where('user_id', $user->id)->whereDate('work_date', '>=', $from)->whereDate('work_date', '<=', $to)->whereIn('status', TimeEntry::EDITABLE)->lockForUpdate()->get();
             foreach ($entries as $entry) {
                 $this->ensureOpen($entry->work_date->toDateString());
                 $entry->update(['status' => 'submitted', 'submitted_at' => now(), 'reject_reason' => null]);
@@ -120,6 +121,7 @@ final class Timesheets
                     'billable_minutes' => $this->billable($entry->work_package_id, $package['billable'], $entry->duration_minutes),
                 ]);
                 $this->audit->record('timesheets.entry.approved', $entry, ['minutes' => $entry->duration_minutes], $approver);
+                $this->announce($entry);
             }
 
             return $entries->count();
@@ -178,6 +180,8 @@ final class Timesheets
             ]);
             $this->audit->record('timesheets.entry.corrected', $correction, ['entry' => $entry->id, 'minutes' => $correction->duration_minutes], $actor);
 
+            $this->announce($correction);
+
             return $correction;
         }, 3);
     }
@@ -204,6 +208,11 @@ final class Timesheets
         $rule = $this->projects->rounding($workPackageId);
 
         return $billable ? Rounding::billable($minutes, $rule['rounding'], $rule['minimum']) : 0;
+    }
+
+    private function announce(TimeEntry $entry): void
+    {
+        event(new TimeApproved($entry->id, $entry->user_id, $entry->work_package_id, $entry->project_id, $entry->work_date->toDateString(), $entry->billable_minutes, $entry->corrects_id));
     }
 
     private function ensureOpen(string $date): void

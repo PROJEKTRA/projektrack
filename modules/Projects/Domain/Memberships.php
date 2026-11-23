@@ -34,7 +34,7 @@ final class Memberships implements ProjectMemberships
     {
         $today = now($this->tenant->current()->timezone)->toDateString();
         $query = ProjectMember::query()->where('user_id', $user->id)
-            ->where(fn ($q) => $q->whereNull('left_on')->orWhere('left_on', '>=', $today));
+            ->where(fn ($q) => $q->whereNull('left_on')->orWhereDate('left_on', '>=', $today));
         if ($projectId !== null) {
             $query->where('project_id', $projectId);
         }
