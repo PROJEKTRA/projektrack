@@ -67,14 +67,14 @@ set_env DB_CONNECTION mariadb
 set_env DB_HOST amp-db
 set_env DB_DATABASE site
 set_env DB_USERNAME site
-set_env DB_PASSWORD wrong
-check 'a wrong database password is refused without showing it' bash -c 'out="$(docker exec -u www-data -w /srv/site amp-web php artisan projektrack:install 2>&1)"; [[ $? -ne 0 && "$out" == *"does not answer"* && "$out" != *wrong* ]]'
-set_env DB_PASSWORD synthetic-password
 # A test installation without a mail server: the link lands in the log.
 set_env APP_ENV staging
 set_env MAIL_MAILER log
 set_env LOG_LEVEL debug
 set_env MAIL_FROM_ADDRESS noreply@example.test
+set_env DB_PASSWORD wrong
+check 'a wrong database password is refused without showing it' bash -c 'out="$(docker exec -u www-data -w /srv/site amp-web php artisan projektrack:install 2>&1)"; [[ $? -ne 0 && "$out" == *"does not answer"* && "$out" != *wrong* ]]'
+set_env DB_PASSWORD synthetic-password
 check 'second run installs' php_ projektrack:install --slug=test --name='Test d.o.o.' --admin-email=admin@example.test --admin-name='Test Admin'
 
 say 'Cron'
