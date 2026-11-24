@@ -77,13 +77,14 @@ final class Invoices
 
         return DB::transaction(function () use ($project, $company, $from, $to, $actor): Invoice {
             $invoice = $this->create($company, $project['id'], $from, $to, $project['currency']);
-            $rows = array_values(array_filter($this->time->between($project['id'], $from, $to), fn (array $r): bool => $r['billable_minutes'] !== 0));
+            $all = $this->time->between($project['id'], $from, $to);
+            $rows = array_values(array_filter($all, fn (array $r): bool => $r['billable_minutes'] !== 0));
             $held = InvoiceTime::query()->whereIn('active_key', array_column($rows, 'id'))->pluck('active_key')->all();
             $rows = array_values(array_filter($rows, fn (array $r): bool => ! in_array($r['id'], $held, true)));
             if ($rows === []) {
                 throw ValidationException::withMessages(['period_from' => __('invoices:errors.no_time')]);
             }
-            $this->values->valueMissing($rows, $actor);
+            $this->values->valueMissing($all, $actor);
             $values = $this->values->of(array_column($rows, 'id'));
             $packages = $this->projects->workPackages(array_values(array_unique(array_column($rows, 'work_package_id'))));
 
@@ -183,7 +184,7 @@ final class Invoices
             $problems[] = 'language';
         }
         if ($company !== null) {
-            array_push($problems, ...EInvoice::missing($seller, $company));
+            array_push($problems, ...EInvoice::missing($seller, $company, $invoice->currency));
         }
         if ($company === null || $company['tax'] === null) {
             return ['problems' => [...$problems, 'customer_tax'], 'totals' => null, 'notices' => [], 'decisions' => []];

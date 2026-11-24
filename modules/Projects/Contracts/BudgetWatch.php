@@ -15,5 +15,6 @@ interface BudgetWatch
     /** @return list<string> work package ids of the contract */
     public function packagesOf(string $contractId): array;
 
-    public function approved(string $contractId, int $minutes): void;
+    /** @param callable(): int $minutes asked once nobody else changes the contract */
+    public function approved(string $contractId, callable $minutes): void;
 }

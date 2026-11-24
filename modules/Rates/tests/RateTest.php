@@ -19,6 +19,7 @@ use Modules\Projects\Domain\Project;
 use Modules\Projects\Domain\ProjectMember;
 use Modules\Projects\Domain\WorkBreakdown;
 use Modules\Rates\Contracts\TimeValues;
+use Modules\Rates\Domain\ExchangeRates;
 use Modules\Rates\Domain\RateRule;
 use Modules\Rates\Domain\Rates;
 use Modules\Rates\Domain\Valuation;
@@ -133,7 +134,10 @@ it('values in the currency of the project with the rate of the day', function ()
     $add = fn (array $c): TestResponse => $this->actingAs($this->controller)->post('/rates/exchange', array_replace(['from_currency' => 'USD', 'to_currency' => 'EUR', 'rate' => '0,9', 'rate_date' => '2026-11-01'], $c));
     $add(['rate_date' => '2026-11-05'])->assertSessionHasNoErrors();
     $add([])->assertSessionHasNoErrors();
-    $add([])->assertSessionHasErrors('rate');
+    $add(['rate' => '9,0'])->assertSessionHasNoErrors();
+    $add([])->assertSessionHasNoErrors();
+    expect(app(ExchangeRates::class)->on('USD', 'EUR', '2026-11-04')?->isEqualTo('0.9'))->toBeTrue()
+        ->and(app(ExchangeRates::class)->on('USD', 'EUR', '2026-12-20'))->toBeNull();
     $add(['rate' => '0', 'rate_date' => '2026-10-01'])->assertSessionHasErrors('rate');
     $add(['from_currency' => 'BAM'])->assertSessionHasErrors('rate');
     $add(['rate_date' => '2026-11-06'])->assertSessionHasErrors('rate_date');

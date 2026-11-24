@@ -232,8 +232,8 @@ final class Timesheets
     {
         $contract = $this->projects->contractOf($entry->work_package_id);
         if ($contract !== null) {
-            $minutes = TimeEntry::query()->where('status', 'approved')->whereIn('work_package_id', $this->budgets->packagesOf($contract))->sum('duration_minutes');
-            $this->budgets->approved($contract, (int) $minutes);
+            // Read with a lock, so a parallel approval is counted.
+            $this->budgets->approved($contract, fn (): int => (int) TimeEntry::query()->where('status', 'approved')->whereIn('work_package_id', $this->budgets->packagesOf($contract))->lockForUpdate()->get(['id', 'tenant_id', 'duration_minutes'])->sum('duration_minutes'));
         }
         event(new TimeApproved($entry->id, $entry->user_id, $entry->work_package_id, $entry->project_id, $entry->work_date->toDateString(), $entry->billable_minutes, $entry->corrects_id));
     }

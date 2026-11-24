@@ -18,6 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -161,11 +162,13 @@ class InvoiceController extends Controller
         // Only known contacts, so a document never goes to a mistyped address.
         $request->validate(['recipients' => ['required', 'list', 'min:1', 'max:10'], 'recipients.*' => ['string', 'distinct', Rule::in($allowed)]]);
         $user = $this->currentUser($request);
-        foreach (array_filter($request->array('recipients'), is_string(...)) as $address) {
-            $delivery = InvoiceDelivery::query()->create(['invoice_id' => $i->id, 'recipient' => $address, 'status' => 'queued', 'sent_by' => $user->id]);
-            SendInvoice::dispatch($i->tenant_id, $delivery->id);
-        }
-        $audit->record('invoices.sent', $i, ['number' => $i->number, 'recipients' => count($request->array('recipients'))], $user);
+        DB::transaction(function () use ($request, $i, $user, $audit): void {
+            foreach (array_filter($request->array('recipients'), is_string(...)) as $address) {
+                $delivery = InvoiceDelivery::query()->create(['invoice_id' => $i->id, 'recipient' => $address, 'status' => 'queued', 'sent_by' => $user->id]);
+                SendInvoice::dispatch($i->tenant_id, $delivery->id);
+            }
+            $audit->record('invoices.sent', $i, ['number' => $i->number, 'recipients' => count($request->array('recipients'))], $user);
+        });
         Inertia::flash('toast', ['type' => 'success', 'message' => __('invoices:send.queued')]);
 
         return to_route('invoices.show', $invoice);

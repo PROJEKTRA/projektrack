@@ -5,7 +5,7 @@
     "end_title": "Završi ovu cijenu",
     "errors.currency": "Nepoznata valuta.",
     "errors.end_before_start": "Zadnji dan je prije prvog dana.",
-    "errors.exchange": "Unesite pozitivan kurs za dan koji ga još nema.",
+    "errors.exchange": "Unesite pozitivan kurs.",
     "errors.fixed": "Kurs BAM i EUR je fiksan.",
     "errors.later_rule": "Postoji cijena koja počinje tog dana ili kasnije. Prvo je završite.",
     "errors.scope": "Izaberite iz liste.",

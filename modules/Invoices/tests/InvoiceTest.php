@@ -424,6 +424,11 @@ it('lets project leads report hours of their project, never amounts', function (
 it('writes valid ZUGFeRD for the reference set', function (string $status, string $country, ?string $vatId, array $lines, string $category, string $seller) {
     if ($seller === 'BA') {
         $this->tenant->update(['country_code' => 'BA']);
+        sellerData(['vat_id' => '123456789012', 'tax_number' => null]);
+    } elseif ($seller === 'small') {
+        sellerData(['vat_id' => null, 'vat_status' => 'small_business']);
+    } elseif ($seller === 'no tax number') {
+        sellerData(['tax_number' => null]);
     }
     $company = invCompany($status, $country, $vatId);
     $company->update(['einvoice_format' => 'zugferd']);
@@ -443,6 +448,11 @@ it('writes valid ZUGFeRD for the reference set', function (string $status, strin
         ->and($sum('//ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CalculatedAmount'))->toBe($invoice->tax_minor)
         ->and($sum('//ram:GrandTotalAmount'))->toBe($invoice->gross_minor)
         ->and($x->query('//ram:ChargeAmount[starts-with(., "-")]')->length)->toBe(0);
+    // BR-CO-26 and BR-CO-09.
+    expect($x->query('//ram:SellerTradeParty/ram:ID')->length)->toBe(1);
+    foreach ($x->query('//ram:ID[@schemeID="VA"]') as $node) {
+        expect($node->textContent)->toMatch('/^[A-Z]{2}/');
+    }
     if ($category === 'O') {
         expect($x->query('//ram:ID[@schemeID="VA"]')->length)->toBe(0)->and($x->query('//ram:RateApplicablePercent')->length)->toBe(0);
     }
@@ -457,6 +467,8 @@ it('writes valid ZUGFeRD for the reference set', function (string $status, strin
     'mixed rates and a discount line' => ['domestic', 'DE', null, [freeLine('10', '100'), freeLine('1', '-50', changes: ['description' => 'Rabatt & <b>']), freeLine('1', '49.99', 'reduced')], 'S', 'DE'],
     'reverse charge' => ['eu_business', 'AT', 'ATU12345678', [freeLine('40', '100', changes: ['unit' => 'hour'])], 'AE', 'DE'],
     'outside the EU' => ['non_eu_business', 'CH', null, [freeLine('1', '2500')], 'O', 'DE'],
+    'outside the EU, VAT ID only' => ['non_eu_business', 'CH', null, [freeLine('1', '2500')], 'O', 'no tax number'],
+    'small business' => ['domestic', 'DE', null, [freeLine('1', '1000')], 'E', 'small'],
     'BA seller to DE' => ['eu_business', 'DE', 'DE123456789', [freeLine('40', '100')], 'AE', 'BA'],
 ]);
 
@@ -526,7 +538,7 @@ it('exports the report as a workbook with formulas', function () {
     $texts = array_map(fn (int $r): mixed => $sheet->getCell("D{$r}")->getDataType().':'.$sheet->getCell("D{$r}")->getValue(), [2, 3, 4, 5]);
     expect($texts)->toContain('s:=1+1')
         ->and($sheet->getCell('E6')->getValue())->toBe('=SUM(E2:E5)')->and(round($sheet->getCell('E6')->getCalculatedValue() * 1440))->toBe(90.0)
-        ->and($sheet->getCell('G6')->getValue())->toBe('=SUM(G2:G5)')->and(round($sheet->getCell('G6')->getCalculatedValue(), 2))->toBe(149.99);
+        ->and((string) $sheet->getCell('G6')->getValue())->toBe('150');
 });
 
 it('keeps formulas out of the CSV', function () {

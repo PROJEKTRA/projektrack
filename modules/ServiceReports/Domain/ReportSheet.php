@@ -10,9 +10,9 @@ namespace Modules\ServiceReports\Domain;
 use App\Domain\Money\Amount;
 use App\I18n\Strings;
 use Brick\Money\Currency;
+use Illuminate\Support\Facades\File;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
@@ -26,7 +26,8 @@ final class ReportSheet
     public function render(ServiceReport $report): string
     {
         $content = $report->content();
-        $text = fn (string $id): string => $this->strings->get($id, [], $report->locale);
+        $labels = is_array($content['labels'] ?? null) ? $content['labels'] : [];
+        $text = fn (string $id): string => is_string($labels[$id] ?? null) ? $labels[$id] : $this->strings->get($id, [], $report->locale);
         $book = new Spreadsheet;
         $book->getProperties()->setCreator('')->setLastModifiedBy('')->setTitle($report->number);
         $sheet = $book->getActiveSheet();
@@ -40,7 +41,6 @@ final class ReportSheet
         $sheet->getStyle('A1:G1')->getFont()->setBold(true);
 
         $row = 1;
-        $amounts = [];
         foreach (is_array($content['lines'] ?? null) ? $content['lines'] : [] as $line) {
             if (! is_array($line)) {
                 continue;
@@ -58,17 +58,19 @@ final class ReportSheet
             if (is_int($minor) && is_string($currency) && is_string($line['rate'] ?? null)) {
                 $sheet->getCell([6, $row])->setValueExplicit($line['rate'], DataType::TYPE_NUMERIC);
                 $sheet->getCell([7, $row])->setValueExplicit(Amount::decimal($minor, $currency), DataType::TYPE_NUMERIC);
-                $sheet->getCell([7, $row])->getStyle()->getNumberFormat()->setFormatCode('#,##0'.(($digits = Currency::of($currency)->getDefaultFractionDigits()) > 0 ? '.'.str_repeat('0', $digits) : '').' "'.$currency.'"');
-                $amounts[$currency] = true;
+                $sheet->getCell([7, $row])->getStyle()->getNumberFormat()->setFormatCode(self::format($currency));
             }
         }
         $total = $row + 1;
         $sheet->getCell([1, $total])->setValueExplicit($text('service_reports:document.total'), DataType::TYPE_STRING);
         $sheet->getCell([5, $total])->setValue("=SUM(E2:E{$row})");
-        // Amounts of several currencies are never added up.
-        if (count($amounts) === 1) {
-            $sheet->getCell([7, $total])->setValue("=SUM(G2:G{$row})");
-            $sheet->getCell([7, $total])->getStyle()->getNumberFormat()->setFormatCode($sheet->getCell([7, 2])->getStyle()->getNumberFormat()->getFormatCode() ?? NumberFormat::FORMAT_GENERAL);
+        // As in the sealed report and the invoice: rounded once per package and rate,
+        // so it can differ from the sum of the rows. Several currencies are never added up.
+        $totals = is_array($content['amounts'] ?? null) ? $content['amounts'] : [];
+        $currency = array_key_first($totals);
+        if (count($totals) === 1 && is_string($currency) && is_int($totals[$currency])) {
+            $sheet->getCell([7, $total])->setValueExplicit(Amount::decimal($totals[$currency], $currency), DataType::TYPE_NUMERIC);
+            $sheet->getCell([7, $total])->getStyle()->getNumberFormat()->setFormatCode(self::format($currency));
         }
         $sheet->getStyle("E2:E{$total}")->getNumberFormat()->setFormatCode('[h]:mm');
         $sheet->getStyle("A{$total}:G{$total}")->getFont()->setBold(true);
@@ -77,7 +79,9 @@ final class ReportSheet
         }
         $sheet->freezePane('A2');
 
-        $file = tempnam(sys_get_temp_dir(), 'sheet');
+        $folder = storage_path('framework/sheets');
+        File::ensureDirectoryExists($folder, 0700);
+        $file = tempnam($folder, 'sheet');
         try {
             (new Xlsx($book))->save((string) $file);
 
@@ -86,5 +90,12 @@ final class ReportSheet
             @unlink((string) $file);
             $book->disconnectWorksheets();
         }
+    }
+
+    private static function format(string $currency): string
+    {
+        $digits = Currency::of($currency)->getDefaultFractionDigits();
+
+        return '#,##0'.($digits > 0 ? '.'.str_repeat('0', $digits) : '').' "'.$currency.'"';
     }
 }

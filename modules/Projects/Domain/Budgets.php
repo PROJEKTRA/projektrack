@@ -26,12 +26,13 @@ final class Budgets implements BudgetWatch
         return Lists::strings(WorkPackage::query()->where('contract_id', $contractId)->pluck('id'));
     }
 
-    public function approved(string $contractId, int $minutes): void
+    public function approved(string $contractId, callable $minutes): void
     {
         $contract = Contract::query()->whereKey($contractId)->lockForUpdate()->first();
         if ($contract === null || $contract->budget_minutes === null || $contract->budget_minutes === 0) {
             return;
         }
+        $minutes = $minutes();
         $told = ContractBudgetAlert::query()->where('contract_id', $contract->id)->pluck('threshold_pct')->all();
         $due = array_filter(self::THRESHOLDS, fn (int $t): bool => ! in_array($t, $told, true) && $minutes * 100 >= $contract->budget_minutes * $t);
         if ($due === []) {

@@ -10,6 +10,7 @@
     "einvoice.zugferd": "ZUGFeRD",
     "empty": "No customers found.",
     "errors.leitweg_id": "This is not a valid Leitweg-ID.",
+    "errors.tax_planned": "A later change of the tax data is already planned.",
     "errors.tax_status_country": "This tax status does not fit the country.",
     "errors.tax_valid_from": "This date is before the current tax data begin.",
     "errors.vat_id_format": "The VAT ID does not have the format of this country.",

@@ -282,7 +282,10 @@ function submit(): void {
                             :options="options('einvoice', meta.einvoiceFormats)"
                         />
                         <TextField
-                            v-if="form.tax.tax_status === 'public_sector'"
+                            v-if="
+                                form.tax.tax_status === 'public_sector' ||
+                                form.einvoice_format === 'xrechnung_cii'
+                            "
                             v-model="form.leitweg_id"
                             name="leitweg_id"
                             :label="$t('crm:field.leitweg_id')"

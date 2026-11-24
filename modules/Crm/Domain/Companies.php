@@ -100,7 +100,8 @@ final class Companies
     private function saveTax(Company $company, array $tax): void
     {
         $values = ['tax_status' => $tax['tax_status'], 'country_code' => $tax['country_code'], 'vat_id' => $tax['vat_id'] ?? null, 'tax_number' => $tax['tax_number'] ?? null];
-        $current = $company->taxProfiles()->whereNull('valid_to')->first();
+        $today = now($this->tenant->current()->timezone)->toDateString();
+        $current = $this->taxOn($company, $today);
         if ($current !== null && array_all($values, fn (?string $value, string $key): bool => $current->getAttribute($key) === $value)) {
             return;
         }
@@ -114,6 +115,10 @@ final class Companies
         }
         if ($current !== null && $current->valid_from !== null && $from < $current->valid_from->toDateString()) {
             throw ValidationException::withMessages(['tax.valid_from' => __('crm:errors.tax_valid_from')]);
+        }
+        if ($current !== null && $current->valid_to !== null) {
+            // A change is planned already; it has to be corrected first.
+            throw ValidationException::withMessages(['tax.valid_from' => __('crm:errors.tax_planned')]);
         }
         $current?->update(['valid_to' => CarbonImmutable::parse((string) $from, 'UTC')->subDay()->toDateString()]);
         $company->taxProfiles()->create([...$values, 'valid_from' => $current === null ? null : $from]);
@@ -175,10 +180,16 @@ final class Companies
         }
     }
 
+    private function taxOn(Company $company, string $date): ?CompanyTaxProfile
+    {
+        return $company->taxProfiles()->where(fn ($q) => $q->whereNull('valid_from')->orWhereDate('valid_from', '<=', $date))
+            ->where(fn ($q) => $q->whereNull('valid_to')->orWhereDate('valid_to', '>=', $date))->first();
+    }
+
     /** @return array<string, mixed> everything the dialog and the API show */
     public function describe(Company $company): array
     {
-        $tax = $company->taxProfiles()->whereNull('valid_to')->first();
+        $tax = $this->taxOn($company, now($this->tenant->current()->timezone)->toDateString());
         $billing = Address::query()->where('owner_type', 'company')->where('owner_id', $company->id)->first();
         $sites = $company->sites()->get();
         $addresses = Address::query()->where('owner_type', 'site')->whereIn('owner_id', $sites->pluck('id'))->get()->keyBy('owner_id');

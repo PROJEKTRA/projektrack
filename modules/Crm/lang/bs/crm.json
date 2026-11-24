@@ -10,6 +10,7 @@
     "einvoice.zugferd": "ZUGFeRD",
     "empty": "Nema pronađenih klijenata.",
     "errors.leitweg_id": "Ovo nije ispravan Leitweg-ID.",
+    "errors.tax_planned": "Kasnija izmjena poreznih podataka je već planirana.",
     "errors.tax_status_country": "Ovaj porezni status ne odgovara državi.",
     "errors.tax_valid_from": "Ovaj datum je prije početka važećih poreznih podataka.",
     "errors.vat_id_format": "PDV broj nema format ove države.",

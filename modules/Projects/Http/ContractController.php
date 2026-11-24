@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Modules\Projects\Domain\Contract;
+use Modules\Projects\Domain\ContractBudgetAlert;
 use Modules\Projects\Domain\Project;
 
 class ContractController extends Controller
@@ -39,6 +40,10 @@ class ContractController extends Controller
         $fields = array_keys($row->getDirty());
         DB::transaction(function () use ($row, $fields, $audit, $request): void {
             $row->save();
+            if (in_array('budget_minutes', $fields, true)) {
+                // A new budget warns again at its thresholds.
+                ContractBudgetAlert::query()->where('contract_id', $row->id)->delete();
+            }
             $audit->record('projects.contract.updated', $row, ['fields' => $fields], $this->currentUser($request));
         });
 

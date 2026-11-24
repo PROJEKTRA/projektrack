@@ -8,6 +8,7 @@
 namespace Modules\Rates\Domain;
 
 use Brick\Math\BigRational;
+use Carbon\CarbonImmutable;
 
 /**
  * The exchange rate of a day: the fixed one of BAM and EUR, else the newest
@@ -17,6 +18,9 @@ final class ExchangeRates
 {
     /** Currency board of Bosnia and Herzegovina: 1 EUR in BAM. */
     public const string EUR_BAM = '1.95583';
+
+    /** An older rate says nothing about the day; the value waits instead. */
+    public const int MAX_AGE_DAYS = 31;
 
     public function on(string $from, string $to, string $date): ?BigRational
     {
@@ -40,6 +44,7 @@ final class ExchangeRates
 
     private function stored(string $from, string $to, string $date): ?ExchangeRate
     {
-        return ExchangeRate::query()->where('from_currency', $from)->where('to_currency', $to)->whereDate('rate_date', '<=', $date)->orderByDesc('rate_date')->first();
+        return ExchangeRate::query()->where('from_currency', $from)->where('to_currency', $to)->whereDate('rate_date', '<=', $date)
+            ->whereDate('rate_date', '>=', CarbonImmutable::parse($date, 'UTC')->subDays(self::MAX_AGE_DAYS)->toDateString())->orderByDesc('rate_date')->first();
     }
 }

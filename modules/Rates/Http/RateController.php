@@ -15,6 +15,7 @@ use App\Tenancy\TenantContext;
 use Brick\Math\BigDecimal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -98,11 +99,16 @@ class RateController extends Controller
         if (array_diff($pair, ['EUR', 'BAM']) === []) {
             throw ValidationException::withMessages(['rate' => __('rates:errors.fixed')]);
         }
-        if (! BigDecimal::of($rate)->isPositive() || ExchangeRate::query()->where('from_currency', $pair[0])->where('to_currency', $pair[1])->whereDate('rate_date', $date)->exists()) {
+        if (! BigDecimal::of($rate)->isPositive()) {
             throw ValidationException::withMessages(['rate' => __('rates:errors.exchange')]);
         }
-        $row = ExchangeRate::query()->create(['from_currency' => $pair[0], 'to_currency' => $pair[1], 'rate' => $rate, 'rate_date' => $date, 'created_by' => $this->currentUser($request)->id]);
-        $audit->record('rates.exchange.added', $row, ['pair' => implode('/', $pair), 'rate' => $rate, 'date' => $date], $this->currentUser($request));
+        // A typing error can be replaced; values already frozen stay as they are.
+        DB::transaction(function () use ($pair, $rate, $date, $request, $audit): void {
+            $old = ExchangeRate::query()->where('from_currency', $pair[0])->where('to_currency', $pair[1])->whereDate('rate_date', $date)->lockForUpdate()->first();
+            ExchangeRate::query()->whereKey($old?->id)->delete();
+            $row = ExchangeRate::query()->create(['from_currency' => $pair[0], 'to_currency' => $pair[1], 'rate' => $rate, 'rate_date' => $date, 'created_by' => $this->currentUser($request)->id]);
+            $audit->record('rates.exchange.added', $row, ['pair' => implode('/', $pair), 'rate' => $rate, 'replaces' => $old?->rate, 'date' => $date], $this->currentUser($request));
+        });
 
         return to_route('rates.index');
     }

@@ -5,7 +5,7 @@
     "end_title": "End this rate",
     "errors.currency": "Unknown currency.",
     "errors.end_before_start": "The last day is before the first day.",
-    "errors.exchange": "Enter a positive rate for a day that has none yet.",
+    "errors.exchange": "Enter a positive rate.",
     "errors.fixed": "The rate of BAM and EUR is fixed.",
     "errors.later_rule": "There is a rate that starts on this day or later. End it first.",
     "errors.scope": "Please choose from the list.",

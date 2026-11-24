@@ -8,14 +8,16 @@
 namespace Modules\Invoices\Domain;
 
 use App\Domain\Money\Amount;
+use Brick\Money\Currency;
 use DOMDocument;
 use DOMElement;
-use RuntimeException;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The issued document as CII XML (EN 16931): embedded as ZUGFeRD/Factur-X, or
  * as XRechnung. Written from the sealed content with decimal strings, never
- * floats, and checked against the official schema and the arithmetic rules.
+ * floats, and checked against the official schema. The business rules are
+ * covered by tests; the official Schematron needs a validator outside PHP.
  */
 final class EInvoice
 {
@@ -35,11 +37,14 @@ final class EInvoice
      * What the format needs beyond a normal invoice.
      *
      * @param  array<string, string>  $seller
-     * @param  array{einvoice_format: string, leitweg_id: string|null, email: string|null, ...}  $buyer
+     * @param  array{einvoice_format: string, leitweg_id: string|null, email: string|null, address: array{postal_code: string|null, ...}|null, ...}  $buyer
      * @return list<string>
      */
-    public static function missing(array $seller, array $buyer): array
+    public static function missing(array $seller, array $buyer, string $currency): array
     {
+        if ($buyer['einvoice_format'] !== 'pdf' && Currency::of($currency)->getDefaultFractionDigits() > 2) {
+            return ['x_currency'];
+        }
         if ($buyer['einvoice_format'] !== 'xrechnung_cii') {
             return [];
         }
@@ -47,6 +52,7 @@ final class EInvoice
         return array_keys(array_filter([
             'x_leitweg' => ($buyer['leitweg_id'] ?? '') === '',
             'x_contact' => $seller['contact_name'] === '' || $seller['contact_phone'] === '' || $seller['contact_email'] === '',
+            'x_postal' => trim((string) ($buyer['address']['postal_code'] ?? '')) === '',
             'x_iban' => $seller['iban'] === '',
             'x_email' => ($buyer['email'] ?? '') === '',
         ]));
@@ -99,7 +105,8 @@ final class EInvoice
         $out = (string) $this->xml->saveXML();
         $problems = $this->validate($out);
         if ($problems !== []) {
-            throw new RuntimeException('Invalid e-invoice: '.implode(' | ', $problems));
+            // The messages can quote the invoice, so they stay out of the log.
+            throw ValidationException::withMessages(['invoice' => __('invoices:errors.einvoice')]);
         }
 
         return $out;
@@ -160,6 +167,9 @@ final class EInvoice
     /** @param array<array-key, mixed> $seller */
     private function seller(DOMElement $party, array $seller, bool $outside): void
     {
+        // An identifier other than the tax registration, so the seller is known without a VAT ID (BR-CO-26).
+        $id = self::text($seller, 'tax_number') !== '' ? self::text($seller, 'tax_number') : self::text($seller, 'vat_id');
+        $this->add($party, 'ram:ID', $id);
         $this->add($party, 'ram:Name', self::text($seller, 'name'));
         if (self::text($seller, 'contact_name') !== '') {
             $contact = $this->add($party, 'ram:DefinedTradeContact');
@@ -175,12 +185,18 @@ final class EInvoice
         if (self::text($seller, 'contact_email') !== '') {
             $this->add($this->add($party, 'ram:URIUniversalCommunication'), 'ram:URIID', self::text($seller, 'contact_email'), ['schemeID' => 'EM']);
         }
+        $vatId = self::text($seller, 'vat_id');
+        // A VAT ID starts with its country (BR-CO-09); a number without one, as in BiH, is a tax number.
+        $isVatId = preg_match('/^[A-Z]{2}/', $vatId) === 1;
         if (self::text($seller, 'tax_number') !== '') {
             $this->add($this->add($party, 'ram:SpecifiedTaxRegistration'), 'ram:ID', self::text($seller, 'tax_number'), ['schemeID' => 'FC']);
         }
+        if ($vatId !== '' && ! $isVatId && self::text($seller, 'tax_number') === '') {
+            $this->add($this->add($party, 'ram:SpecifiedTaxRegistration'), 'ram:ID', $vatId, ['schemeID' => 'FC']);
+        }
         // Outside the scope of VAT there is no VAT ID on the document (BR-O-02).
-        if (self::text($seller, 'vat_id') !== '' && (! $outside || self::text($seller, 'tax_number') === '')) {
-            $this->add($this->add($party, 'ram:SpecifiedTaxRegistration'), 'ram:ID', self::text($seller, 'vat_id'), ['schemeID' => 'VA']);
+        if ($isVatId && ! $outside) {
+            $this->add($this->add($party, 'ram:SpecifiedTaxRegistration'), 'ram:ID', $vatId, ['schemeID' => 'VA']);
         }
     }
 
@@ -195,7 +211,7 @@ final class EInvoice
         if (self::text($buyer, 'email') !== '') {
             $this->add($this->add($party, 'ram:URIUniversalCommunication'), 'ram:URIID', self::text($buyer, 'email'), ['schemeID' => 'EM']);
         }
-        if (self::text($tax, 'vat_id') !== '' && ! $outside) {
+        if (preg_match('/^[A-Z]{2}/', self::text($tax, 'vat_id')) === 1 && ! $outside) {
             $this->add($this->add($party, 'ram:SpecifiedTaxRegistration'), 'ram:ID', self::text($tax, 'vat_id'), ['schemeID' => 'VA']);
         }
     }
