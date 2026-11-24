@@ -10,6 +10,8 @@ use App\Audit\AuditLog;
 use App\Audit\ChainVerifier;
 use App\Auth\LoginThrottle;
 use App\Authorization\PermissionCatalog;
+use App\Backup\BackupFile;
+use App\Backup\Backups;
 use App\Doctor\Doctor;
 use App\Doctor\DoctorAccess;
 use App\Doctor\Finding;
@@ -32,6 +34,59 @@ Artisan::command('projektrack:permissions:sync', function (PermissionCatalog $ca
     $count = $catalog->sync();
     $this->info("{$count} permissions registered.");
 })->purpose('Write the permissions of the core and all installed modules to the permission catalog');
+
+// Backups on plain hosting. The secret key is shown once and never stored here.
+Artisan::command('projektrack:backup:key', function () {
+    $keys = BackupFile::generateKeys();
+    $this->line('In .env:');
+    $this->line('BACKUP_PUBLIC_KEY='.$keys['public']);
+    $this->newLine();
+    $this->warn('Keep this secret key away from the server (password vault). Without it no backup can be read:');
+    $this->line($keys['secret']);
+})->purpose('Create the key pair for encrypted backups');
+
+Artisan::command('projektrack:backup', function (Backups $backups) {
+    $key = config('backup.public_key');
+    if (! is_string($key) || $key === '') {
+        $this->error('BACKUP_PUBLIC_KEY is empty. Run projektrack:backup:key first.');
+
+        return 1;
+    }
+    try {
+        $file = $backups->create($key);
+    } catch (RuntimeException $e) {
+        Log::error('Backup failed', ['reason' => $e->getMessage()]);
+        $this->error($e->getMessage());
+
+        return 1;
+    }
+    $backups->prune(config()->integer('backup.keep_days'));
+    $this->info('Written '.$file.'. Copy it off the server.');
+
+    return 0;
+})->purpose('Back up database and files into one encrypted file');
+
+Artisan::command('projektrack:restore {file : Backup file} {--key-file= : File with the secret key; delete it afterwards}', function (Backups $backups) {
+    $file = $this->argument('file');
+    $keyFile = $this->option('key-file');
+    if (! is_string($file) || ! is_string($keyFile) || ! is_file($keyFile)) {
+        $this->error('Give the backup file and --key-file.');
+
+        return 1;
+    }
+    try {
+        $backups->restore($file, (string) file_get_contents($keyFile));
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return 1;
+    }
+    $this->info('Restored. Use the .env of the old installation (APP_KEY), then delete the key file.');
+
+    return 0;
+})->purpose('Restore a backup into an empty installation of the same version');
+
+Schedule::command('projektrack:backup')->dailyAt('02:30')->withoutOverlapping()->when(fn (): bool => config('backup.public_key') !== '');
 
 // A module that arrived with an update, for one existing company (S-0939). New companies start with all of them.
 Artisan::command('projektrack:modules:enable {tenant : Slug of the tenant} {module : Key of the module, for example crm}', function (TenantContext $context, ModuleRegistry $registry) {

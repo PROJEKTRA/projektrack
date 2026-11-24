@@ -84,13 +84,22 @@ Everything in it is synthetic; nobody can sign in as a sample person, and no inv
 | Invoices for sellers in DE and BA, cancellation, payments (PDF) | ready; legal notices must be confirmed by an accountant |
 | Timer, XLSX, invoices by email, ZUGFeRD and XRechnung (CII) | ready; not yet checked with the official validators (KoSIT, veraPDF) |
 | Quotes, expenses, absences, DOCX, XRechnung UBL | not built yet |
-| Web installer, backup on plain hosting, Nginx sample | not built yet |
+| Encrypted backup and restore on plain hosting | ready |
+| Web installer, Nginx sample | not built yet |
+
+## Backup
+
+1. `php artisan projektrack:backup:key`. Put the line `BACKUP_PUBLIC_KEY` into `.env` and the secret key into the password vault, never on the server.
+2. From then on cron writes an encrypted backup every night into `storage/backups` (kept 14 days). `php artisan projektrack:backup` writes one at once.
+3. Copy the backups off the server regularly, together with one copy of `.env`: a backup does not hold it, and without `APP_KEY` encrypted values are lost.
+
+Restore, into an empty installation of the same version (`.env` of the old one, `php artisan migrate --force`, not `projektrack:install`): `php artisan projektrack:restore <file> --key-file=<file with the secret key>`, then delete the key file. Not on PostgreSQL. Try a restore once before you rely on it.
 
 ## Newer ZIP
 
-There is no automatic update or backup on plain hosting yet.
+There is no automatic update on plain hosting yet.
 
-1. Verify a signed release from the old folder (`docs/admin/releases.md`), then back up the database and the folder in the hosting panel.
+1. Verify a signed release from the old folder (`docs/admin/releases.md`), then `php artisan projektrack:backup` and copy the file off the server.
 2. `php artisan down`
 3. Unpack the new ZIP into a new folder. Copy `.env` (`cp -p`, so it stays readable by you only) and `storage/app` from the old one.
 4. In the new folder: `php artisan projektrack:install`. It migrates and keeps the data. A company that existed before the modules: `php artisan projektrack:modules:enable <slug> service_reports` and the same with `invoices` (both bring what they need).
