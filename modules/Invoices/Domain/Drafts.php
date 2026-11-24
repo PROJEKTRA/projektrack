@@ -29,12 +29,18 @@ final class Drafts implements InvoiceDrafts
         return $result;
     }
 
+    public function discard(string $invoiceId, User $actor): void
+    {
+        $this->invoices->discard(Invoice::query()->findOrFail($invoiceId), $actor);
+    }
+
     public function state(string $invoiceId): ?array
     {
         $i = Invoice::query()->find($invoiceId);
 
         return $i === null ? null : [
-            'status' => $i->status, 'net_minor' => $i->net_minor, 'credited_minor' => $i->credited_minor, 'due_date' => $i->due_date?->toDateString(),
+            'status' => $i->status, 'net_minor' => $i->net_minor, 'currency' => $i->currency, 'due_date' => $i->due_date?->toDateString(),
+            'void' => $i->status === 'cancelled' || ($i->status === 'finalized' && $i->gross_minor + $i->credited_minor === 0 && $i->paid_minor === 0),
             'settled' => $i->status === 'finalized' && $i->credited_minor === 0 && $i->paid_minor > 0 && $i->openMinor() <= 0,
         ];
     }

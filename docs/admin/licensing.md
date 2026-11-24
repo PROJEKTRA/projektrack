@@ -44,6 +44,6 @@ On the licensor's own instance only: `VENDOR_INSTANCE=true` in `.env`, then `php
 3. Download the file for signing, sign it on the trusted machine (`issue.php issue`), enter the license text and send it to the customer.
 4. When the invoice is paid, the order asks for a new issue with the next serial: download, sign, enter, send.
 
-The private key never comes to this instance. Orders that are not paid in time are told to the managers once. When the invoice differs from the order, is credited or a payment is returned, the order is "to review" and nothing can be signed. A cancelled invoice is drafted again from the order at the agreed prices; an order is cancelled after its invoice. The start is today or up to 31 days back.
+The private key never comes to this instance. Orders that are not paid in time are told to the managers once. When the invoice differs from the order, is credited or a payment is returned, the order is "to review" and nothing can be signed. After a partial credit, credit and refund the rest first. An invoice that is cancelled, or credited and refunded in full, is drafted again from the order at the agreed prices; an order is cancelled after its invoice. The start is today or up to 31 days back.
 
 The vendor build: `VENDOR=1 deploy/release/build-zip.sh <version> <folder>`. Every other release contains nothing of `ee/`.
