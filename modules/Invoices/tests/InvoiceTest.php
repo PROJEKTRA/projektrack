@@ -433,7 +433,12 @@ it('mails issued invoices to known contacts only', function () {
     $post(['other@customer.test'])->assertSessionHasErrors('recipients.0');
     $post(['attacker@example.test'])->assertSessionHasErrors('recipients.0');
     expect(InvoiceDelivery::query()->count())->toBe(0);
+    // Through the real queue: its worker starts without any tenant.
+    config(['queue.default' => 'database']);
     $post(['billing@customer.test'])->assertSessionHasNoErrors();
+    expect(InvoiceDelivery::query()->sole()->status)->toBe('queued');
+    $this->artisan('queue:work', ['connection' => 'database', '--once' => true]);
+    app(TenantContext::class)->set($this->tenant);
     expect(InvoiceDelivery::query()->sole()->status)->toBe('sent')->and($sent)->toHaveCount(1)->and($sent[0]->getSubject())->toBe('Invoice INV-2026-0001')->and($sent[0]->getAttachments()[0]->getFilename())->toBe('INV-2026-0001.pdf')->and($sent[0]->getTo()[0]->getAddress())->toBe('billing@customer.test')->and(AuditEntry::query()->where('action', 'invoices.sent')->count())->toBe(1);
 });
 

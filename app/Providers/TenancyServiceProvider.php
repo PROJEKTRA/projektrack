@@ -29,8 +29,7 @@ class TenancyServiceProvider extends ServiceProvider
         $this->app->singleton('auth.password', fn (): TenantPasswordBrokerManager => new TenantPasswordBrokerManager($this->app));
 
         // A long-running queue worker must never carry one job's tenant into the next.
-        // A job run inside a request (sync) leaves the tenant of that request alone.
-        Event::listen(JobProcessing::class, fn (JobProcessing $event) => $event->connectionName === 'sync' ? null : $this->app->make(TenantContext::class)->forget());
-        Event::listen(JobProcessed::class, fn (JobProcessed $event) => $event->connectionName === 'sync' ? null : $this->app->make(TenantContext::class)->forget());
+        Event::listen(JobProcessing::class, fn () => $this->app->make(TenantContext::class)->forget());
+        Event::listen(JobProcessed::class, fn () => $this->app->make(TenantContext::class)->forget());
     }
 }
