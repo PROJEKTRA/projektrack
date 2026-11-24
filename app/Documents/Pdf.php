@@ -78,6 +78,7 @@ final class Pdf
     }
 
     /**
+     * @param  view-string  $view
      * @param  array<string, mixed>  $data
      * @param  array<array-key, mixed>  $labels  sealed texts; others are read now
      */
@@ -91,6 +92,7 @@ final class Pdf
             'format' => $format,
             'dir' => $this->strings->direction($locale),
             't' => function (string $id, array $args = []) use ($labels, $locale): string {
+                /** @var array<string, mixed> $args */
                 $sealed = $labels[$id] ?? null;
 
                 return is_string($sealed) ? ($this->strings->format($id, $sealed, $args, $locale) ?? $sealed) : $this->strings->get($id, $args, $locale);
@@ -111,7 +113,10 @@ final class Pdf
         $pdf->SetFooter('{PAGENO} / {nbpg}');
         $pdf->WriteHTML($html);
 
-        return (string) $pdf->Output('', Destination::STRING_RETURN);
+        /** @var string $bytes */
+        $bytes = $pdf->Output('', Destination::STRING_RETURN);
+
+        return $bytes;
     }
 
     public function format(string $locale): RegionalFormat
@@ -126,6 +131,6 @@ final class Pdf
         $fraction = str_pad(rtrim($fraction, '0'), $least, '0');
         $separator = (new NumberFormatter($locale, NumberFormatter::DECIMAL))->getSymbol(NumberFormatter::DECIMAL_SEPARATOR_SYMBOL);
 
-        return $fraction === '' ? $whole : $whole.(is_string($separator) ? $separator : '.').$fraction;
+        return $fraction === '' ? $whole : $whole.$separator.$fraction;
     }
 }

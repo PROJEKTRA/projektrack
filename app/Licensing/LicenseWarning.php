@@ -45,7 +45,7 @@ final class LicenseWarning
         }
         foreach ([[UserType::Full, $license->fullSeats], [UserType::Light, $license->lightSeats]] as [$type, $seats]) {
             $used = DB::table('users')->where('user_type', $type->value)->count();
-            if ($seats !== null && $used > $seats) {
+            if ($used > $seats) {
                 return ['message' => 'core:license.warning.seats', 'args' => ['used' => $used, 'seats' => $seats]];
             }
         }

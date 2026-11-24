@@ -37,7 +37,7 @@ beforeEach(function () {
 
 function projectCompany(): Company
 {
-    return Company::query()->create(['number' => 'C-00001', 'name' => 'Learnteq Demo GmbH', 'kind' => 'customer', 'status' => 'active', 'document_locale' => 'en', 'currency' => 'EUR', 'payment_days' => 14, 'einvoice_format' => 'pdf']);
+    return Company::query()->create(['number' => 'C-00001', 'name' => 'Beispiel GmbH', 'kind' => 'customer', 'status' => 'active', 'document_locale' => 'en', 'currency' => 'EUR', 'payment_days' => 14, 'einvoice_format' => 'pdf']);
 }
 
 function projectUser(string $role): User
@@ -264,5 +264,5 @@ it('serves the API', function () {
     $project = newProject($user);
     $secret = app(ApiTokens::class)->create($user, 't', ['projects:read'], 30)['secret'];
     $this->withToken($secret)->getJson('/api/v1/projects')->assertOk()->assertJsonPath('data.0.number', 'P-00001');
-    $this->getJson("/api/v1/projects/{$project->id}")->assertOk()->assertJsonPath('company', 'Learnteq Demo GmbH');
+    $this->getJson("/api/v1/projects/{$project->id}")->assertOk()->assertJsonPath('company', 'Beispiel GmbH');
 });

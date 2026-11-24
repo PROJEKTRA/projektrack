@@ -27,7 +27,7 @@ final class ModuleRegistry
     /**
      * @param  list<string>  $searchPaths  directories that contain one folder per module
      */
-    public function __construct(private readonly array $searchPaths, private readonly LoggerInterface $logger)
+    public function __construct(private readonly array $searchPaths, private readonly LoggerInterface $logger, private readonly bool $vendor = true)
     {
         $this->discover();
     }
@@ -143,6 +143,11 @@ final class ModuleRegistry
                 } catch (InvalidModuleManifest $e) {
                     $this->reject($e->path, $e->problems);
 
+                    continue;
+                }
+
+                // Modules of the licensor do not exist on any other instance.
+                if ($manifest->edition === Edition::Vendor && ! $this->vendor) {
                     continue;
                 }
 

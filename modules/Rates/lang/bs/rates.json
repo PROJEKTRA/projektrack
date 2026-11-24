@@ -28,7 +28,7 @@
     "kind.cost": "Trošak",
     "kind.sales": "Prodajna cijena",
     "margin.cost": "Trošak",
-    "margin.description": "Vrijednost i trošak odobrenog vremena po projektu. Oboje se zamrzava pri odobravanju.",
+    "margin.description": "Vrijednost (sati puta cijena) i trošak odobrenog vremena po projektu. Marža se prikazuje samo kad ništa ne nedostaje, i ne kod fiksne cijene.",
     "margin.empty": "Nema odobrenog vremena u ovom periodu.",
     "margin.hours": "Sati",
     "margin.margin": "Marža",
@@ -51,5 +51,7 @@
     "scope.tenant": "Opća cijena",
     "scope.user": "Zaposlenik",
     "scope.work_package": "Radni paket",
-    "title": "Cijene sata"
+    "title": "Cijene sata",
+    "margin.unknown": "nije poznato",
+    "margin.value": "Vrednuj unose bez vrijednosti"
 }

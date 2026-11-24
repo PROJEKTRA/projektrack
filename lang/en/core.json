@@ -677,5 +677,16 @@
     "dashboard.show": "Show getting started",
     "dashboard.step.team": "Invite your team",
     "dashboard.done": "done",
-    "dashboard.open": "open"
+    "dashboard.open": "open",
+    "about.news": "What's new",
+    "about.limits": "Known limits",
+    "about.new.customers": "Customers, projects, contracts and work packages",
+    "about.new.time": "Weekly timesheet, timer, approval and month close",
+    "about.new.reports": "Service reports as PDF, DOCX, XLSX and CSV",
+    "about.new.invoices": "Invoices for sellers in Germany and Bosnia and Herzegovina, with cancellation and credit notes",
+    "about.new.einvoices": "E-invoices: ZUGFeRD and XRechnung",
+    "about.new.languages": "Bosnian, English and German",
+    "about.limit.legal": "Legal notices on invoices must be confirmed by an accountant.",
+    "about.limit.validators": "Check e-invoices with an official validator before you send them.",
+    "about.limit.missing": "Not included yet: quotes, expenses, absences, service desk and Gantt."
 }

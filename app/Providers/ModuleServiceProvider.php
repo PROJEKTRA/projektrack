@@ -28,6 +28,7 @@ class ModuleServiceProvider extends ServiceProvider
         $this->app->singleton(ModuleRegistry::class, fn (): ModuleRegistry => new ModuleRegistry(
             [base_path('modules'), base_path('ee/modules')],
             $this->app->make(LoggerInterface::class),
+            config('licensing.vendor_instance') === true,
         ));
 
         $this->app->singleton(Dashboard::class, function (): Dashboard {

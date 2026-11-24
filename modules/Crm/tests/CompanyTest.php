@@ -45,7 +45,7 @@ function crmUser(string $role): User
 function companyInput(array $changes = []): array
 {
     return array_replace([
-        'name' => 'Learnteq Demo GmbH', 'legal_name' => null, 'kind' => 'customer', 'document_locale' => 'en', 'currency' => 'eur',
+        'name' => 'Beispiel GmbH', 'legal_name' => null, 'kind' => 'customer', 'document_locale' => 'en', 'currency' => 'eur',
         'payment_days' => 14, 'einvoice_format' => 'zugferd', 'leitweg_id' => null,
         'tax' => ['tax_status' => 'eu_business', 'country_code' => 'DE', 'vat_id' => 'DE 999 999 999', 'tax_number' => null],
         'address' => ['line1' => 'Teststr. 1', 'city' => 'Stuttgart', 'postal_code' => '70173', 'country_code' => 'de'],
@@ -82,7 +82,7 @@ it('numbers customers one after another and keeps numbers of archived ones', fun
     expect(Company::query()->orderBy('number')->pluck('number')->all())->toBe(['C-00001', 'C-00002']);
     $this->get('/crm/companies')->assertInertia(fn (AssertableInertia $page) => $page->has('companies.data', 1)->where('companies.data.0.number', 'C-00002'));
     $this->get('/crm/companies?status=archived')->assertInertia(fn (AssertableInertia $page) => $page->where('companies.data.0.number', 'C-00001'));
-    $this->get('/crm/companies?search=LEARN')->assertInertia(fn (AssertableInertia $page) => $page->has('companies.data', 1));
+    $this->get('/crm/companies?search=BEISP')->assertInertia(fn (AssertableInertia $page) => $page->has('companies.data', 1));
     $this->get('/crm/companies?search=%25')->assertInertia(fn (AssertableInertia $page) => $page->has('companies.data', 0));
 });
 

@@ -14,5 +14,6 @@ parameters:
 
     excludePaths:
         - modules/*/tests/*
+        - ee/modules/*/tests/*
 
     level: max

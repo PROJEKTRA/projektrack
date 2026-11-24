@@ -71,7 +71,7 @@ class HandleInertiaRequests extends Middleware
             // Regional format and time zone for dates and amounts (S-0919).
             'formats' => app(Formats::class)->current()->toArray(),
             // What operator administrators should know about the license (S-0977).
-            'licenseWarning' => fn (): ?string => $user instanceof User && app(LicenseAccess::class)->allows($user) && ($warning = app(LicenseWarning::class)->current()) !== null ? __($warning['message'], $warning['args']) : null,
+            'licenseWarning' => fn (): ?string => $user instanceof User && app(LicenseAccess::class)->allows($user) && ($warning = app(LicenseWarning::class)->current()) !== null && is_string($text = __($warning['message'], $warning['args'])) ? $text : null,
             // Menu entry of the license, for operator administrators (S-0976).
             'licenseAccess' => fn (): bool => $user instanceof User && app(LicenseAccess::class)->allows($user),
             // Critical findings of the system check for operator administrators

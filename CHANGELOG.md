@@ -26,6 +26,8 @@ Founding Edition, Early Access. Planned for 01.12.2026. By decision C-06, only s
 - Tax engine with tax cases and a documented choice by a person.
 - E-invoices: ZUGFeRD and XRechnung (CII and UBL).
 - Signed licenses with offline check, license screen, installation from a file.
+- Sale of licenses on the licensor's own instance: plans, orders, invoice draft, file for offline signing. Not part of any customer release.
+- What is new, under About.
 - Installation on plain hosting from the ZIP; encrypted backup and restore.
 - Docker Compose stack; operations commands for install, backup, restore and update with rollback.
 - Signed release pipeline with checksums and SBOM.

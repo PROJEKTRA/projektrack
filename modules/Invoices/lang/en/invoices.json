@@ -191,5 +191,6 @@
     "unit.flat": "flat",
     "unit.hour": "h",
     "unit.piece": "pcs",
-    "xml": "XML"
+    "xml": "XML",
+    "errors.held": "This draft belongs to an order. Cancel the order first."
 }

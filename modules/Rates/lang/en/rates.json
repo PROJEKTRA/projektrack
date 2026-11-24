@@ -28,7 +28,7 @@
     "kind.cost": "Cost rate",
     "kind.sales": "Sales rate",
     "margin.cost": "Cost",
-    "margin.description": "Value and cost of approved time per project. Both are frozen at approval.",
+    "margin.description": "Value (hours times rate) and cost of approved time per project. A margin is shown only when nothing is missing, and not at a fixed price.",
     "margin.empty": "No approved time in this period.",
     "margin.hours": "Hours",
     "margin.margin": "Margin",
@@ -51,5 +51,7 @@
     "scope.tenant": "Company default",
     "scope.user": "Employee",
     "scope.work_package": "Work package",
-    "title": "Hourly rates"
+    "title": "Hourly rates",
+    "margin.unknown": "not known",
+    "margin.value": "Value missing entries"
 }

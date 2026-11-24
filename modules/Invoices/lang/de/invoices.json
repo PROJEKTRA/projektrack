@@ -191,5 +191,6 @@
     "unit.flat": "pauschal",
     "unit.hour": "Std.",
     "unit.piece": "Stk.",
-    "xml": "XML"
+    "xml": "XML",
+    "errors.held": "Dieser Entwurf gehört zu einer Bestellung. Stornieren Sie zuerst die Bestellung."
 }

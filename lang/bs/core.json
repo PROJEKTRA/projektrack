@@ -677,5 +677,16 @@
     "dashboard.show": "Prikaži prve korake",
     "dashboard.step.team": "Pozovite svoj tim",
     "dashboard.done": "urađeno",
-    "dashboard.open": "otvoreno"
+    "dashboard.open": "otvoreno",
+    "about.news": "Šta je novo",
+    "about.limits": "Poznata ograničenja",
+    "about.new.customers": "Klijenti, projekti, ugovori i radni paketi",
+    "about.new.time": "Sedmični unos, štoperica, odobravanje i zaključenje mjeseca",
+    "about.new.reports": "Servisni izvještaji u PDF, DOCX, XLSX i CSV formatu",
+    "about.new.invoices": "Fakture za prodavce u Njemačkoj i Bosni i Hercegovini, sa stornom i djelimičnim stornom",
+    "about.new.einvoices": "E-fakture: ZUGFeRD i XRechnung",
+    "about.new.languages": "Bosanski, engleski i njemački",
+    "about.limit.legal": "Zakonske napomene na fakturama mora potvrditi računovođa.",
+    "about.limit.validators": "Prije slanja provjerite e-fakture službenim validatorom.",
+    "about.limit.missing": "Još nije uključeno: ponude, troškovi, odsustva, servis desk i Gantt."
 }

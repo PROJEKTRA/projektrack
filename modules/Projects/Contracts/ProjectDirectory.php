@@ -37,6 +37,9 @@ interface ProjectDirectory
     /** @return list<array{id: string, name: string, number: string, company_id: string, currency: string, billing_model: string}> active projects by name */
     public function active(): array;
 
+    /** @return list<array{id: string, name: string, number: string, company_id: string, currency: string, billing_model: string}> every project, also closed ones, by name */
+    public function all(): array;
+
     /** The contract of a work package, if any. */
     public function contractOf(string $workPackageId): ?string;
 
