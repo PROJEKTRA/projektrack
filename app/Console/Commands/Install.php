@@ -23,7 +23,7 @@ use Throwable;
  */
 class Install extends Command
 {
-    private const array EXTENSIONS = ['bcmath', 'ctype', 'curl', 'dom', 'fileinfo', 'gd', 'intl', 'mbstring', 'openssl', 'pdo', 'session', 'sodium', 'tokenizer', 'xml'];
+    private const array EXTENSIONS = ['bcmath', 'ctype', 'curl', 'dom', 'fileinfo', 'gd', 'intl', 'mbstring', 'openssl', 'pdo', 'session', 'sodium', 'tokenizer', 'xml', 'xmlreader', 'xmlwriter', 'zip'];
 
     /** Values of the template that must be replaced. */
     private const string PLACEHOLDER = 'CHANGE-ME';

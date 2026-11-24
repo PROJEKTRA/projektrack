@@ -18,6 +18,7 @@ use App\Modules\TenantModules;
 use App\Settings\Settings;
 use App\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Testing\TestResponse;
@@ -26,6 +27,7 @@ use Inertia\Testing\AssertableInertia;
 use Modules\Crm\Domain\Companies;
 use Modules\Crm\Domain\Company;
 use Modules\Invoices\Domain\Invoice;
+use Modules\Invoices\Domain\InvoiceDelivery;
 use Modules\Invoices\Domain\InvoiceLine;
 use Modules\Invoices\Domain\InvoicePaid;
 use Modules\Invoices\Domain\Invoices;
@@ -37,6 +39,7 @@ use Modules\Rates\Domain\Rates;
 use Modules\ServiceReports\Domain\ServiceReport;
 use Modules\Timesheets\Domain\TimeEntry;
 use Modules\Timesheets\Domain\Timesheets;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 /*
  * S-0961 drafts, S-0962 numbers, S-0963 finalization and cancellation, S-0964
@@ -415,6 +418,39 @@ it('lets project leads report hours of their project, never amounts', function (
     $priced = ServiceReport::query()->where('with_amounts', true)->sole();
     $this->actingAs($lead)->get("/service-reports/{$priced->id}/pdf")->assertNotFound();
     $this->get('/service-reports')->assertInertia(fn (AssertableInertia $p) => $p->has('reports', 1));
+});
+
+it('mails issued invoices to known contacts only', function () {
+    $sent = [];
+    Event::listen(MessageSending::class, function ($e) use (&$sent) {
+        $sent[] = $e->message;
+    });
+    app(Companies::class)->update($this->company, ['company' => [], 'contacts' => [['last_name' => 'Billing', 'email' => 'billing@customer.test', 'invoice_recipient' => true], ['last_name' => 'Other', 'email' => 'other@customer.test', 'invoice_recipient' => false]]], $this->controller);
+    $invoice = draft([freeLine('1', '100')]);
+    $post = fn (array $to): TestResponse => $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/send", ['recipients' => $to]);
+    $post(['billing@customer.test'])->assertUnprocessable();
+    issue($invoice);
+    $post(['other@customer.test'])->assertSessionHasErrors('recipients.0');
+    $post(['attacker@example.test'])->assertSessionHasErrors('recipients.0');
+    expect(InvoiceDelivery::query()->count())->toBe(0);
+    $post(['billing@customer.test'])->assertSessionHasNoErrors();
+    expect(InvoiceDelivery::query()->sole()->status)->toBe('sent')->and($sent)->toHaveCount(1)->and($sent[0]->getSubject())->toBe('Invoice INV-2026-0001')->and($sent[0]->getAttachments()[0]->getFilename())->toBe('INV-2026-0001.pdf')->and($sent[0]->getTo()[0]->getAddress())->toBe('billing@customer.test')->and(AuditEntry::query()->where('action', 'invoices.sent')->count())->toBe(1);
+});
+
+it('exports the report as a workbook with formulas', function () {
+    [$project, $employee] = billedProject();
+    $entry = app(Timesheets::class)->book($employee, TimeEntry::query()->firstOrFail()->work_package_id, '2026-10-12', 30, '=1+1');
+    app(Timesheets::class)->submitWeek($employee, '2026-10-12');
+    app(Timesheets::class)->approve($this->controller, [$entry->id]);
+    $this->actingAs($this->controller)->post('/service-reports', ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-31', 'with_amounts' => true]);
+    $file = tempnam(sys_get_temp_dir(), 'x');
+    file_put_contents($file, $this->get('/service-reports/'.ServiceReport::query()->sole()->id.'/xlsx')->assertOk()->getContent());
+    $sheet = IOFactory::load($file)->getActiveSheet();
+    unlink($file);
+    $texts = array_map(fn (int $r): mixed => $sheet->getCell("D{$r}")->getDataType().':'.$sheet->getCell("D{$r}")->getValue(), [2, 3, 4, 5]);
+    expect($texts)->toContain('s:=1+1')
+        ->and($sheet->getCell('E6')->getValue())->toBe('=SUM(E2:E5)')->and(round($sheet->getCell('E6')->getCalculatedValue() * 1440))->toBe(90.0)
+        ->and($sheet->getCell('G6')->getValue())->toBe('=SUM(G2:G5)')->and(round($sheet->getCell('G6')->getCalculatedValue(), 2))->toBe(149.99);
 });
 
 it('keeps formulas out of the CSV', function () {

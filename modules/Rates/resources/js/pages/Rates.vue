@@ -27,6 +27,13 @@ type Rule = {
 
 const props = defineProps<{
     rules: Rule[];
+    exchange: {
+        id: string;
+        from: string;
+        to: string;
+        rate: string;
+        date: string;
+    }[];
     scopes: string[];
     choices: Record<string, { value: string; text: string }[]>;
     currency: string;
@@ -52,6 +59,16 @@ const form = useForm({
     valid_from: props.today,
 });
 const endForm = useForm({ valid_to: props.today });
+const fxOpen = ref(false);
+const fx = useForm({
+    from_currency: 'USD',
+    to_currency: props.currency,
+    rate: '',
+    rate_date: props.today,
+});
+const fxErrors = computed(
+    () => fx.errors as Record<string, string | undefined>,
+);
 const errors = computed(
     () => form.errors as Record<string, string | undefined>,
 );
@@ -156,6 +173,68 @@ function end(): void {
             </table>
         </div>
     </div>
+    <div class="space-y-3 px-4 pb-6">
+        <div class="flex items-center justify-between gap-4">
+            <h2 class="font-medium">{{ $t('rates:exchange.title') }}</h2>
+            <Button size="sm" variant="secondary" @click="fxOpen = true">{{
+                $t('rates:exchange.new')
+            }}</Button>
+        </div>
+        <p class="text-sm text-muted-foreground">
+            <bdi>{{ $t('rates:exchange.fixed') }}</bdi>
+        </p>
+        <ul class="text-sm">
+            <li v-for="e in exchange" :key="e.id">
+                <bdi>{{
+                    `${formatDay(e.date)}: 1 ${e.from} = ${e.rate} ${e.to}`
+                }}</bdi>
+            </li>
+        </ul>
+    </div>
+    <FormDialog
+        v-model:open="fxOpen"
+        :title="$t('rates:exchange.new')"
+        :save="$t('rates:save')"
+        :processing="fx.processing"
+        @submit="
+            fx.post(RateController.exchange.url(), {
+                preserveScroll: true,
+                onSuccess: () => (fxOpen = false),
+            })
+        "
+    >
+        <TextField
+            v-model="fx.from_currency"
+            name="from_currency"
+            :label="$t('rates:exchange.from')"
+            :errors="fxErrors"
+            :maxlength="3"
+            required
+        />
+        <TextField
+            v-model="fx.to_currency"
+            name="to_currency"
+            :label="$t('rates:exchange.to')"
+            :errors="fxErrors"
+            :maxlength="3"
+            required
+        />
+        <TextField
+            v-model="fx.rate"
+            name="rate"
+            :label="$t('rates:exchange.rate')"
+            :errors="fxErrors"
+            required
+        />
+        <TextField
+            v-model="fx.rate_date"
+            name="rate_date"
+            type="date"
+            :label="$t('rates:exchange.date')"
+            :errors="fxErrors"
+            required
+        />
+    </FormDialog>
 
     <FormDialog
         v-model:open="open"

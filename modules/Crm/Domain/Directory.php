@@ -35,6 +35,11 @@ final class Directory implements CompanyDirectory
         ];
     }
 
+    public function invoiceRecipients(string $id): array
+    {
+        return Lists::strings(Contact::query()->where('company_id', $id)->where('invoice_recipient', true)->whereNotNull('email_normalized')->orderBy('email_normalized')->pluck('email_normalized'));
+    }
+
     public function isActive(string $id): bool
     {
         return Company::query()->whereKey($id)->where('status', 'active')->exists();

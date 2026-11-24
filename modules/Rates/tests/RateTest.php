@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Modules\TenantModules;
 use App\Tenancy\TenantContext;
+use Illuminate\Testing\TestResponse;
 use Modules\Crm\Domain\Company;
 use Modules\Projects\Domain\Contract;
 use Modules\Projects\Domain\Project;
@@ -119,6 +120,28 @@ it('never overlaps and never edits', function () {
 it('refuses wrong input', function (array $changes, string $field) {
     $this->actingAs($this->controller)->post('/rates', array_replace(['scope' => 'tenant', 'rate' => '90', 'currency' => 'EUR', 'valid_from' => '2026-07-01'], $changes))->assertSessionHasErrors($field);
 })->with([[['rate' => '-1'], 'rate'], [['rate' => '1e3'], 'rate'], [['currency' => 'XXQ'], 'currency'], [['scope' => 'project'], 'scope_id'], [['scope' => 'user', 'scope_id' => '01ARZ3NDEKTSV4RRFFQ69G5FAV'], 'scope_id']]);
+
+it('values in the currency of the project with the rate of the day', function () {
+    app(Rates::class)->add('tenant', null, '195.583', 'BAM', '2026-01-01', $this->controller);
+    $entry = approve_('2026-11-03', 90);
+    expect(app(TimeValues::class)->of([$entry->id])[$entry->id])->toBe(['rate' => '100.0000', 'currency' => 'EUR', 'minutes' => 90, 'amount_minor' => 15000, 'source' => 'tenant'])
+        ->and(Valuation::query()->sole()->rule_currency)->toBe('BAM')->and(Valuation::query()->sole()->fx_rate)->toBe('0.5112918812');
+
+    app(Rates::class)->add('user', $this->employee->id, '110', 'USD', '2026-01-01', $this->controller);
+    $waiting = approve_('2026-11-04', 60);
+    expect(app(TimeValues::class)->of([$waiting->id]))->toBe([]);
+    $add = fn (array $c): TestResponse => $this->actingAs($this->controller)->post('/rates/exchange', array_replace(['from_currency' => 'USD', 'to_currency' => 'EUR', 'rate' => '0,9', 'rate_date' => '2026-11-01'], $c));
+    $add(['rate_date' => '2026-11-05'])->assertSessionHasNoErrors();
+    $add([])->assertSessionHasNoErrors();
+    $add([])->assertSessionHasErrors('rate');
+    $add(['rate' => '0', 'rate_date' => '2026-10-01'])->assertSessionHasErrors('rate');
+    $add(['from_currency' => 'BAM'])->assertSessionHasErrors('rate');
+    $add(['rate_date' => '2026-11-06'])->assertSessionHasErrors('rate_date');
+    $row = fn (TimeEntry $e): array => ['id' => $e->id, 'user_id' => $e->user_id, 'work_package_id' => $e->work_package_id, 'project_id' => $e->project_id, 'date' => $e->work_date->toDateString(), 'billable_minutes' => $e->billable_minutes, 'corrects' => null];
+    expect(app(TimeValues::class)->valueMissing([$row($waiting->refresh())], $this->controller))->toBe(1)
+        ->and(app(TimeValues::class)->of([$waiting->id])[$waiting->id]['amount_minor'])->toBe(9900)
+        ->and(app(TimeValues::class)->valueMissing([$row($waiting)], $this->controller))->toBe(0);
+});
 
 it('is for those who manage rates, in their tenant', function () {
     $this->actingAs($this->employee)->get('/rates')->assertForbidden();

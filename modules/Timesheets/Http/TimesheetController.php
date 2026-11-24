@@ -19,6 +19,7 @@ use Inertia\Response;
 use Modules\Projects\Contracts\ProjectDirectory;
 use Modules\Timesheets\Domain\TimeEntry;
 use Modules\Timesheets\Domain\TimePeriod;
+use Modules\Timesheets\Domain\Timers;
 use Modules\Timesheets\Domain\Timesheets;
 
 /**
@@ -26,7 +27,7 @@ use Modules\Timesheets\Domain\Timesheets;
  */
 class TimesheetController extends Controller
 {
-    public function index(Request $request, ProjectDirectory $projects, TenantContext $tenant, Settings $settings): Response
+    public function index(Request $request, ProjectDirectory $projects, TenantContext $tenant, Settings $settings, Timers $timers): Response
     {
         $user = $this->currentUser($request);
         $date = $request->query('date');
@@ -56,6 +57,7 @@ class TimesheetController extends Controller
                 'correction' => $e->corrects_id !== null,
             ])->all(),
             'dayWarning' => $settings->get('timesheets.day_warning_minutes'),
+            'timer' => ($timer = $timers->running($user)) === null ? null : ['work_package_id' => $timer->work_package_id, 'started_at' => $timer->started_at->toIso8601ZuluString(), 'name' => $projects->workPackages([$timer->work_package_id])[$timer->work_package_id]['name'] ?? ''],
             'canBook' => $user->can('timesheets.book'),
         ]);
     }

@@ -129,6 +129,13 @@ function submit(): void {
                             >
                             <Button as-child size="sm" variant="ghost"
                                 ><a
+                                    :href="ReportController.xlsx.url(r.id)"
+                                    download
+                                    >{{ $t('service_reports:xlsx') }}</a
+                                ></Button
+                            >
+                            <Button as-child size="sm" variant="ghost"
+                                ><a
                                     :href="ReportController.csv.url(r.id)"
                                     download
                                     >{{ $t('service_reports:csv') }}</a

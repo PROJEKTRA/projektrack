@@ -15,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Projects\Contracts\BudgetWatch;
 use Modules\Projects\Contracts\ProjectDirectory;
 use Modules\Timesheets\Contracts\TimeApproved;
 
@@ -28,6 +29,7 @@ final class Timesheets
         private readonly Permissions $permissions,
         private readonly Settings $settings,
         private readonly AuditLog $audit,
+        private readonly BudgetWatch $budgets,
     ) {}
 
     /**
@@ -75,6 +77,18 @@ final class Timesheets
             $entry->update($values);
 
             return $entry;
+        }, 3);
+    }
+
+    /** Add to the draft of a cell, for example what a timer measured. */
+    public function addTo(User $user, string $workPackageId, string $date, int $minutes, ?string $description): void
+    {
+        DB::transaction(function () use ($user, $workPackageId, $date, $minutes, $description): void {
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $entry = TimeEntry::query()->where('user_id', $user->id)->where('work_package_id', $workPackageId)->whereDate('work_date', $date)
+                ->whereIn('status', TimeEntry::EDITABLE)->whereNull('corrects_id')->first();
+            $notes = array_filter([$entry?->description, $description], fn (?string $n): bool => $n !== null && trim($n) !== '');
+            $this->book($user, $workPackageId, $date, ($entry->duration_minutes ?? 0) + $minutes, $notes === [] ? null : mb_substr(implode('; ', array_unique($notes)), 0, 2000));
         }, 3);
     }
 
@@ -216,6 +230,11 @@ final class Timesheets
 
     private function announce(TimeEntry $entry): void
     {
+        $contract = $this->projects->contractOf($entry->work_package_id);
+        if ($contract !== null) {
+            $minutes = TimeEntry::query()->where('status', 'approved')->whereIn('work_package_id', $this->budgets->packagesOf($contract))->sum('duration_minutes');
+            $this->budgets->approved($contract, (int) $minutes);
+        }
         event(new TimeApproved($entry->id, $entry->user_id, $entry->work_package_id, $entry->project_id, $entry->work_date->toDateString(), $entry->billable_minutes, $entry->corrects_id));
     }
 

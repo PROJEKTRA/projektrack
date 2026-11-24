@@ -12,6 +12,8 @@ use App\Domain\Money\Amount;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Tenancy\TenantContext;
+use Brick\Math\BigRational;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +30,7 @@ final class Rates
         private readonly ProjectDirectory $projects,
         private readonly TenantContext $tenant,
         private readonly AuditLog $audit,
+        private readonly ExchangeRates $exchange,
     ) {}
 
     /** The most specific rule in force on the day. */
@@ -71,12 +74,22 @@ final class Rates
             return;
         }
         // A correction is valued like the entry it corrects, whatever the rates say today.
-        // Never frozen in a currency the project cannot be billed in.
-        if ($rule !== null && $rule->currency !== ($this->projects->projects([$event->projectId])[$event->projectId]['currency'] ?? null)) {
-            return;
-        }
         $rate = $original->rate ?? $rule->rate ?? '0';
         $currency = $original->currency ?? $rule->currency ?? '';
+        $fx = null;
+        if ($rule !== null) {
+            // In the currency of the project, so it can be billed; without a rate of the day it waits.
+            $target = $this->projects->projects([$event->projectId])[$event->projectId]['currency'] ?? '';
+            $factor = $this->exchange->on($rule->currency, $target, $event->date);
+            if ($factor === null) {
+                return;
+            }
+            if ($target !== $rule->currency) {
+                $fx = (string) $factor->toScale(10, RoundingMode::HalfUp);
+                $rate = (string) BigRational::of($rule->rate)->multipliedBy($factor)->toScale(4, RoundingMode::HalfUp);
+            }
+            $currency = $target;
+        }
 
         Valuation::query()->create([
             'time_entry_id' => $event->entryId,
@@ -87,6 +100,9 @@ final class Rates
             'minutes_valued' => $event->billableMinutes,
             'amount_minor' => Amount::time($event->billableMinutes, $rate, $currency),
             'valued_at' => now(),
+            'rule_rate' => $fx === null ? null : $rule?->rate,
+            'rule_currency' => $fx === null ? null : $rule?->currency,
+            'fx_rate' => $fx,
         ]);
     }
 

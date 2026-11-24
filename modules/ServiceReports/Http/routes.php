@@ -14,5 +14,6 @@ Route::middleware(['web', 'auth', 'verified', 'module:service_reports', 'access:
     Route::get('/', 'index')->name('index');
     Route::post('/', 'store')->middleware('throttle:30,1')->name('store');
     Route::get('{report}/pdf', 'pdf')->whereUlid('report')->middleware('throttle:60,1')->name('pdf');
+    Route::get('{report}/xlsx', 'xlsx')->whereUlid('report')->middleware('throttle:60,1')->name('xlsx');
     Route::get('{report}/csv', 'csv')->whereUlid('report')->middleware('throttle:60,1')->name('csv');
 });

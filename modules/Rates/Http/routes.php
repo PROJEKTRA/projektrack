@@ -12,5 +12,6 @@ use Modules\Rates\Http\RateController;
 Route::middleware(['web', 'auth', 'verified', 'module:rates', 'permission:rates.manage'])->prefix('rates')->name('rates.')->controller(RateController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::post('/', 'store')->middleware('throttle:60,1')->name('store');
+    Route::post('exchange', 'exchange')->middleware('throttle:60,1')->name('exchange');
     Route::post('{rule}/end', 'end')->whereUlid('rule')->name('end');
 });

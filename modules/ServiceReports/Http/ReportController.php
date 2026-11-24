@@ -23,6 +23,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Projects\Contracts\ProjectDirectory;
 use Modules\ServiceReports\Domain\Reports;
+use Modules\ServiceReports\Domain\ReportSheet;
 use Modules\ServiceReports\Domain\ServiceReport;
 use Modules\Timesheets\Contracts\ApprovedTime;
 
@@ -79,6 +80,15 @@ class ReportController extends Controller
         return response($pdf->render('service_reports::report', ['r' => $content, 'amounts' => $model->with_amounts], $model->locale, $model->number, is_array($content['labels'] ?? null) ? $content['labels'] : [], is_string($format) ? $format : null), 200, [
             'Content-Type' => 'application/pdf', 'Content-Disposition' => "attachment; filename=\"{$model->number}.pdf\"", 'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    public function xlsx(Request $request, string $report, ReportSheet $sheet, AuditLog $audit): HttpResponse
+    {
+        $model = $this->find($request, $report);
+        $file = $sheet->render($model);
+        $audit->record('service_reports.exported', $model, ['number' => $model->number, 'as' => 'xlsx'], $this->currentUser($request));
+
+        return response($file, 200, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition' => "attachment; filename=\"{$model->number}.xlsx\"", 'Cache-Control' => 'private, no-store']);
     }
 
     public function csv(Request $request, string $report, Strings $strings, AuditLog $audit): HttpResponse

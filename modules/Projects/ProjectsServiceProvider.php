@@ -12,7 +12,9 @@ use App\Dashboard\Dashboard;
 use App\Models\User;
 use Illuminate\Support\ServiceProvider;
 use Modules\Projects\Contracts\BookedTime;
+use Modules\Projects\Contracts\BudgetWatch;
 use Modules\Projects\Contracts\ProjectDirectory;
+use Modules\Projects\Domain\Budgets;
 use Modules\Projects\Domain\Directory;
 use Modules\Projects\Domain\Memberships;
 use Modules\Projects\Domain\NoBookedTime;
@@ -27,6 +29,7 @@ class ProjectsServiceProvider extends ServiceProvider
     {
         $this->app->singleton(ProjectMemberships::class, Memberships::class);
         $this->app->bind(ProjectDirectory::class, Directory::class);
+        $this->app->bind(BudgetWatch::class, Budgets::class);
         // The time tracking module rebinds this.
         $this->app->bindIf(BookedTime::class, NoBookedTime::class);
     }

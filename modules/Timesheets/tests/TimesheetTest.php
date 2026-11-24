@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Modules\TenantModules;
 use App\Settings\Settings;
 use App\Tenancy\TenantContext;
+use Carbon\CarbonImmutable;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia;
 use Modules\Crm\Domain\Company;
@@ -28,6 +29,8 @@ use Modules\Projects\Domain\WorkPackage;
 use Modules\Timesheets\Contracts\ApprovedTime;
 use Modules\Timesheets\Domain\Rounding;
 use Modules\Timesheets\Domain\TimeEntry;
+use Modules\Timesheets\Domain\Timer;
+use Modules\Timesheets\Domain\Timers;
 use Modules\Timesheets\Domain\Timesheets;
 
 /*
@@ -255,6 +258,61 @@ it('locks a month for bookings, submissions, approvals and corrections', functio
     expect(AuditEntry::query()->where('action', 'timesheets.period.reopened')->sole()->contextData()['reason'])->toBe('late booking');
     book($this->employee, 45, '2026-11-04')->assertOk();
     $this->post('/timesheets/periods', ['month' => '2026-11', 'locked' => true])->assertForbidden();
+});
+
+it('measures real minutes per local day', function (string $from, string $to, array $parts) {
+    expect(Timers::split(CarbonImmutable::parse($from), CarbonImmutable::parse($to), 'Europe/Sarajevo'))->toBe($parts);
+})->with([
+    'a morning' => ['2026-11-05 08:00:00Z', '2026-11-05 09:10:59Z', ['2026-11-05' => 70]],
+    'over midnight' => ['2026-11-05 22:30:00Z', '2026-11-05 23:45:00Z', ['2026-11-05' => 30, '2026-11-06' => 45]],
+    'clocks back' => ['2026-10-24 23:00:00Z', '2026-10-25 02:00:00Z', ['2026-10-25' => 180]],
+    'clocks forward' => ['2026-03-28 23:00:00Z', '2026-03-29 02:00:00Z', ['2026-03-29' => 180]],
+    'seconds' => ['2026-11-05 08:00:00Z', '2026-11-05 08:00:59Z', []],
+]);
+
+it('books the timer, adds to the cell and runs only once', function () {
+    $second = app(WorkBreakdown::class)->add($this->project, ['name' => 'B', 'billable' => true], null);
+    $this->tenant->update(['timezone' => 'Europe/Sarajevo']);
+    book($this->employee, 20, '2026-11-05', 'Call');
+    $this->actingAs($this->employee)->post('/timesheets/timer', ['work_package_id' => $this->package->id])->assertSessionHasNoErrors();
+    $this->travel(70)->minutes();
+    // A second timer stops and books the first.
+    $this->post('/timesheets/timer', ['work_package_id' => $second->id])->assertSessionHasNoErrors();
+    expect(Timer::query()->sole()->work_package_id)->toBe($second->id)->and(TimeEntry::query()->sole()->duration_minutes)->toBe(90);
+    $this->travel(15)->minutes();
+    $this->get('/timesheets')->assertInertia(fn (AssertableInertia $p) => $p->where('timer.work_package_id', $second->id));
+    $this->post('/timesheets/timer/stop', ['description' => 'Review'])->assertSessionHasNoErrors();
+    expect(Timer::query()->count())->toBe(0)->and(TimeEntry::query()->where('work_package_id', $second->id)->sole()->description)->toBe('Review');
+
+    $this->post('/timesheets/timer', ['work_package_id' => $second->id]);
+    $this->travel(5)->minutes();
+    app(Timesheets::class)->setLocked(timeUser('controller'), '2026-11', true, null);
+    $this->post('/timesheets/timer/stop')->assertSessionHasErrors('date');
+    expect(Timer::query()->count())->toBe(1);
+    $this->delete('/timesheets/timer');
+    expect(Timer::query()->count())->toBe(0);
+});
+
+it('refuses a timer where the user cannot book', function () {
+    $this->actingAs(timeUser('employee'))->post('/timesheets/timer', ['work_package_id' => $this->package->id])->assertSessionHasErrors('work_package_id');
+});
+
+it('warns once per threshold of the contract budget', function () {
+    $contract = Contract::query()->create(['project_id' => $this->project->id, 'number' => 'SOW', 'contract_type' => 'time_and_material', 'status' => 'active', 'rounding_minutes' => 1, 'minimum_minutes' => 0, 'budget_minutes' => 600]);
+    $this->package->update(['contract_id' => $contract->id]);
+    $lead = timeUser('project_lead');
+    timeJoin($this->project, $lead, 'project_lead');
+    $count = fn (): int => AppNotification::query()->where('user_id', $lead->id)->where('type', 'projects.budget')->count();
+
+    approved(419);
+    expect($count())->toBe(0);
+    approved(1, '2026-11-04');
+    expect($count())->toBe(1);
+    approved(60, '2026-10-05');
+    expect($count())->toBe(1);
+    // 90 and 100 percent at once are one notice.
+    approved(120, '2026-10-06');
+    expect($count())->toBe(2)->and(AppNotification::query()->where('user_id', $this->employee->id)->where('type', 'projects.budget')->count())->toBe(0);
 });
 
 it('never reaches another tenant', function () {

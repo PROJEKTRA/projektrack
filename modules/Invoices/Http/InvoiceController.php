@@ -8,7 +8,6 @@
 namespace Modules\Invoices\Http;
 
 use App\Audit\AuditLog;
-use App\Documents\Pdf;
 use App\Http\Controllers\Controller;
 use App\Tenancy\TenantContext;
 use Brick\Math\Exception\MathException;
@@ -26,9 +25,12 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Crm\Contracts\CompanyDirectory;
 use Modules\Invoices\Domain\Invoice;
+use Modules\Invoices\Domain\InvoiceDelivery;
 use Modules\Invoices\Domain\InvoiceLine;
 use Modules\Invoices\Domain\InvoicePayment;
+use Modules\Invoices\Domain\InvoicePdf;
 use Modules\Invoices\Domain\Invoices;
+use Modules\Invoices\Domain\SendInvoice;
 use Modules\Projects\Contracts\ProjectDirectory;
 
 /**
@@ -81,6 +83,8 @@ class InvoiceController extends Controller
                 'cancelled_by' => $cancelled?->only(['id', 'number']),
                 'payments' => InvoicePayment::query()->where('invoice_id', $i->id)->orderBy('paid_on')->orderBy('created_at')->get()->map(fn (InvoicePayment $p): array => ['id' => $p->id, 'paid_on' => $p->paid_on->toDateString(), 'amount_minor' => $p->amount_minor, 'note' => $p->note])->all(),
             ],
+            'recipients' => $i->isDraft() ? [] : $companies->invoiceRecipients($i->company_id),
+            'deliveries' => InvoiceDelivery::query()->where('invoice_id', $i->id)->orderByDesc('created_at')->limit(20)->get()->map(fn (InvoiceDelivery $d): array => ['id' => $d->id, 'recipient' => $d->recipient, 'status' => $d->status, 'at' => $d->created_at?->toIso8601String()])->all(),
             'confirmed' => (int) now()->timestamp - (is_int($at = $request->session()->get('auth.password_confirmed_at')) ? $at : 0) < config()->integer('auth.password_timeout'),
             'today' => now($tenant->current()->timezone)->toDateString(),
             'can' => ['create' => $user->can('invoices.create'), 'finalize' => $user->can('invoices.finalize'), 'cancel' => $user->can('invoices.cancel'), 'pay' => $user->can('invoices.payments.record')],
@@ -147,6 +151,25 @@ class InvoiceController extends Controller
         return to_route('invoices.show', $invoice);
     }
 
+    /** Mail the issued document to the contacts of the customer that receive invoices. */
+    public function send(Request $request, string $invoice, CompanyDirectory $companies, AuditLog $audit): RedirectResponse
+    {
+        $i = Invoice::query()->findOrFail($invoice);
+        abort_if($i->isDraft(), 422);
+        $allowed = $companies->invoiceRecipients($i->company_id);
+        // Only known contacts, so a document never goes to a mistyped address.
+        $request->validate(['recipients' => ['required', 'list', 'min:1', 'max:10'], 'recipients.*' => ['string', 'distinct', Rule::in($allowed)]]);
+        $user = $this->currentUser($request);
+        foreach (array_filter($request->array('recipients'), is_string(...)) as $address) {
+            $delivery = InvoiceDelivery::query()->create(['invoice_id' => $i->id, 'recipient' => $address, 'status' => 'queued', 'sent_by' => $user->id]);
+            SendInvoice::dispatch($i->tenant_id, $delivery->id);
+        }
+        $audit->record('invoices.sent', $i, ['number' => $i->number, 'recipients' => count($request->array('recipients'))], $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('invoices:send.queued')]);
+
+        return to_route('invoices.show', $invoice);
+    }
+
     public function fiscal(Request $request, string $invoice, Invoices $invoices): RedirectResponse
     {
         $request->validate(['fiscal_reference' => ['required', 'string', 'max:120'], 'reason' => ['nullable', 'string', 'max:500']]);
@@ -157,16 +180,15 @@ class InvoiceController extends Controller
     }
 
     /** Only issued documents have a PDF: a draft must not look like an invoice. */
-    public function pdf(Request $request, string $invoice, Pdf $pdf, AuditLog $audit): HttpResponse
+    public function pdf(Request $request, string $invoice, InvoicePdf $pdf, AuditLog $audit): HttpResponse
     {
         $i = Invoice::query()->findOrFail($invoice);
         abort_if($i->isDraft(), 404);
 
-        $content = $i->content();
+        $file = $pdf->render($i);
         $audit->record('invoices.downloaded', $i, ['number' => $i->number], $this->currentUser($request));
-        $format = $content['format'] ?? null;
 
-        return response($pdf->render('invoices::invoice', ['i' => $content], $i->locale, (string) $i->number, is_array($content['labels'] ?? null) ? $content['labels'] : [], is_string($format) ? $format : null), 200, [
+        return response($file, 200, [
             'Content-Type' => 'application/pdf', 'Content-Disposition' => "attachment; filename=\"{$i->number}.pdf\"", 'Cache-Control' => 'private, no-store',
         ]);
     }

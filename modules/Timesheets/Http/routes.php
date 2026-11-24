@@ -10,6 +10,7 @@ use App\Http\Middleware\SetLocale;
 use Illuminate\Support\Facades\Route;
 use Modules\Timesheets\Http\ApprovalController;
 use Modules\Timesheets\Http\PeriodController;
+use Modules\Timesheets\Http\TimerController;
 use Modules\Timesheets\Http\TimesheetApiController;
 use Modules\Timesheets\Http\TimesheetController;
 
@@ -17,6 +18,9 @@ use Modules\Timesheets\Http\TimesheetController;
 Route::middleware(['web', 'auth', 'verified', 'module:timesheets'])->prefix('timesheets')->name('timesheets.')->group(function () {
     Route::get('/', [TimesheetController::class, 'index'])->middleware('permission:timesheets.view')->name('index');
     Route::put('cells', [TimesheetController::class, 'book'])->middleware(['permission:timesheets.book', 'throttle:240,1'])->name('book');
+    Route::post('timer', [TimerController::class, 'start'])->middleware(['permission:timesheets.book', 'throttle:60,1'])->name('timer.start');
+    Route::post('timer/stop', [TimerController::class, 'stop'])->middleware('permission:timesheets.book')->name('timer.stop');
+    Route::delete('timer', [TimerController::class, 'discard'])->middleware('permission:timesheets.book')->name('timer.discard');
     Route::post('submit', [TimesheetController::class, 'submit'])->middleware('permission:timesheets.book')->name('submit');
 
     // Project leads approve in their projects only: the query holds the right, not the route.

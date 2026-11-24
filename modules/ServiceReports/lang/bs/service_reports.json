@@ -38,5 +38,6 @@
     "module_name": "Servisni izvještaji",
     "new": "Novi izvještaj",
     "pdf": "PDF",
-    "title": "Servisni izvještaji"
+    "title": "Servisni izvještaji",
+    "xlsx": "XLSX"
 }

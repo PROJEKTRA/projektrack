@@ -14,6 +14,7 @@ import { formatDay } from '@/i18n/formats';
 import { t } from '@/i18n/strings';
 import { formatHours, parseHours } from '@/lib/hours';
 import { requestJson } from '@/lib/requestJson';
+import TimerBar from '../components/TimerBar.vue';
 
 type Entry = {
     id: string;
@@ -45,6 +46,7 @@ const props = defineProps<{
     entries: Entry[];
     dayWarning: number;
     canBook: boolean;
+    timer: { work_package_id: string; started_at: string; name: string } | null;
 }>();
 
 defineOptions({
@@ -285,6 +287,19 @@ const current = computed(() => (selected.value ? cells[selected.value] : null));
                 >
             </div>
         </div>
+
+        <TimerBar
+            v-if="canBook && (timer || bookable.length > 0)"
+            :timer="timer"
+            :options="
+                packages
+                    .filter((p) => bookable.includes(p.id))
+                    .map((p) => ({
+                        value: p.id,
+                        text: `${p.project}: ${p.code} ${p.name}`,
+                    }))
+            "
+        />
 
         <p v-if="packages.length === 0" class="text-muted-foreground">
             {{ $t('timesheets:empty') }}

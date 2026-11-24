@@ -55,5 +55,11 @@
       "scope": "projects:read",
       "label_string": "projects:scopes.read"
     }
+  ],
+  "notifications": [
+    {
+      "type": "projects.budget",
+      "label_string": "projects:notice.budget_label"
+    }
   ]
 }

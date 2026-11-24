@@ -74,6 +74,8 @@
     "no_category": "Bez kategorije",
     "no_contract": "Bez ugovora",
     "none": "Još nema",
+    "notice.budget": "Ugovor {contract} je iskoristio {percent} % sati.",
+    "notice.budget_label": "Budžet ugovora",
     "previous": "Prethodna",
     "remove": "Ukloni",
     "save": "Sačuvaj",

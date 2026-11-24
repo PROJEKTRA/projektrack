@@ -27,8 +27,11 @@ use LogicException;
  * @property int $minutes_valued
  * @property int $amount_minor
  * @property CarbonInterface $valued_at
+ * @property string|null $rule_rate
+ * @property string|null $rule_currency
+ * @property string|null $fx_rate
  */
-#[Fillable(['time_entry_id', 'rate_rule_id', 'source', 'rate', 'currency', 'minutes_valued', 'amount_minor', 'valued_at'])]
+#[Fillable(['time_entry_id', 'rate_rule_id', 'source', 'rate', 'currency', 'minutes_valued', 'amount_minor', 'valued_at', 'rule_rate', 'rule_currency', 'fx_rate'])]
 class Valuation extends Model
 {
     use BelongsToTenant, HasUlids;

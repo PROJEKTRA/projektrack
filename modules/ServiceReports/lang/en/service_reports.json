@@ -38,5 +38,6 @@
     "module_name": "Service reports",
     "new": "New report",
     "pdf": "PDF",
-    "title": "Service reports"
+    "title": "Service reports",
+    "xlsx": "XLSX"
 }

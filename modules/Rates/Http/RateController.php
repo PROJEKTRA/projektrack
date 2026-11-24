@@ -7,10 +7,12 @@
 
 namespace Modules\Rates\Http;
 
+use App\Audit\AuditLog;
 use App\Domain\Money\Amount;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,6 +21,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Crm\Contracts\CompanyDirectory;
 use Modules\Projects\Contracts\ProjectDirectory;
+use Modules\Rates\Domain\ExchangeRate;
 use Modules\Rates\Domain\RateRule;
 use Modules\Rates\Domain\Rates;
 
@@ -42,6 +45,7 @@ class RateController extends Controller
                 'id' => $r->id, 'scope' => $r->scope, 'name' => $names[$r->scope_id ?? ''] ?? '', 'rate' => $r->rate, 'currency' => $r->currency,
                 'valid_from' => $r->valid_from->toDateString(), 'valid_to' => $r->valid_to?->toDateString(),
             ])->all(),
+            'exchange' => ExchangeRate::query()->orderByDesc('rate_date')->orderBy('from_currency')->limit(50)->get()->map(fn (ExchangeRate $e): array => ['id' => $e->id, 'from' => $e->from_currency, 'to' => $e->to_currency, 'rate' => $e->rate, 'date' => $e->rate_date->toDateString()])->all(),
             'scopes' => self::OFFERED,
             'choices' => [
                 'tenant' => [],
@@ -75,6 +79,30 @@ class RateController extends Controller
             throw ValidationException::withMessages(['scope_id' => __('rates:errors.scope')]);
         }
         $rates->add($scope, $id, str_replace(',', '.', $request->string('rate')->toString()), $request->string('currency')->toString(), $request->string('valid_from')->toString(), $this->currentUser($request));
+
+        return to_route('rates.index');
+    }
+
+    /** A stored exchange rate of a day. BAM and EUR are fixed by law and not editable. */
+    public function exchange(Request $request, TenantContext $tenant, AuditLog $audit): RedirectResponse
+    {
+        $currency = ['required', 'string', 'regex:/^[A-Z]{3}\z/', fn (string $attribute, mixed $value, callable $fail) => is_string($value) && Amount::isCurrency($value) ?: $fail(__('rates:errors.currency'))];
+        $request->validate([
+            'from_currency' => $currency, 'to_currency' => [...$currency, 'different:from_currency'],
+            'rate' => ['required', 'string', 'regex:/^\d{1,9}([.,]\d{1,10})?\z/'],
+            'rate_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.now($tenant->current()->timezone)->toDateString()],
+        ]);
+        $pair = [$request->string('from_currency')->toString(), $request->string('to_currency')->toString()];
+        $rate = str_replace(',', '.', $request->string('rate')->toString());
+        $date = $request->string('rate_date')->toString();
+        if (array_diff($pair, ['EUR', 'BAM']) === []) {
+            throw ValidationException::withMessages(['rate' => __('rates:errors.fixed')]);
+        }
+        if (! BigDecimal::of($rate)->isPositive() || ExchangeRate::query()->where('from_currency', $pair[0])->where('to_currency', $pair[1])->whereDate('rate_date', $date)->exists()) {
+            throw ValidationException::withMessages(['rate' => __('rates:errors.exchange')]);
+        }
+        $row = ExchangeRate::query()->create(['from_currency' => $pair[0], 'to_currency' => $pair[1], 'rate' => $rate, 'rate_date' => $date, 'created_by' => $this->currentUser($request)->id]);
+        $audit->record('rates.exchange.added', $row, ['pair' => implode('/', $pair), 'rate' => $rate, 'date' => $date], $this->currentUser($request));
 
         return to_route('rates.index');
     }

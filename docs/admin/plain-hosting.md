@@ -4,7 +4,7 @@ For operators of shared or plain AMP hosting (S-0925): Apache, PHP, MySQL or Mar
 
 ## Requirements
 
-- PHP 8.4 or newer, for the web and on the command line, with the extensions bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, session, sodium, tokenizer and xml. The installation names a missing one.
+- PHP 8.4 or newer, for the web and on the command line, with the extensions bcmath, ctype, curl, dom, fileinfo, gd, intl, mbstring, openssl, pdo, pdo_mysql, session, sodium, tokenizer, xml, xmlreader, xmlwriter and zip. The installation names a missing one.
 - MySQL 8.4 or MariaDB 11.4 with an empty database and an account that may create tables in it.
 - Apache with `mod_rewrite` and `AllowOverride`. The domain must point to a subfolder (`public/`).
 - Shell access (SSH) and a cron entry every minute. A web installer does not exist yet.

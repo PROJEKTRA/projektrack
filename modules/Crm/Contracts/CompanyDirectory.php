@@ -22,6 +22,9 @@ interface CompanyDirectory
      */
     public function billing(string $id, string $onDate): ?array;
 
+    /** @return list<string> addresses of contacts that receive invoices */
+    public function invoiceRecipients(string $id): array;
+
     public function isActive(string $id): bool;
 
     /**

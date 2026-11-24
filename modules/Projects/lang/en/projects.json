@@ -74,6 +74,8 @@
     "no_category": "No category",
     "no_contract": "No contract",
     "none": "None yet",
+    "notice.budget": "Contract {contract} has used {percent} % of its hours.",
+    "notice.budget_label": "Contract budget",
     "previous": "Previous",
     "remove": "Remove",
     "save": "Save",

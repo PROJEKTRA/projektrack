@@ -23,6 +23,7 @@ Route::middleware(['web', 'auth', 'verified', 'module:invoices', 'permission:inv
         Route::post('finalize', 'finalize')->middleware(['permission:invoices.finalize', RequirePassword::class])->name('finalize');
         Route::post('cancel', 'cancel')->middleware(['permission:invoices.cancel', RequirePassword::class])->name('cancel');
         Route::post('payments', 'pay')->middleware('permission:invoices.payments.record')->name('pay');
+        Route::post('send', 'send')->middleware(['permission:invoices.finalize', 'throttle:20,1'])->name('send');
         Route::put('fiscal-reference', 'fiscal')->middleware(['permission:invoices.finalize', RequirePassword::class])->name('fiscal');
     });
 });

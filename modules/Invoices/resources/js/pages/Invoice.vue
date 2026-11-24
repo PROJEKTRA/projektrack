@@ -68,6 +68,13 @@ const props = defineProps<{
     invoice: InvoiceData;
     today: string;
     confirmed: boolean;
+    recipients: string[];
+    deliveries: {
+        id: string;
+        recipient: string;
+        status: string;
+        at: string | null;
+    }[];
     can: { create: boolean; finalize: boolean; cancel: boolean; pay: boolean };
 }>();
 
@@ -94,15 +101,23 @@ function plain(value: string | null, least: number): string {
 const isDraft = computed(() => props.invoice.status === 'draft');
 const money = (minor: number) => formatMoney(minor, props.invoice.currency);
 const dialog = ref<
-    '' | 'edit' | 'finalize' | 'cancel' | 'discard' | 'pay' | 'fiscal'
+    '' | 'edit' | 'finalize' | 'cancel' | 'discard' | 'pay' | 'fiscal' | 'send'
 >('');
 const shown = (name: typeof dialog.value) =>
     computed({
         get: () => dialog.value === name,
         set: (on) => (dialog.value = on ? name : ''),
     });
-const [editing, finalizing, cancelling, discarding, paying, fiscalOpen] = (
-    ['edit', 'finalize', 'cancel', 'discard', 'pay', 'fiscal'] as const
+const [
+    editing,
+    finalizing,
+    cancelling,
+    discarding,
+    paying,
+    fiscalOpen,
+    sending,
+] = (
+    ['edit', 'finalize', 'cancel', 'discard', 'pay', 'fiscal', 'send'] as const
 ).map(shown);
 
 const edit = useForm({ service_from: '', service_to: '', lines: [] as Line[] });
@@ -118,6 +133,7 @@ function guarded(name: 'finalize' | 'cancel' | 'fiscal'): void {
 }
 
 const pay = useForm({ amount: '', paid_on: props.today, note: '' });
+const send = useForm({ recipients: [...props.recipients] });
 const fiscal = useForm({ fiscal_reference: '', reason: '' });
 const editErrors = computed(
     () => edit.errors as Record<string, string | undefined>,
@@ -232,6 +248,13 @@ function openEdit(): void {
                             download
                             >{{ $t('invoices:pdf') }}</a
                         ></Button
+                    >
+                    <Button
+                        v-if="can.finalize"
+                        variant="secondary"
+                        data-test="send"
+                        @click="dialog = 'send'"
+                        >{{ $t('invoices:send.title') }}</Button
                     >
                     <Button
                         v-if="can.finalize"
@@ -359,6 +382,17 @@ function openEdit(): void {
         </div>
         <p v-for="n in invoice.notices" :key="n" class="text-sm">{{ n }}</p>
 
+        <section v-if="deliveries.length" class="space-y-2">
+            <h2 class="font-medium">{{ $t('invoices:send.history') }}</h2>
+            <ul class="text-sm">
+                <li v-for="d in deliveries" :key="d.id">
+                    <bdi>{{
+                        `${d.recipient} (${$t(`invoices:send.status_${d.status}`)})`
+                    }}</bdi>
+                </li>
+            </ul>
+        </section>
+
         <section v-if="invoice.payments.length" class="space-y-2">
             <h2 class="font-medium">{{ $t('invoices:payments') }}</h2>
             <ul class="text-sm">
@@ -458,6 +492,31 @@ function openEdit(): void {
             :label="$t('invoices:field.note')"
             :errors="payErrors"
         />
+    </FormDialog>
+    <FormDialog
+        v-model:open="sending"
+        :title="$t('invoices:send.title')"
+        :description="$t('invoices:send.description')"
+        :save="$t('invoices:send.title')"
+        :processing="send.processing"
+        @submit="send.post(InvoiceController.send.url(invoice.id), close)"
+    >
+        <p
+            v-if="recipients.length === 0"
+            class="text-sm text-destructive sm:col-span-2"
+        >
+            {{ $t('invoices:send.none') }}
+        </p>
+        <label
+            v-for="r in recipients"
+            :key="r"
+            class="flex items-center gap-2 text-sm sm:col-span-2"
+            ><input
+                v-model="send.recipients"
+                type="checkbox"
+                :value="r"
+            /><bdi>{{ r }}</bdi></label
+        >
     </FormDialog>
     <FormDialog
         v-model:open="fiscalOpen"
