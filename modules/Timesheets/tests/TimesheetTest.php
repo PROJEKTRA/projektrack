@@ -343,6 +343,93 @@ it('never reaches another tenant', function () {
     });
 });
 
+it('keeps one entry per cell when the submitted time comes back beside a new draft', function (int $minutes) {
+    book($this->employee, 60)->assertOk();
+    app(Timesheets::class)->submitWeek($this->employee, '2026-11-03');
+    book($this->employee, 30)->assertOk();
+    $submitted = TimeEntry::query()->where('status', 'submitted')->sole();
+    $this->actingAs(timeUser('controller'))->post('/timesheets/approvals', ['ids' => [$submitted->id], 'decision' => 'reject', 'reason' => 'wrong'])->assertSessionHasNoErrors();
+
+    // Nothing booked is lost: both are one entry now.
+    expect((int) TimeEntry::query()->whereIn('status', TimeEntry::EDITABLE)->sole()->duration_minutes)->toBe(90);
+
+    // Setting the cell sets it: nothing the owner may change stays beside the new value.
+    book($this->employee, $minutes)->assertOk();
+    expect((int) TimeEntry::query()->whereIn('status', TimeEntry::EDITABLE)->sum('duration_minutes'))->toBe($minutes);
+})->with(['changed' => 45, 'emptied' => 0]);
+
+it('refuses decisions in a locked month', function (array $decision) {
+    book($this->employee, 60)->assertOk();
+    app(Timesheets::class)->submitWeek($this->employee, '2026-11-03');
+    $entry = TimeEntry::query()->sole();
+    $controller = timeUser('controller');
+    app(Timesheets::class)->setLocked($controller, '2026-11', true, null);
+
+    $this->actingAs($controller)->post('/timesheets/approvals', ['ids' => [$entry->id], ...$decision])->assertSessionHasErrors('date');
+    expect($entry->refresh()->status)->toBe('submitted');
+})->with(['approve' => [['decision' => 'approve']], 'reject' => [['decision' => 'reject', 'reason' => 'wrong']]]);
+
+it('sends no budget notice to a lead who left the project', function () {
+    $contract = Contract::query()->create(['project_id' => $this->project->id, 'number' => 'SOW', 'contract_type' => 'time_and_material', 'status' => 'active', 'rounding_minutes' => 1, 'minimum_minutes' => 0, 'budget_minutes' => 100]);
+    $this->package->update(['contract_id' => $contract->id]);
+    $former = timeUser('project_lead');
+    timeJoin($this->project, $former, 'project_lead');
+    ProjectMember::query()->where('user_id', $former->id)->update(['left_on' => '2026-10-31']);
+    $lead = timeUser('project_lead');
+    timeJoin($this->project, $lead, 'project_lead');
+
+    approved(80);
+    $count = fn (User $u): int => AppNotification::query()->where('user_id', $u->id)->where('type', 'projects.budget')->count();
+    expect($count($lead))->toBe(1)->and($count($former))->toBe(0);
+});
+
+it('takes the limits of a day and the leap day', function (int $minutes, string $date, int $status) {
+    book($this->employee, $minutes, $date)->assertStatus($status);
+    expect(TimeEntry::query()->count())->toBe($status === 200 ? 1 : 0);
+})->with([
+    'a whole day' => [1440, '2026-11-03', 200], 'one minute' => [1, '2026-11-03', 200], 'leap day' => [60, '2028-02-29', 200],
+    'no leap year' => [60, '2027-02-29', 422], 'before 2000' => [60, '2000-01-01', 422], 'after 2099' => [60, '2100-01-01', 422],
+]);
+
+it('does not count bookings against the limits of other pages', function () {
+    // 240 cells a minute are allowed; saving the profile has its own limit of 30.
+    foreach (range(1, 30) as $minutes) {
+        book($this->employee, $minutes)->assertOk();
+    }
+    $this->patch('/settings/profile', ['name' => 'Renamed Person', 'email' => $this->employee->email])->assertRedirect();
+    expect($this->employee->refresh()->name)->toBe('Renamed Person');
+});
+
+it('lets nobody correct the own time', function () {
+    $controller = timeUser('controller');
+    timeJoin($this->project, $controller, 'project_member');
+    $entry = app(Timesheets::class)->book($controller, $this->package->id, '2026-11-03', 60, null);
+    app(Timesheets::class)->submitWeek($controller, '2026-11-03');
+    app(Timesheets::class)->approve(timeUser('admin'), [$entry->id]);
+
+    $this->actingAs($controller)->post("/timesheets/entries/{$entry->id}/corrections", ['minutes' => 600, 'reason' => 'more'])->assertForbidden();
+    expect(TimeEntry::query()->sole()->duration_minutes)->toBe(60);
+});
+
+it('allows no more than 24 hours on a day by correction', function () {
+    $second = app(WorkBreakdown::class)->add($this->project, ['name' => 'B', 'billable' => true], null);
+    $entry = approved(1000);
+    book($this->employee, 400, package: $second->id)->assertOk();
+    $correct = fn (int $minutes): TestResponse => $this->actingAs(timeUser('controller'))->post("/timesheets/entries/{$entry->id}/corrections", ['minutes' => $minutes, 'reason' => 'x']);
+
+    $correct(1041)->assertSessionHasErrors('minutes');
+    $correct(1040)->assertSessionHasNoErrors();
+    expect((int) TimeEntry::query()->sum('duration_minutes'))->toBe(1440);
+});
+
+it('measures whole days of 23 and 25 hours', function (string $from, string $to, array $parts) {
+    expect(Timers::split(CarbonImmutable::parse($from), CarbonImmutable::parse($to), 'Europe/Sarajevo'))->toBe($parts);
+})->with([
+    'clocks forward' => ['2026-03-28 23:00:00Z', '2026-03-29 22:00:00Z', ['2026-03-29' => 1380]],
+    'clocks back' => ['2026-10-24 22:00:00Z', '2026-10-25 23:00:00Z', ['2026-10-25' => 1500]],
+    'over the leap day' => ['2028-02-28 22:30:00Z', '2028-02-29 23:30:00Z', ['2028-02-28' => 30, '2028-02-29' => 1440, '2028-03-01' => 30]],
+]);
+
 it('serves the API for the own time', function () {
     $admin = timeUser('admin');
     timeJoin($this->project, $admin, 'project_member');

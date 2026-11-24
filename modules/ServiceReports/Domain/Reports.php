@@ -50,6 +50,15 @@ final class Reports
         $packages = $this->projects->workPackages(array_values(array_unique(array_column($rows, 'work_package_id'))));
         $values = $withAmounts ? $this->values->of(array_column($rows, 'id')) : [];
 
+        // Two people with the same name stay two.
+        $people = [];
+        $taken = [];
+        foreach ($rows as $row) {
+            if (! isset($people[$row['user_id']])) {
+                $taken[$row['user']] = ($taken[$row['user']] ?? 0) + 1;
+                $people[$row['user_id']] = $taken[$row['user']] === 1 ? $row['user'] : "{$row['user']} ({$taken[$row['user']]})";
+            }
+        }
         $lines = [];
         $totals = ['package' => [], 'user' => []];
         $minutes = 0;
@@ -59,8 +68,8 @@ final class Reports
         foreach ($rows as $row) {
             $package = trim(($packages[$row['work_package_id']]['code'] ?? '').' '.($packages[$row['work_package_id']]['name'] ?? ''));
             $value = $values[$row['id']] ?? null;
-            $line = ['date' => $row['date'], 'user' => $row['user'], 'package' => $package, 'minutes' => $row['billable_minutes'], 'description' => $row['description'], 'correction' => $row['correction']];
-            foreach (['package' => $package, 'user' => $row['user']] as $by => $key) {
+            $line = ['date' => $row['date'], 'user' => $people[$row['user_id']], 'package' => $package, 'minutes' => $row['billable_minutes'], 'description' => $row['description'], 'correction' => $row['correction']];
+            foreach (['package' => $package, 'user' => $people[$row['user_id']]] as $by => $key) {
                 $totals[$by][$key] = ($totals[$by][$key] ?? 0) + $row['billable_minutes'];
             }
             $minutes += $row['billable_minutes'];

@@ -11,6 +11,8 @@ use App\Authorization\Permissions;
 use App\Models\ProjectRole;
 use App\Models\User;
 use App\Support\Lists;
+use App\Tenancy\TenantContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Modules\Projects\Contracts\BudgetWatch;
@@ -50,7 +52,11 @@ final class Budgets implements BudgetWatch
     private function recipients(Contract $contract): Collection
     {
         $lead = ProjectRole::query()->where('key', 'project_lead')->first();
-        $leads = Lists::strings(ProjectMember::query()->where('project_id', $contract->project_id)->where('project_role_id', $lead?->id)->pluck('user_id'));
+        $today = now(app(TenantContext::class)->current()->timezone)->toDateString();
+        $leads = Lists::strings(ProjectMember::query()->where('project_id', $contract->project_id)->where('project_role_id', $lead?->id)
+            ->where(fn (Builder $q) => $q->whereNull('joined_on')->orWhereDate('joined_on', '<=', $today))
+            ->where(fn (Builder $q) => $q->whereNull('left_on')->orWhereDate('left_on', '>=', $today))
+            ->pluck('user_id'));
 
         return User::query()->where('user_type', '!=', 'portal')->get()
             ->filter(fn (User $u): bool => in_array($u->id, $leads, true) || $this->permissions->allows($u, 'projects.contracts.manage'))->values();

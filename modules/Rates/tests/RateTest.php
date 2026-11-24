@@ -189,6 +189,139 @@ it('keeps cost apart, values every worked minute and shows the margin to those w
     $this->post('/rates/'.RateRule::query()->where('kind', 'cost')->sole()->id.'/end', ['valid_to' => '2026-12-31'])->assertNotFound();
 });
 
+/** @return array<string, mixed>|null the first row of the margin page */
+function marginRow(string $from = '2026-11-01', string $to = '2026-11-30'): ?array
+{
+    return test()->actingAs(test()->controller)->get("/rates/margin?from={$from}&to={$to}")->assertOk()->inertiaProps('rows.0');
+}
+
+function costRate(string $rate, string $currency = 'EUR'): RateRule
+{
+    return app(Rates::class)->add('tenant', null, $rate, $currency, '2026-01-01', test()->controller, 'cost');
+}
+
+it('shows no margin while a value or a cost is missing', function () {
+    approve_('2026-11-03', 60);
+    $short = fn (): array => array_values(array_intersect_key((array) marginRow(), array_flip(['sales_minor', 'cost_minor', 'margin_minor', 'without_sales', 'without_cost'])));
+    $value = fn () => $this->actingAs($this->controller)->post('/rates/margin/value', ['from' => '2026-11-01', 'to' => '2026-11-30'])->assertSessionHasNoErrors();
+    expect($short())->toBe([0, 0, null, 1, 1]);
+
+    costRate('40');
+    $value();
+    expect($short())->toBe([0, 4000, null, 1, 0]);
+
+    rate('tenant', null, '100');
+    $value();
+    expect($short())->toBe([10000, 4000, 6000, 0, 0]);
+    $value();
+    expect(Valuation::query()->count())->toBe(2);
+});
+
+it('shows no margin where only the cost is missing', function () {
+    rate('tenant', null, '100');
+    approve_('2026-11-03', 60);
+    $row = marginRow();
+    expect([$row['sales_minor'], $row['margin_minor'], $row['without_sales'], $row['without_cost']])->toBe([10000, null, 0, 1]);
+});
+
+it('never adds values of another currency to the margin', function () {
+    rate('tenant', null, '100');
+    costRate('40');
+    approve_('2026-11-03', 60);
+    expect(marginRow()['margin_minor'])->toBe(6000);
+
+    // The project changes its currency after the value was frozen; the next entry is valued in the new one.
+    $this->project->update(['currency' => 'BAM']);
+    approve_('2026-11-04', 60);
+    $row = marginRow();
+    expect([$row['currency'], $row['minutes'], $row['sales_minor'], $row['cost_minor'], $row['margin_minor'], $row['without_sales'], $row['without_cost']])
+        ->toBe(['BAM', 120, 19558, 7823, null, 1, 1]);
+    expect(Valuation::query()->where('kind', 'sales')->orderBy('amount_minor')->pluck('currency')->all())->toBe(['EUR', 'BAM']);
+});
+
+it('converts cost and value with the fixed rate of BAM and EUR', function () {
+    rate('tenant', null, '100');
+    costRate('78.2332', 'BAM');
+    approve_('2026-11-03', 90);
+    $row = marginRow();
+    expect([$row['sales_minor'], $row['cost_minor'], $row['margin_minor']])->toBe([15000, 6000, 9000]);
+
+    $this->project->update(['currency' => 'BAM']);
+    $bam = approve_('2026-11-04', 60);
+    $sales = Valuation::query()->where('kind', 'sales')->where('time_entry_id', $bam->id)->sole();
+    // 100.00 EUR are 195.583 BAM, billed as 195.58.
+    expect([$sales->rate, $sales->amount_minor, (int) $sales->rule_rate, $sales->rule_currency, $sales->fx_rate])->toBe(['195.5830', 19558, 100, 'EUR', '1.9558300000']);
+});
+
+it('counts the last day of the margin and not the day after', function () {
+    rate('tenant', null, '100');
+    costRate('40');
+    approve_('2026-10-31', 60);
+    approve_('2026-11-01', 30);
+
+    $minutes = fn (string $from, string $to): ?int => marginRow($from, $to)['minutes'] ?? null;
+    expect($minutes('2026-10-01', '2026-10-31'))->toBe(60)
+        ->and($minutes('2026-11-01', '2026-11-30'))->toBe(30)
+        ->and($minutes('2026-10-31', '2026-10-31'))->toBe(60)
+        ->and($minutes('2026-10-31', '2026-11-01'))->toBe(90)
+        ->and($minutes('2026-10-01', '2026-10-30'))->toBeNull()
+        ->and($minutes('2026-11-02', '2026-11-30'))->toBeNull();
+});
+
+it('counts the leap day of the margin', function () {
+    rate('tenant', null, '100');
+    costRate('40');
+    approve_('2028-02-29', 60);
+
+    expect(marginRow('2028-02-01', '2028-02-29')['margin_minor'])->toBe(6000)
+        ->and(marginRow('2028-02-29', '2028-02-29')['minutes'])->toBe(60)
+        ->and(marginRow('2028-02-01', '2028-02-28'))->toBeNull()
+        ->and(marginRow('2028-03-01', '2028-03-31'))->toBeNull();
+});
+
+it('takes corrections into the margin with the frozen rate', function () {
+    rate('tenant', null, '100');
+    costRate('40');
+    $entry = approve_('2026-11-03', 60);
+    app(Rates::class)->add('project', $this->project->id, '500', 'EUR', '2026-01-01', $this->controller);
+    app(Timesheets::class)->correct($this->controller, $entry->refresh(), 30, 'typing error');
+
+    $row = marginRow();
+    expect([$row['minutes'], $row['sales_minor'], $row['cost_minor'], $row['margin_minor']])->toBe([30, 5000, 2000, 3000]);
+});
+
+it('shows no margin at a fixed price', function () {
+    rate('tenant', null, '100');
+    costRate('40');
+    approve_('2026-11-03', 60);
+    $this->project->update(['billing_model' => 'fixed_price']);
+    expect(marginRow()['margin_minor'])->toBeNull();
+});
+
+it('keeps margins and their values in the tenant', function () {
+    $entry = approve_('2026-11-03', 60);
+    rate('tenant', null, '100');
+    $other = Tenant::factory()->withDomain('other.test')->create();
+    $foreign = app(TenantContext::class)->run($other, function (): User {
+        app(TenantModules::class)->enable('rates');
+        app()->forgetScopedInstances();
+        $user = rateUser('controller');
+        app(Rates::class)->add('tenant', null, '999', 'EUR', '2026-01-01', $user);
+
+        return $user;
+    });
+    app()->forgetScopedInstances();
+
+    $this->actingAs($foreign)->get('http://other.test/rates/margin?from=2026-11-01&to=2026-11-30')->assertOk()->assertInertia(fn ($p) => $p->has('rows', 0));
+    $this->post('http://other.test/rates/margin/value', ['from' => '2026-11-01', 'to' => '2026-11-30'])->assertSessionHasNoErrors();
+    app(TenantContext::class)->set($this->tenant);
+    expect(Valuation::query()->count())->toBe(0);
+
+    app()->forgetScopedInstances();
+    $this->actingAs($this->controller)->post('http://localhost/rates/margin/value', ['from' => '2026-11-01', 'to' => '2026-11-30'])->assertSessionHasNoErrors();
+    expect(app(TimeValues::class)->of([$entry->id])[$entry->id]['amount_minor'])->toBe(10000);
+});
+
 it('is for those who manage rates, in their tenant', function () {
     $this->actingAs($this->employee)->get('/rates')->assertForbidden();
     $this->actingAs(rateUser('project_lead'))->get('/rates')->assertForbidden();

@@ -141,6 +141,23 @@ it('refuses wrong projects', function (array $changes, string $field) {
     'status of a new project' => [['status' => 'closed'], 'status'],
 ]);
 
+it('refuses a currency that does not exist', function () {
+    $this->actingAs(projectUser('controller'))->post('/projects', projectInput(['currency' => 'XXQ']))->assertSessionHasErrors('currency');
+    expect(Project::query()->count())->toBe(0);
+});
+
+it('takes the limits of budget and threshold', function (array $changes, bool $valid) {
+    $response = $this->actingAs(projectUser('controller'))->post('/projects', projectInput($changes));
+    $valid ? $response->assertSessionHasNoErrors() : $response->assertSessionHasErrors(array_key_first($changes));
+    expect(Project::query()->count())->toBe($valid ? 1 : 0);
+})->with([
+    [['budget_minutes' => 60000000], true], [['budget_minutes' => 60000001], false], [['budget_minutes' => '1.5'], false],
+    [['budget_minor' => 1000000000000], true], [['budget_minor' => 1000000000001], false],
+    [['amber_percent' => 100], true], [['amber_percent' => 101], false], [['amber_percent' => 0], false],
+    [['end_date' => '2028-02-29'], true], [['end_date' => '2027-02-29'], false], [['end_date' => '2026-10-01'], true],
+    [['name' => str_repeat('x', 192)], false],
+]);
+
 it('manages the team and never grants more than one holds', function () {
     $lead = projectUser('project_lead');
     $project = newProject($lead);

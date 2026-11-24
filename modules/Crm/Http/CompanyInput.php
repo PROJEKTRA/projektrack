@@ -7,6 +7,7 @@
 
 namespace Modules\Crm\Http;
 
+use App\Domain\Money\Amount;
 use App\I18n\Locales;
 use App\Models\User;
 use App\Tenancy\TenantContext;
@@ -70,7 +71,7 @@ final class CompanyInput
             'kind' => ['required', Rule::in(Company::KINDS)],
             'status' => ['sometimes', Rule::in(Company::STATUSES)],
             'document_locale' => ['required', 'string', Rule::in($this->locales->available())],
-            'currency' => ['required', 'string', 'regex:/^[A-Z]{3}\z/'],
+            'currency' => ['required', 'string', 'regex:/^[A-Z]{3}\z/', fn (string $attribute, mixed $value, callable $fail) => is_string($value) && Amount::isCurrency($value) ?: $fail(__('validation.in', ['attribute' => $attribute]))],
             'payment_days' => ['required', 'integer', 'between:0,365'],
             'einvoice_format' => ['required', Rule::in(Company::EINVOICE_FORMATS)],
             'leitweg_id' => ['nullable', 'string', 'max:46', function (string $attribute, mixed $value, callable $fail): void {

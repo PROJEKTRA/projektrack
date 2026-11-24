@@ -78,6 +78,8 @@ GitHub cannot enforce branch or tag rules on this repository's plan. Anyone with
 
 ## Tests before production
 
+Every major release has a QA report, `docs/qa/X.Y.md` (`docs/qa/TEMPLATE.md`): test, record the findings, repair each with a test, retest. The release workflow refuses X.Y.0 without `Decision: approved` in it.
+
 No release reaches a production system unless all five kinds passed on its commit. CI runs them on every pull request and on `main`; the release workflow refuses a commit whose CI on `main` is not green.
 
 | Kind | CI job |

@@ -101,6 +101,17 @@ it('saves nothing when one part is wrong', function (array $changes, string $fie
     'unknown key' => [['tax' => ['tax_status' => 'private', 'country_code' => 'BA', 'tenant_id' => 'x']], 'tax'],
 ]);
 
+it('refuses a currency that does not exist', function () {
+    $this->actingAs(crmUser('controller'))->post('/crm/companies', companyInput(['currency' => 'XXQ']))->assertSessionHasErrors('currency');
+    expect(Company::query()->count())->toBe(0);
+});
+
+it('takes the limits of payment days', function (mixed $days, bool $valid) {
+    $response = $this->actingAs(crmUser('controller'))->post('/crm/companies', companyInput(['payment_days' => $days]));
+    $valid ? $response->assertSessionHasNoErrors() : $response->assertSessionHasErrors('payment_days');
+    expect(Company::query()->count())->toBe($valid ? 1 : 0);
+})->with([[0, true], [365, true], [366, false], [-1, false], ['14.5', false]]);
+
 it('keeps the history of the tax profile', function () {
     $user = crmUser('controller');
     $this->travelTo('2026-11-24 10:00:00');
