@@ -27,7 +27,7 @@ class InvoicesServiceProvider extends ServiceProvider
             if (! $user->can('invoices.view')) {
                 return [];
             }
-            $open = fn () => Invoice::query()->where('kind', 'invoice')->where('status', 'finalized')->whereColumn('paid_minor', '<', 'gross_minor');
+            $open = fn () => Invoice::query()->where('kind', 'invoice')->where('status', 'finalized')->whereRaw('paid_minor < gross_minor + credited_minor');
             $overdue = $open()->whereDate('due_date', '<', now($this->app->make(TenantContext::class)->current()->timezone)->toDateString())->count();
 
             return [

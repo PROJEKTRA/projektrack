@@ -8,6 +8,8 @@
 namespace Modules\Invoices\Http;
 
 use App\Audit\AuditLog;
+use App\Domain\Tax\TaxCase;
+use App\Domain\Tax\TaxEngine;
 use App\Http\Controllers\Controller;
 use App\Tenancy\TenantContext;
 use Brick\Math\Exception\MathException;
@@ -44,7 +46,7 @@ class InvoiceController extends Controller
         $open = $request->query('show') === 'open';
         $query = Invoice::query()->orderByRaw("case when status = 'draft' then 0 else 1 end")->orderByDesc('number')->orderByDesc('created_at');
         if ($open) {
-            $query->where('kind', 'invoice')->where('status', 'finalized')->whereColumn('paid_minor', '<', 'gross_minor');
+            $query->where('kind', 'invoice')->where('status', 'finalized')->whereRaw('paid_minor < gross_minor + credited_minor');
         }
         $page = $query->paginate(50)->withQueryString();
         $names = $companies->names(array_values(array_unique(array_map(fn (Invoice $i): string => $i->company_id, $page->items()))));
@@ -81,15 +83,19 @@ class InvoiceController extends Controller
                 'problems' => array_map(fn (string $p): string => __("invoices:problem.{$p}"), $preview['problems'] ?? []),
                 'notices' => $content['notices'] ?? array_map(fn (string $n): string => __($n), $preview['notices'] ?? []),
                 'cancels' => $i->cancels_id === null ? null : Invoice::query()->findOrFail($i->cancels_id)->only(['id', 'number']),
+                'credit_notes' => Invoice::query()->where('credits_id', $i->id)->orderBy('number')->get()->map(fn (Invoice $c): array => $c->only(['id', 'number']))->all(),
+                'credits' => $i->credits_id === null ? null : Invoice::query()->findOrFail($i->credits_id)->only(['id', 'number']),
+                'override_case' => $i->override_case,
                 'cancelled_by' => $cancelled?->only(['id', 'number']),
                 'payments' => InvoicePayment::query()->where('invoice_id', $i->id)->orderBy('paid_on')->orderBy('created_at')->get()->map(fn (InvoicePayment $p): array => ['id' => $p->id, 'paid_on' => $p->paid_on->toDateString(), 'amount_minor' => $p->amount_minor, 'note' => $p->note])->all(),
             ],
+            'cases' => array_map(fn (TaxCase $c): string => $c->value, TaxEngine::choices($tenant->current()->country_code)),
             'hasXml' => is_string($content['xml'] ?? null),
             'recipients' => $i->isDraft() ? [] : $companies->invoiceRecipients($i->company_id),
             'deliveries' => InvoiceDelivery::query()->where('invoice_id', $i->id)->orderByDesc('created_at')->limit(20)->get()->map(fn (InvoiceDelivery $d): array => ['id' => $d->id, 'recipient' => $d->recipient, 'status' => $d->status, 'at' => $d->created_at?->toIso8601String()])->all(),
             'confirmed' => (int) now()->timestamp - (is_int($at = $request->session()->get('auth.password_confirmed_at')) ? $at : 0) < config()->integer('auth.password_timeout'),
             'today' => now($tenant->current()->timezone)->toDateString(),
-            'can' => ['create' => $user->can('invoices.create'), 'finalize' => $user->can('invoices.finalize'), 'cancel' => $user->can('invoices.cancel'), 'pay' => $user->can('invoices.payments.record')],
+            'can' => ['create' => $user->can('invoices.create'), 'finalize' => $user->can('invoices.finalize'), 'cancel' => $user->can('invoices.cancel'), 'override' => $user->can('invoices.tax_override'), 'pay' => $user->can('invoices.payments.record')],
         ]);
     }
 
@@ -141,6 +147,29 @@ class InvoiceController extends Controller
     public function cancel(Request $request, string $invoice, Invoices $invoices): RedirectResponse
     {
         return to_route('invoices.show', $invoices->cancel(Invoice::query()->findOrFail($invoice), $this->currentUser($request))->id);
+    }
+
+    /** Only cases of the country pack, only with a reason (ADR-0004 section 9). */
+    public function taxCase(Request $request, string $invoice, Invoices $invoices): RedirectResponse
+    {
+        $request->validate(['case' => ['nullable', Rule::enum(TaxCase::class)], 'reason' => ['required', 'string', 'min:20', 'max:500']]);
+        $invoices->override(Invoice::query()->findOrFail($invoice), $request->enum('case', TaxCase::class), $request->string('reason')->toString(), $this->currentUser($request));
+
+        return to_route('invoices.show', $invoice);
+    }
+
+    public function credit(Request $request, string $invoice, Invoices $invoices): RedirectResponse
+    {
+        $request->validate(['reason' => ['required', 'string', 'max:500'], 'lines' => ['required', 'array', 'max:200'], 'lines.*' => ['nullable', 'string', 'regex:/^\d{1,12}([.,]\d{1,3})?\z/']]);
+        $model = Invoice::query()->findOrFail($invoice);
+        $credits = [];
+        foreach ($request->array('lines') as $position => $amount) {
+            if (is_string($amount) && $amount !== '') {
+                $credits[(int) $position] = $this->minor($amount, $model->currency);
+            }
+        }
+
+        return to_route('invoices.show', $invoices->credit($model, $credits, $request->string('reason')->toString(), $this->currentUser($request))->id);
     }
 
     public function pay(Request $request, string $invoice, Invoices $invoices): RedirectResponse
@@ -210,14 +239,14 @@ class InvoiceController extends Controller
     /** @return array<string, mixed> */
     private function row(Invoice $i, CarbonImmutable $today): array
     {
-        $open = $i->kind === 'invoice' && $i->status === 'finalized' ? $i->gross_minor - $i->paid_minor : 0;
+        $open = $i->openMinor();
         $due = $i->due_date === null ? null : CarbonImmutable::parse($i->due_date->toDateString(), 'UTC');
 
         return [
             ...$i->only(['id', 'kind', 'number', 'currency', 'net_minor', 'gross_minor', 'paid_minor']),
             'status' => match (true) {
                 $i->status !== 'finalized' || $i->kind !== 'invoice' => $i->status,
-                $open === 0 => 'paid',
+                $open <= 0 => 'paid',
                 $i->paid_minor > 0 => 'partially_paid',
                 default => 'open',
             },

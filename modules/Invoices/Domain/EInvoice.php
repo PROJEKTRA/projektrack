@@ -80,7 +80,7 @@ final class EInvoice
 
         $document = $this->add($root, 'rsm:ExchangedDocument');
         $this->add($document, 'ram:ID', self::text($c, 'number'));
-        $this->add($document, 'ram:TypeCode', self::text($c, 'kind') === 'cancellation' ? '384' : '380');
+        $this->add($document, 'ram:TypeCode', self::text($c, 'kind') === 'invoice' ? '380' : '384');
         $this->date($this->add($document, 'ram:IssueDateTime'), self::text($c, 'issue_date'));
         foreach (array_filter(is_array($c['notices'] ?? null) ? $c['notices'] : [], is_string(...)) as $notice) {
             $this->add($this->add($document, 'ram:IncludedNote'), 'ram:Content', $notice);

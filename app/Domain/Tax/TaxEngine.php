@@ -30,6 +30,33 @@ final class TaxEngine
         return $country === 'BA' || (in_array($country, self::EU, true) && $country !== 'IE');
     }
 
+    /** @return list<TaxCase> cases a person may choose for a seller of the country */
+    public static function choices(string $sellerCountry): array
+    {
+        return match ($sellerCountry) {
+            'DE' => [TaxCase::DeStandard, TaxCase::DeReduced, TaxCase::EuB2bReverseCharge, TaxCase::NonEuB2bOutsideScope, TaxCase::EuB2cSellerCountry],
+            'BA' => [TaxCase::BaStandard, TaxCase::BaExportService],
+            default => [],
+        };
+    }
+
+    /** The decision for a case a person chose; its rate is still the one of the country. */
+    public function chosen(TaxCase $case, TaxContext $c): TaxDecision
+    {
+        if (! in_array($case, self::choices($c->sellerCountry), true)) {
+            throw new TaxReviewRequired('seller_country');
+        }
+        $rule = $c->sellerCountry.'.override';
+
+        return match ($case) {
+            TaxCase::DeReduced => $this->taxed(new TaxContext($c->sellerCountry, $c->sellerStatus, $c->customerCountry, $c->customerStatus, $c->customerHasVatId, 'reduced', $c->date), $case, $rule),
+            TaxCase::DeStandard, TaxCase::EuB2cSellerCountry, TaxCase::BaStandard => $this->taxed(new TaxContext($c->sellerCountry, $c->sellerStatus, $c->customerCountry, $c->customerStatus, $c->customerHasVatId, 'standard', $c->date), $case, $rule),
+            TaxCase::EuB2bReverseCharge => $this->free($case, 'AE', $rule),
+            TaxCase::BaExportService => $this->free($case, in_array($c->customerCountry, self::EU, true) ? 'AE' : 'O', $rule),
+            default => $this->free($case, 'O', $rule),
+        };
+    }
+
     public function decide(TaxContext $c): TaxDecision
     {
         $abroad = $c->customerCountry !== $c->sellerCountry;

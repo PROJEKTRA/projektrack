@@ -195,7 +195,9 @@ final class Invoices
         $notices = [];
         try {
             foreach ($invoice->lines()->get() as $line) {
-                $d = $this->tax->decide(new TaxContext($seller['country'], $seller['vat_status'], $company['tax']['country_code'], $company['tax']['tax_status'], ($company['tax']['vat_id'] ?? '') !== '', $line->rate_class, $date));
+                $context = new TaxContext($seller['country'], $seller['vat_status'], $company['tax']['country_code'], $company['tax']['tax_status'], ($company['tax']['vat_id'] ?? '') !== '', $line->rate_class, $date);
+                $override = $invoice->override_case === null ? null : TaxCase::tryFrom($invoice->override_case);
+                $d = $override === null ? $this->tax->decide($context) : $this->tax->chosen($override, $context);
                 $decisions[$line->id] = $d;
                 $lines[] = ['decision' => $d, 'net_minor' => $line->net_minor];
                 $notice = $d->case->notice();
@@ -267,6 +269,7 @@ final class Invoices
                 'kind' => 'invoice', 'number' => $number, 'issue_date' => $today, 'due_date' => $due, 'service_from' => $locked->service_from->toDateString(), 'service_to' => $locked->service_to->toDateString(),
                 'currency' => $locked->currency, 'locale' => $locked->locale, 'seller' => $this->seller->data(), 'buyer' => $company, 'lines' => $lines, 'groups' => $totals->groups,
                 'net_minor' => $totals->netMinor, 'tax_minor' => $totals->taxMinor, 'gross_minor' => $totals->grossMinor(),
+                'override' => $locked->override_case === null ? null : ['case' => $locked->override_case, 'reason' => $locked->override_reason, 'by' => $locked->override_by],
                 'labels' => $this->pdf->labels(['invoices:document.', 'invoices:unit.'], $locked->locale), 'format' => $this->pdf->format($locked->locale)->locale,
                 'notices' => array_map(fn (string $id): string => $this->strings->get($id, [], $locked->locale), $preview['notices']),
             ], $actor);
@@ -283,6 +286,9 @@ final class Invoices
             $locked = $this->locked($invoice->id);
             if ($locked->kind !== 'invoice' || $locked->status !== 'finalized') {
                 throw ValidationException::withMessages(['invoice' => __('invoices:errors.not_cancellable')]);
+            }
+            if ($locked->credited_minor !== 0) {
+                throw ValidationException::withMessages(['invoice' => __('invoices:errors.credited')]);
             }
             if ($locked->paid_minor !== 0) {
                 throw ValidationException::withMessages(['invoice' => __('invoices:errors.paid')]);
@@ -310,6 +316,90 @@ final class Invoices
         }, 3);
     }
 
+    /** Choose another tax case for a draft, or (null) go back to the rules. */
+    public function override(Invoice $invoice, ?TaxCase $case, string $reason, User $actor): void
+    {
+        DB::transaction(function () use ($invoice, $case, $reason, $actor): void {
+            $locked = $this->locked($invoice->id);
+            $this->ensureDraft($locked);
+            if ($case !== null && ! in_array($case, TaxEngine::choices($this->seller->data()['country']), true)) {
+                throw ValidationException::withMessages(['case' => __('invoices:errors.case')]);
+            }
+            $locked->update(['override_case' => $case?->value, 'override_reason' => $case === null ? null : $reason, 'override_by' => $case === null ? null : $actor->id]);
+            $this->audit->record('invoices.tax_overridden', $locked, ['case' => $case?->value, 'reason' => $reason], $actor);
+        }, 3);
+    }
+
+    /**
+     * Give back part of an issued invoice, with the tax of its lines.
+     *
+     * @param  array<int, int>  $credits  line position => net minor units to give back
+     */
+    public function credit(Invoice $invoice, array $credits, string $reason, User $actor): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $credits, $reason, $actor): Invoice {
+            $locked = $this->locked($invoice->id);
+            if ($locked->kind !== 'invoice' || $locked->status !== 'finalized') {
+                throw ValidationException::withMessages(['lines' => __('invoices:errors.not_cancellable')]);
+            }
+            $content = $locked->content();
+            $given = [];
+            foreach (Invoice::query()->where('credits_id', $locked->id)->get() as $earlier) {
+                foreach ($this->rows($earlier->content()['lines'] ?? null) as $row) {
+                    $position = is_int($row['position'] ?? null) ? $row['position'] : 0;
+                    $given[$position] = ($given[$position] ?? 0) - (is_int($row['net_minor'] ?? null) ? $row['net_minor'] : 0);
+                }
+            }
+            $lines = [];
+            $totals = [];
+            foreach ($this->rows($content['lines'] ?? null) as $row) {
+                $position = is_int($row['position'] ?? null) ? $row['position'] : 0;
+                $net = is_int($row['net_minor'] ?? null) ? $row['net_minor'] : 0;
+                $amount = $credits[$position] ?? 0;
+                unset($credits[$position]);
+                if ($amount === 0) {
+                    continue;
+                }
+                if ($amount < 0 || $amount > $net - ($given[$position] ?? 0)) {
+                    throw ValidationException::withMessages(["lines.{$position}" => __('invoices:errors.credit_amount')]);
+                }
+                $case = TaxCase::from(is_string($row['tax_case'] ?? null) ? $row['tax_case'] : '');
+                $ppm = is_int($row['rate_ppm'] ?? null) ? $row['rate_ppm'] : 0;
+                $category = is_string($row['category'] ?? null) ? $row['category'] : '';
+                $lines[] = [...$row, 'minutes' => null, 'quantity' => '-1.0000', 'unit' => 'flat', 'unit_price' => Amount::decimal($amount, $locked->currency), 'net_minor' => -$amount];
+                $totals[] = ['decision' => new TaxDecision($case, $ppm, $category, ''), 'net_minor' => -$amount];
+            }
+            if ($lines === [] || $credits !== []) {
+                throw ValidationException::withMessages(['lines' => __('invoices:errors.credit_empty')]);
+            }
+            $sum = TaxTotals::of($totals);
+            if ($sum->grossMinor() < -$locked->openMinor() && $locked->paid_minor === 0) {
+                // Only by rounding of the tax; the rest is never negative.
+                throw ValidationException::withMessages(['lines' => __('invoices:errors.credit_amount')]);
+            }
+            $number = $this->numbers->next('cancellation', 'CN');
+            $today = now($this->tenant->current()->timezone)->toDateString();
+            $note = Invoice::query()->create([
+                'kind' => 'credit_note', 'status' => 'draft', 'company_id' => $locked->company_id, 'project_id' => $locked->project_id, 'credits_id' => $locked->id,
+                'service_from' => $locked->service_from, 'service_to' => $locked->service_to, 'currency' => $locked->currency, 'locale' => $locked->locale,
+            ]);
+            $this->seal($note, [
+                ...$content, 'kind' => 'credit_note', 'number' => $number, 'cancels' => $locked->number, 'cancels_date' => $locked->issue_date?->toDateString(), 'issue_date' => $today, 'due_date' => $today, 'reason' => $reason,
+                'lines' => $lines, 'groups' => $sum->groups, 'net_minor' => $sum->netMinor, 'tax_minor' => $sum->taxMinor, 'gross_minor' => $sum->grossMinor(),
+            ], $actor);
+            $locked->update(['credited_minor' => $locked->credited_minor + $sum->grossMinor()]);
+            $this->audit->record('invoices.credited', $locked, ['number' => $locked->number, 'credit_note' => $number, 'gross_minor' => $sum->grossMinor(), 'reason' => $reason, 'hash' => $note->content_hash], $actor);
+
+            return $note;
+        }, 3);
+    }
+
+    /** @return list<array<array-key, mixed>> */
+    private function rows(mixed $value): array
+    {
+        return array_values(array_filter(is_array($value) ? $value : [], is_array(...)));
+    }
+
     public function pay(Invoice $invoice, string $paidOn, int $amountMinor, ?string $note, User $actor): void
     {
         DB::transaction(function () use ($invoice, $paidOn, $amountMinor, $note, $actor): void {
@@ -321,13 +411,13 @@ final class Invoices
                 throw ValidationException::withMessages(['paid_on' => __('invoices:errors.future')]);
             }
             $paid = $locked->paid_minor + $amountMinor;
-            if ($amountMinor === 0 || $paid < 0 || $paid > $locked->gross_minor) {
+            if ($amountMinor === 0 || $paid < 0 || $paid > $locked->gross_minor + $locked->credited_minor) {
                 throw ValidationException::withMessages(['amount' => __('invoices:errors.amount')]);
             }
             InvoicePayment::query()->create(['invoice_id' => $locked->id, 'paid_on' => $paidOn, 'amount_minor' => $amountMinor, 'note' => $note, 'recorded_by' => $actor->id]);
             $locked->update(['paid_minor' => $paid]);
             $this->audit->record('invoices.payment_recorded', $locked, ['number' => $locked->number, 'amount_minor' => $amountMinor], $actor);
-            if ($paid === $locked->gross_minor) {
+            if ($locked->openMinor() === 0) {
                 DB::afterCommit(fn () => event(new InvoicePaid($locked->id)));
             }
         }, 3);

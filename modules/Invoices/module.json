@@ -19,6 +19,7 @@
     "invoices.create",
     "invoices.finalize",
     "invoices.cancel",
+    "invoices.tax_override",
     "invoices.payments.record",
     "tax.legal_notice.override"
   ],
@@ -28,6 +29,7 @@
       "invoices.create",
       "invoices.finalize",
       "invoices.cancel",
+      "invoices.tax_override",
       "invoices.payments.record",
       "tax.legal_notice.override"
     ],
@@ -36,6 +38,7 @@
       "invoices.create",
       "invoices.finalize",
       "invoices.cancel",
+      "invoices.tax_override",
       "invoices.payments.record",
       "tax.legal_notice.override"
     ]

@@ -41,14 +41,19 @@ use LogicException;
  * @property CarbonInterface|null $finalized_at
  * @property string|null $finalized_by
  * @property string|null $fiscal_reference
+ * @property string|null $override_case
+ * @property string|null $override_reason
+ * @property string|null $override_by
+ * @property string|null $credits_id
+ * @property int $credited_minor
  */
-#[Fillable(['kind', 'status', 'number', 'company_id', 'project_id', 'cancels_id', 'issue_date', 'service_from', 'service_to', 'due_date', 'currency', 'locale', 'net_minor', 'tax_minor', 'gross_minor', 'paid_minor', 'snapshot', 'content_hash', 'finalized_at', 'finalized_by', 'fiscal_reference'])]
+#[Fillable(['kind', 'status', 'number', 'company_id', 'project_id', 'cancels_id', 'issue_date', 'service_from', 'service_to', 'due_date', 'currency', 'locale', 'net_minor', 'tax_minor', 'gross_minor', 'paid_minor', 'snapshot', 'content_hash', 'finalized_at', 'finalized_by', 'fiscal_reference', 'override_case', 'override_reason', 'override_by', 'credits_id', 'credited_minor'])]
 class Invoice extends Model
 {
     use BelongsToTenant, HasUlids;
 
     /** What may still change on a finalized invoice: payments, the cancelled state, the fiscal reference. */
-    private const array AFTER_FINALIZATION = ['status', 'paid_minor', 'fiscal_reference', 'updated_at'];
+    private const array AFTER_FINALIZATION = ['status', 'paid_minor', 'credited_minor', 'fiscal_reference', 'updated_at'];
 
     public function isDraft(): bool
     {
@@ -59,6 +64,12 @@ class Invoice extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(InvoiceLine::class)->orderBy('position');
+    }
+
+    /** What is still to be paid: credit notes reduce it like payments do. */
+    public function openMinor(): int
+    {
+        return $this->kind === 'invoice' && $this->status === 'finalized' ? $this->gross_minor - $this->paid_minor + $this->credited_minor : 0;
     }
 
     /** @return array<mixed> the document as issued, checked against its hash */
@@ -91,6 +102,6 @@ class Invoice extends Model
 
     protected function casts(): array
     {
-        return ['issue_date' => 'date', 'service_from' => 'date', 'service_to' => 'date', 'due_date' => 'date', 'net_minor' => 'integer', 'tax_minor' => 'integer', 'gross_minor' => 'integer', 'paid_minor' => 'integer', 'finalized_at' => 'datetime'];
+        return ['issue_date' => 'date', 'service_from' => 'date', 'service_to' => 'date', 'due_date' => 'date', 'net_minor' => 'integer', 'tax_minor' => 'integer', 'gross_minor' => 'integer', 'paid_minor' => 'integer', 'credited_minor' => 'integer', 'finalized_at' => 'datetime'];
     }
 }

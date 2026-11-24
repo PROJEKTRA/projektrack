@@ -8,6 +8,7 @@ import { computed, ref } from 'vue';
 import InvoiceController from '@/actions/Modules/Invoices/Http/InvoiceController';
 import FormDialog from '@/components/FormDialog.vue';
 import Heading from '@/components/Heading.vue';
+import SelectField from '@/components/SelectField.vue';
 import TextField from '@/components/TextField.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,9 @@ type InvoiceData = {
     notices: string[];
     cancels: Ref;
     cancelled_by: Ref;
+    credits: Ref;
+    credit_notes: { id: string; number: string }[];
+    override_case: string | null;
     payments: {
         id: string;
         paid_on: string;
@@ -69,6 +73,7 @@ const props = defineProps<{
     today: string;
     confirmed: boolean;
     hasXml: boolean;
+    cases: string[];
     recipients: string[];
     deliveries: {
         id: string;
@@ -76,7 +81,13 @@ const props = defineProps<{
         status: string;
         at: string | null;
     }[];
-    can: { create: boolean; finalize: boolean; cancel: boolean; pay: boolean };
+    can: {
+        create: boolean;
+        finalize: boolean;
+        cancel: boolean;
+        pay: boolean;
+        override: boolean;
+    };
 }>();
 
 defineOptions({
@@ -102,7 +113,16 @@ function plain(value: string | null, least: number): string {
 const isDraft = computed(() => props.invoice.status === 'draft');
 const money = (minor: number) => formatMoney(minor, props.invoice.currency);
 const dialog = ref<
-    '' | 'edit' | 'finalize' | 'cancel' | 'discard' | 'pay' | 'fiscal' | 'send'
+    | ''
+    | 'edit'
+    | 'finalize'
+    | 'cancel'
+    | 'discard'
+    | 'pay'
+    | 'fiscal'
+    | 'send'
+    | 'override'
+    | 'credit'
 >('');
 const shown = (name: typeof dialog.value) =>
     computed({
@@ -117,15 +137,27 @@ const [
     paying,
     fiscalOpen,
     sending,
+    overriding,
+    crediting,
 ] = (
-    ['edit', 'finalize', 'cancel', 'discard', 'pay', 'fiscal', 'send'] as const
+    [
+        'edit',
+        'finalize',
+        'cancel',
+        'discard',
+        'pay',
+        'fiscal',
+        'send',
+        'override',
+        'credit',
+    ] as const
 ).map(shown);
 
 const edit = useForm({ service_from: '', service_to: '', lines: [] as Line[] });
 const action = useForm({ gross_minor: null as number | null });
 
 /** Issuing and cancelling ask for the password first, then come back here. */
-function guarded(name: 'finalize' | 'cancel' | 'fiscal'): void {
+function guarded(name: 'finalize' | 'cancel' | 'fiscal' | 'credit'): void {
     if (props.confirmed) {
         dialog.value = name;
     } else {
@@ -134,6 +166,17 @@ function guarded(name: 'finalize' | 'cancel' | 'fiscal'): void {
 }
 
 const pay = useForm({ amount: '', paid_on: props.today, note: '' });
+const override = useForm({
+    case: props.invoice.override_case ?? '',
+    reason: '',
+});
+const credit = useForm({ lines: {} as Record<string, string>, reason: '' });
+const overrideErrors = computed(
+    () => override.errors as Record<string, string | undefined>,
+);
+const creditErrors = computed(
+    () => credit.errors as Record<string, string | undefined>,
+);
 const send = useForm({ recipients: [...props.recipients] });
 const fiscal = useForm({ fiscal_reference: '', reason: '' });
 const editErrors = computed(
@@ -213,6 +256,28 @@ function openEdit(): void {
                             })
                         }}</Link
                     >
+                    <Badge v-if="invoice.override_case" variant="outline">{{
+                        $t('invoices:override.badge')
+                    }}</Badge>
+                    <Link
+                        v-if="invoice.credits"
+                        class="underline"
+                        :href="InvoiceController.show(invoice.credits.id)"
+                        >{{
+                            $t('invoices:credit.of', {
+                                number: invoice.credits.number,
+                            })
+                        }}</Link
+                    >
+                    <Link
+                        v-for="n in invoice.credit_notes"
+                        :key="n.id"
+                        class="underline"
+                        :href="InvoiceController.show(n.id)"
+                        >{{
+                            $t('invoices:credit.by', { number: n.number })
+                        }}</Link
+                    >
                     <bdi v-if="invoice.fiscal_reference"
                         >{{ $t('invoices:fiscal') }}:
                         {{ invoice.fiscal_reference }}</bdi
@@ -226,6 +291,13 @@ function openEdit(): void {
                         variant="ghost"
                         @click="dialog = 'discard'"
                         >{{ $t('invoices:discard') }}</Button
+                    >
+                    <Button
+                        v-if="can.override && cases.length"
+                        variant="ghost"
+                        data-test="override"
+                        @click="dialog = 'override'"
+                        >{{ $t('invoices:override.title') }}</Button
                     >
                     <Button
                         v-if="can.create"
@@ -269,6 +341,17 @@ function openEdit(): void {
                         variant="ghost"
                         @click="guarded('fiscal')"
                         >{{ $t('invoices:fiscal') }}</Button
+                    >
+                    <Button
+                        v-if="
+                            can.cancel &&
+                            invoice.kind === 'invoice' &&
+                            invoice.status !== 'cancelled'
+                        "
+                        variant="ghost"
+                        data-test="credit"
+                        @click="guarded('credit')"
+                        >{{ $t('invoices:credit.title') }}</Button
                     >
                     <Button
                         v-if="
@@ -499,6 +582,66 @@ function openEdit(): void {
             name="note"
             :label="$t('invoices:field.note')"
             :errors="payErrors"
+        />
+    </FormDialog>
+    <FormDialog
+        v-model:open="overriding"
+        :title="$t('invoices:override.title')"
+        :description="$t('invoices:override.description')"
+        :save="$t('invoices:save')"
+        :processing="override.processing"
+        @submit="
+            override
+                .transform((d) => ({ ...d, case: d.case || null }))
+                .put(InvoiceController.taxCase.url(invoice.id), close)
+        "
+    >
+        <SelectField
+            v-model="override.case"
+            name="case"
+            :label="$t('invoices:override.title')"
+            :errors="overrideErrors"
+            :options="[
+                { value: '', text: t('invoices:case.rules') },
+                ...cases.map((value) => ({
+                    value,
+                    text: t(`invoices:case.${value.toLowerCase()}`),
+                })),
+            ]"
+        />
+        <TextField
+            v-model="override.reason"
+            name="reason"
+            :label="$t('invoices:field.why')"
+            :errors="overrideErrors"
+            required
+        />
+    </FormDialog>
+    <FormDialog
+        v-model:open="crediting"
+        :title="$t('invoices:credit.title')"
+        :description="$t('invoices:credit.description')"
+        :save="$t('invoices:credit.title')"
+        :processing="credit.processing"
+        @submit="credit.post(InvoiceController.credit.url(invoice.id), close)"
+    >
+        <TextField
+            v-for="l in invoice.lines"
+            :key="l.position"
+            :model-value="credit.lines[l.position] ?? ''"
+            :name="`lines.${l.position}`"
+            :label="`${l.description} (${money(l.net_minor)})`"
+            :errors="creditErrors"
+            @update:model-value="
+                credit.lines[l.position] = String($event ?? '')
+            "
+        />
+        <TextField
+            v-model="credit.reason"
+            name="reason"
+            :label="$t('invoices:field.why')"
+            :errors="creditErrors"
+            required
         />
     </FormDialog>
     <FormDialog

@@ -503,6 +503,47 @@ it('fills an empty test installation with sample data, once and never in product
     $this->app['env'] = 'testing';
 });
 
+it('lets a person choose the tax case, with a reason and only of the country', function () {
+    $invoice = draft([freeLine('1', '100')], invCompany('private', 'CH', null));
+    expect(app(Invoices::class)->preview($invoice)['problems'])->toBe(['tax_private_outside_eu']);
+    $put = fn (array $d): TestResponse => $this->put("/invoices/{$invoice->id}/tax-case", $d);
+    $this->actingAs($this->controller);
+    $put(['case' => 'DE_DOMESTIC_STANDARD', 'reason' => 'too short'])->assertSessionHasErrors('reason');
+    $put(['case' => 'BA_DOMESTIC_STANDARD', 'reason' => 'Confirmed by the accountant on the phone'])->assertSessionHasErrors('case');
+    $put(['case' => 'DE_DOMESTIC_STANDARD', 'reason' => 'Confirmed by the accountant on the phone'])->assertSessionHasNoErrors();
+    $issued = issue($invoice->refresh());
+    expect($issued->tax_minor)->toBe(1900)->and($issued->content()['override']['case'])->toBe('DE_DOMESTIC_STANDARD')
+        ->and(AuditEntry::query()->where('action', 'invoices.tax_overridden')->sole()->contextData()['case'])->toBe('DE_DOMESTIC_STANDARD');
+    $put(['case' => null, 'reason' => 'Confirmed by the accountant on the phone'])->assertSessionHasErrors('invoice');
+    $this->actingAs(invUser('project_lead'));
+    $put(['case' => null, 'reason' => 'Confirmed by the accountant on the phone'])->assertForbidden();
+});
+
+it('credits parts of lines with their tax, never more than is left', function () {
+    $this->company->update(['einvoice_format' => 'zugferd']);
+    $invoice = issue(draft([freeLine('3', '33.33'), freeLine('1', '49.99', 'reduced')]));
+    $credit = fn (array $lines): TestResponse => $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/credit", ['lines' => $lines, 'reason' => 'Discount agreed later']);
+    $credit([])->assertSessionHasErrors('lines');
+    $credit(['1' => '100'])->assertSessionHasErrors('lines.1');
+    $credit(['9' => '1'])->assertSessionHasErrors('lines');
+    $credit(['1' => '50', '2' => '10,00'])->assertSessionHasNoErrors();
+    $note = Invoice::query()->where('kind', 'credit_note')->sole();
+    expect([$note->number, $note->net_minor, $note->tax_minor, $note->gross_minor])->toBe(['CN-2026-0001', -6000, -1020, -7020])
+        ->and($note->content()['cancels'])->toBe($invoice->number)
+        ->and(app(EInvoice::class)->validate($note->content()['xml']))->toBe([])
+        ->and($invoice->refresh()->openMinor())->toBe($invoice->gross_minor - 7020);
+    $credit(['1' => '50'])->assertSessionHasErrors('lines.1');
+    $credit(['1' => '49,99'])->assertSessionHasNoErrors();
+
+    // The rest is paid; the invoice is settled and cannot be cancelled.
+    $open = $invoice->refresh()->openMinor();
+    expect(fn () => app(Invoices::class)->pay($invoice, '2026-11-05', $open + 1, null, $this->controller))->toThrow(ValidationException::class);
+    app(Invoices::class)->pay($invoice, '2026-11-05', $open, null, $this->controller);
+    expect($this->get("/invoices/{$invoice->id}")->inertiaProps('invoice.status'))->toBe('paid');
+    $this->post("/invoices/{$invoice->id}/cancel")->assertSessionHasErrors('invoice');
+    $this->get("/invoices/{$note->id}/pdf")->assertOk();
+});
+
 it('mails issued invoices to known contacts only', function () {
     $sent = [];
     Event::listen(MessageSending::class, function ($e) use (&$sent) {

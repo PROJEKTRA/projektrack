@@ -11,7 +11,7 @@
 <h1>{{ $t('invoices:document.'.$i['kind']) }} {{ $i['number'] }}</h1>
 <table class="plain">
     <tr><td>{{ $t('invoices:document.issue_date') }}: {{ $format->day($i['issue_date']) }}</td><td>{{ $t('invoices:document.service_period') }}: {{ $format->day($i['service_from']) }} - {{ $format->day($i['service_to']) }}</td><td>{{ $t('invoices:document.customer_number') }}: {{ $i['buyer']['number'] }}</td></tr>
-    @isset($i['cancels'])<tr><td colspan="3">{{ $t('invoices:document.cancels', ['number' => $i['cancels']]) }} ({{ $format->day($i['cancels_date']) }})</td></tr>@endisset
+    @isset($i['cancels'])<tr><td colspan="3">{{ $t($i['kind'] === 'credit_note' ? 'invoices:document.credits' : 'invoices:document.cancels', ['number' => $i['cancels']]) }} ({{ $format->day($i['cancels_date']) }})</td></tr>@endisset
 </table>
 <table>
     <thead><tr><th>{{ $t('invoices:document.position') }}</th><th>{{ $t('invoices:document.description') }}</th><th class="num">{{ $t('invoices:document.quantity') }}</th><th class="num">{{ $t('invoices:document.unit_price') }}</th><th class="num">{{ $t('invoices:document.tax_rate') }}</th><th class="num">{{ $t('invoices:document.net') }}</th></tr></thead>
@@ -26,9 +26,10 @@
     @foreach ($i['groups'] as $group)
         <tr><td></td><td class="num">{{ $t('invoices:document.tax_on', ['rate' => $decimal(\App\Domain\Money\Amount::decimal(intdiv($group['rate_ppm'], 100), 'EUR'), 0), 'net' => $format->money($group['net_minor'], $i['currency'])]) }}</td><td class="num">{{ $format->money($group['tax_minor'], $i['currency']) }}</td></tr>
     @endforeach
-    <tr><td></td><td class="num"><strong>{{ $i['kind'] === 'cancellation' ? $t('invoices:document.cancelled_total') : $t('invoices:document.gross_total') }}</strong></td><td class="num"><strong>{{ $format->money($i['gross_minor'], $i['currency']) }}</strong></td></tr>
+    <tr><td></td><td class="num"><strong>{{ $i['kind'] === 'credit_note' ? $t('invoices:document.credited_total') : ($i['kind'] === 'cancellation' ? $t('invoices:document.cancelled_total') : $t('invoices:document.gross_total')) }}</strong></td><td class="num"><strong>{{ $format->money($i['gross_minor'], $i['currency']) }}</strong></td></tr>
 </table>
 @foreach ($i['notices'] as $notice)<p>{{ $notice }}</p>@endforeach
+@isset($i['reason'])<p>{{ $i['reason'] }}</p>@endisset
 @if ($i['kind'] === 'invoice')<p>{{ $t('invoices:document.pay_until', ['date' => $format->day($i['due_date'])]) }}</p>@endif
 <p class="small">
     @if ($i['seller']['tax_number'] !== ''){{ $t('invoices:document.tax_number') }}: {{ $i['seller']['tax_number'] }} @endif
