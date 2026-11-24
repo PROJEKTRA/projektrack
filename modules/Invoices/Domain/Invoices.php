@@ -22,12 +22,15 @@ use App\Models\User;
 use App\Tenancy\TenantContext;
 use Brick\Math\Exception\MathException;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Crm\Contracts\CompanyDirectory;
+use Modules\Invoices\Contracts\InvoicePaid;
 use Modules\Projects\Contracts\ProjectDirectory;
 use Modules\Rates\Contracts\TimeValues;
 use Modules\Timesheets\Contracts\ApprovedTime;
+use Throwable;
 
 /**
  * Drafting, finalizing, cancelling and paying invoices (ADR-0004).
@@ -144,7 +147,12 @@ final class Invoices
                 $line->delete();
             }
             $this->audit->record('invoices.discarded', $locked, [], $actor);
-            $locked->delete();
+            try {
+                $locked->delete();
+            } catch (Throwable $e) {
+                // Another module holds the draft, for example an order.
+                throw $e instanceof QueryException && in_array($e->getCode(), ['23000', '23503', '23001'], true) ? ValidationException::withMessages(['invoice' => __('invoices:errors.held')]) : $e;
+            }
         }, 3);
     }
 
@@ -175,7 +183,7 @@ final class Invoices
         if ($seller['country'] === 'BA' && $seller['vat_status'] === 'registered' && $seller['vat_id'] === '') {
             $problems[] = 'seller_vat_id_ba';
         }
-        if ($seller['country'] === 'BA' && ($company['tax']['country_code'] ?? '') === 'BA' && ($company['tax']['tax_status'] ?? '') !== 'private' && ($company['tax']['vat_id'] ?? '') === '' && ($company['tax']['tax_number'] ?? '') === '') {
+        if ($seller['country'] === 'BA' && ($company['tax']['country_code'] ?? '') === 'BA' && $company['tax']['tax_status'] !== 'private' && ($company['tax']['vat_id'] ?? '') === '' && ($company['tax']['tax_number'] ?? '') === '') {
             $problems[] = 'customer_id_ba';
         }
         if (! $this->pdf->speaks(['invoices:document.', 'invoices:unit.', 'invoices:legal_notice.'], $invoice->locale)) {
@@ -425,7 +433,10 @@ final class Invoices
         $date = $invoice->service_to->toDateString();
         $tax = $this->companies->billing($invoice->company_id, $date)['tax'] ?? null;
         $cases = [];
-        foreach ($tax === null ? [] : $invoice->lines()->get() as $line) {
+        foreach ($invoice->lines()->get() as $line) {
+            if ($tax === null) {
+                break;
+            }
             try {
                 $cases[] = $this->tax->decide(new TaxContext($seller['country'], $seller['vat_status'], $tax['country_code'], $tax['tax_status'], ($tax['vat_id'] ?? '') !== '', $line->rate_class, $date))->case->value;
             } catch (TaxReviewRequired $e) {
@@ -513,7 +524,8 @@ final class Invoices
         foreach ($invoice->lines()->whereNull('minutes')->get() as $old) {
             $old->delete();
         }
-        $position = (int) $invoice->lines()->max('position');
+        $last = $invoice->lines()->max('position');
+        $position = is_numeric($last) ? (int) $last : 0;
         foreach ($lines as $line) {
             try {
                 $net = Amount::line($line['quantity'], $line['unit_price'], $invoice->currency);

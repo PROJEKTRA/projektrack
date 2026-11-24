@@ -138,6 +138,15 @@ const mainNavItems = computed<NavItem[]>(() => {
                   },
               ]
             : []),
+        ...(permissions.includes('licensing.view')
+            ? [
+                  {
+                      title: t('licensing:title'),
+                      href: '/licensing',
+                      icon: KeyRound,
+                  },
+              ]
+            : []),
         ...(permissions.includes('core.users.manage')
             ? [
                   {

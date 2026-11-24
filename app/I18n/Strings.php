@@ -37,6 +37,9 @@ final class Strings
 
     /** Strings the browser never needs; they stay on the server. */
     private const array SERVER_ONLY = [
+        // What is new tells the release: only to signed-in people.
+        'core:about.new',
+        'core:about.limit',
         'core:auth.failed',
         'core:auth.password',
         'core:auth.throttle',

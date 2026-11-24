@@ -118,8 +118,8 @@ final class Rates
             'minutes_valued' => $minutes,
             'amount_minor' => Amount::time($minutes, $rate, $currency),
             'valued_at' => now(),
-            'rule_rate' => $fx === null ? null : $rule?->rate,
-            'rule_currency' => $fx === null ? null : $rule?->currency,
+            'rule_rate' => $fx === null ? null : $rule->rate,
+            'rule_currency' => $fx === null ? null : $rule->currency,
             'fx_rate' => $fx,
         ]);
     }

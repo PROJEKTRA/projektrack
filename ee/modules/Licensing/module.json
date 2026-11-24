@@ -1,0 +1,36 @@
+{
+  "key": "licensing",
+  "name_string": "licensing:module_name",
+  "description_string": "licensing:module_description",
+  "version": "1.0.0",
+  "core": "^0.9 || ^1.0",
+  "edition": "vendor",
+  "vendor": "projektra",
+  "requires": [
+    "core",
+    "crm",
+    "projects",
+    "timesheets",
+    "rates",
+    "service_reports",
+    "invoices"
+  ],
+  "permissions": [
+    "licensing.view",
+    "licensing.plans.manage",
+    "licensing.subscriptions.manage"
+  ],
+  "role_defaults": {
+    "admin": [
+      "licensing.view",
+      "licensing.plans.manage",
+      "licensing.subscriptions.manage"
+    ]
+  },
+  "notifications": [
+    {
+      "type": "licensing.order",
+      "label_string": "licensing:notice.label"
+    }
+  ]
+}

@@ -677,5 +677,16 @@
     "dashboard.show": "Erste Schritte anzeigen",
     "dashboard.step.team": "Team einladen",
     "dashboard.done": "erledigt",
-    "dashboard.open": "offen"
+    "dashboard.open": "offen",
+    "about.news": "Was ist neu",
+    "about.limits": "Bekannte Grenzen",
+    "about.new.customers": "Kunden, Projekte, Verträge und Arbeitspakete",
+    "about.new.time": "Wochenzeiterfassung, Timer, Freigabe und Monatsabschluss",
+    "about.new.reports": "Leistungsnachweise als PDF, DOCX, XLSX und CSV",
+    "about.new.invoices": "Rechnungen für Verkäufer in Deutschland und Bosnien und Herzegowina, mit Storno und Rechnungskorrektur",
+    "about.new.einvoices": "E-Rechnungen: ZUGFeRD und XRechnung",
+    "about.new.languages": "Bosnisch, Englisch und Deutsch",
+    "about.limit.legal": "Gesetzliche Hinweise auf Rechnungen muss ein Steuerberater bestätigen.",
+    "about.limit.validators": "Prüfen Sie E-Rechnungen vor dem Versand mit einem amtlichen Validator.",
+    "about.limit.missing": "Noch nicht enthalten: Angebote, Auslagen, Abwesenheiten, Servicedesk und Gantt."
 }

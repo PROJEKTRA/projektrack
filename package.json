@@ -13,8 +13,8 @@
         "lint": "eslint . --max-warnings=0 && node scripts/i18n/cli.ts",
         "lint:i18n": "node scripts/i18n/cli.ts",
         "lint:fix": "eslint . --fix && node scripts/i18n/cli.ts --fix",
-        "format": "prettier --write resources/ \"modules/**/*.{ts,vue}\" scripts/ tests/e2e/ playwright.config.ts",
-        "format:check": "prettier --check resources/ \"modules/**/*.{ts,vue}\" scripts/ tests/e2e/ playwright.config.ts",
+        "format": "prettier --write resources/ \"{modules,ee/modules}/**/*.{ts,vue}\" scripts/ tests/e2e/ playwright.config.ts",
+        "format:check": "prettier --check resources/ \"{modules,ee/modules}/**/*.{ts,vue}\" scripts/ tests/e2e/ playwright.config.ts",
         "typecheck": "vue-tsc --noEmit",
         "test": "vitest run",
         "test:e2e": "playwright test"

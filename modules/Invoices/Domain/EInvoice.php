@@ -125,7 +125,7 @@ final class EInvoice
             }
             $document->schemaValidate(base_path('vendor/horstoeko/zugferd/src/schema/FACTUR-X_EN16931.xsd'));
 
-            return array_values(array_map(fn (\LibXMLError $e): string => trim($e->message), libxml_get_errors()));
+            return array_map(fn (\LibXMLError $e): string => trim($e->message), libxml_get_errors());
         } finally {
             libxml_clear_errors();
             libxml_use_internal_errors($before);

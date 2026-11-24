@@ -28,7 +28,7 @@
     "kind.cost": "Kostensatz",
     "kind.sales": "Verkaufssatz",
     "margin.cost": "Kosten",
-    "margin.description": "Wert und Kosten der freigegebenen Zeit je Projekt. Beide werden bei der Freigabe festgehalten.",
+    "margin.description": "Wert (Stunden mal Satz) und Kosten freigegebener Zeit je Projekt. Eine Marge erscheint nur, wenn nichts fehlt, und nicht beim Festpreis.",
     "margin.empty": "Keine freigegebene Zeit in diesem Zeitraum.",
     "margin.hours": "Stunden",
     "margin.margin": "Deckungsbeitrag",
@@ -51,5 +51,7 @@
     "scope.tenant": "Firmenstandard",
     "scope.user": "Mitarbeiter",
     "scope.work_package": "Arbeitspaket",
-    "title": "Stundensätze"
+    "title": "Stundensätze",
+    "margin.unknown": "nicht bekannt",
+    "margin.value": "Fehlende Werte ermitteln"
 }

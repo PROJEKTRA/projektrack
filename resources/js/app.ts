@@ -88,14 +88,17 @@ async function boot(): Promise<void> {
             const pages = import.meta.glob<{ default: DefineComponent }>([
                 './pages/**/*.vue',
                 '../../modules/*/resources/js/pages/**/*.vue',
+                '../../ee/modules/*/resources/js/pages/**/*.vue',
             ]);
             const [module, page] = name.split('::');
-            const load =
-                pages[
-                    page
-                        ? `../../modules/${module}/resources/js/pages/${page}.vue`
-                        : `./pages/${name}.vue`
-                ];
+            const load = page
+                ? (pages[
+                      `../../modules/${module}/resources/js/pages/${page}.vue`
+                  ] ??
+                  pages[
+                      `../../ee/modules/${module}/resources/js/pages/${page}.vue`
+                  ])
+                : pages[`./pages/${name}.vue`];
 
             if (!load) {
                 throw new Error(`Page not found: ${name}`);
