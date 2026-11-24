@@ -16,6 +16,10 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request, Dashboard $dashboard): Response
     {
-        return Inertia::render('Dashboard', ['cards' => $dashboard->for($this->currentUser($request))]);
+        $user = $this->currentUser($request);
+        // Setting up the company is for those who may; nobody else waits for the checks.
+        $steps = $user->can('core.settings.manage') ? $dashboard->steps() : [];
+
+        return Inertia::render('Dashboard', ['cards' => $dashboard->for($user), 'steps' => array_column($steps, 'done') === array_fill(0, count($steps), true) ? [] : $steps]);
     }
 }

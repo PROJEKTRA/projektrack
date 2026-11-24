@@ -9,6 +9,7 @@
     "column.rate": "Rate",
     "column.user": "Person",
     "csv": "CSV",
+    "dashboard.step": "Create the first service report",
     "description": "Generated from approved time. A report never changes; generate a new one instead.",
     "document.amount": "Total amount, net",
     "document.correction": "Correction:",

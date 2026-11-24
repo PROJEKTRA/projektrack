@@ -1,4 +1,5 @@
 {
+    "dashboard.step": "Set hourly rates",
     "description": "The most specific rate wins: project, customer, employee, company default. A new rate never changes approved time.",
     "empty": "No rates yet. Time without a rate has no value.",
     "end": "End",

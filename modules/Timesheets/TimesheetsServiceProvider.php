@@ -34,6 +34,7 @@ class TimesheetsServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
         $this->loadRoutesFrom(__DIR__.'/Http/routes.php');
+        $this->app->make(Dashboard::class)->step('timesheets', 'timesheets:dashboard.step', fn (): string => route('timesheets.index', absolute: false), fn (): bool => TimeEntry::query()->exists());
         $this->app->make(Dashboard::class)->add('timesheets', function (User $user): array {
             $cards = [];
             if ($user->can('timesheets.view')) {

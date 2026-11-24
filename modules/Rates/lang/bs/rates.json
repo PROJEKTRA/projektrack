@@ -1,4 +1,5 @@
 {
+    "dashboard.step": "Odredite cijene sata",
     "description": "Važi najuža cijena: projekat, klijent, zaposlenik, opća cijena. Nova cijena nikad ne mijenja odobreno vrijeme.",
     "empty": "Još nema cijena. Vrijeme bez cijene nema vrijednost.",
     "end": "Završi",

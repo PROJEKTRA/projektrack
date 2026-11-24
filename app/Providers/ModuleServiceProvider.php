@@ -8,6 +8,7 @@
 namespace App\Providers;
 
 use App\Dashboard\Dashboard;
+use App\Models\User;
 use App\Modules\ModuleRegistry;
 use App\Modules\TenantModules;
 use Illuminate\Support\ServiceProvider;
@@ -29,7 +30,12 @@ class ModuleServiceProvider extends ServiceProvider
             $this->app->make(LoggerInterface::class),
         ));
 
-        $this->app->singleton(Dashboard::class);
+        $this->app->singleton(Dashboard::class, function (): Dashboard {
+            $dashboard = new Dashboard;
+            $dashboard->step('core', 'core:dashboard.step.team', fn (): string => route('admin.users.index', absolute: false), fn (): bool => User::query()->count() > 1);
+
+            return $dashboard;
+        });
 
         // Scoped: the per-tenant cache lives for one request or job only.
         $this->app->scoped(TenantModules::class);

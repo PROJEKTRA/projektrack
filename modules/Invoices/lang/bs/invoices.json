@@ -19,6 +19,7 @@
     "credit.title": "Djelimični storno",
     "dashboard.open": "Otvorene fakture",
     "dashboard.overdue": "Fakture u kašnjenju",
+    "dashboard.step": "Izdajte prvu fakturu",
     "description": "Izdate fakture se ne mijenjaju. Umjesto toga stornirajte i izdajte novu.",
     "discard": "Odbaci nacrt",
     "discard_confirm": "Nacrt se briše. Vrijeme se može ponovo fakturisati.",

@@ -15,6 +15,7 @@
     "correct_title": "Correct approved time",
     "correction": "Correction: {reason}",
     "dashboard.approvals": "Time to approve",
+    "dashboard.step": "Book the first time",
     "dashboard.week": "My hours this week",
     "decided": "{count, plural, one {# entry decided.} other {# entries decided.}}",
     "description": "Type 1:30 or 1,5. Every cell is saved at once.",

@@ -4,11 +4,14 @@
 -->
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { ShieldAlert } from '@lucide/vue';
+import { KeyRound, ShieldAlert } from '@lucide/vue';
 import { computed } from 'vue';
 
 // The server sends the (translated) warning only to people who may read the audit log.
 const page = usePage();
+const license = computed<string | null>(
+    () => page.props.licenseWarning ?? null,
+);
 const warning = computed<string | null>(() => page.props.auditWarning ?? null);
 </script>
 
@@ -21,5 +24,14 @@ const warning = computed<string | null>(() => page.props.auditWarning ?? null);
     >
         <ShieldAlert class="mt-0.5 size-4 shrink-0" />
         <p>{{ warning }}</p>
+    </div>
+    <div
+        v-if="license"
+        role="status"
+        class="m-4 flex items-start gap-3 rounded-md border p-3 text-sm"
+        data-test="license-warning"
+    >
+        <KeyRound class="mt-0.5 size-4 shrink-0" />
+        <p>{{ license }}</p>
     </div>
 </template>

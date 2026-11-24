@@ -663,5 +663,19 @@
     "roles.customer": "Klijent",
     "project_roles.project_lead": "Voditelj projekta",
     "project_roles.project_member": "Član",
-    "project_roles.project_viewer": "Posmatrač"
+    "project_roles.project_viewer": "Posmatrač",
+    "license.warning.invalid": "Licenca nije važeća. Komercijalne funkcije su samo za čitanje; Community radi kao i prije.",
+    "license.warning.read_only": "Licenca je istekla. Komercijalne funkcije su samo za čitanje; ništa se ne briše.",
+    "license.warning.grace": "Licenca je istekla. Sve radi još nekoliko dana; obnovite je.",
+    "license.warning.pending": "Uplata licence još nije evidentirana.",
+    "license.warning.not_yet": "Licenca još ne važi.",
+    "license.warning.seats": "{used} korisnika, licencirano {seats}. Ništa nije zaključano; proširite licencu.",
+    "license.warning.renewal": "{days, plural, one {Licenca ističe za # dan.} few {Licenca ističe za # dana.} other {Licenca ističe za # dana.}}",
+    "dashboard.steps": "Prvi koraci",
+    "dashboard.steps_done": "{done} od {all} urađeno",
+    "dashboard.hide": "Sakrij",
+    "dashboard.show": "Prikaži prve korake",
+    "dashboard.step.team": "Pozovite svoj tim",
+    "dashboard.done": "urađeno",
+    "dashboard.open": "otvoreno"
 }

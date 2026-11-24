@@ -9,6 +9,7 @@
     "column.rate": "Cijena",
     "column.user": "Osoba",
     "csv": "CSV",
+    "dashboard.step": "Napravite prvi servisni izvještaj",
     "description": "Nastaju iz odobrenog vremena. Izvještaj se ne mijenja; umjesto toga napravite novi.",
     "document.amount": "Ukupan iznos, neto",
     "document.correction": "Korekcija:",

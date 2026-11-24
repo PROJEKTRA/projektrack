@@ -1,4 +1,5 @@
 {
+    "dashboard.step": "Stundensätze festlegen",
     "description": "Der spezifischste Stundensatz gilt: Projekt, Kunde, Mitarbeiter, Firmenstandard. Ein neuer Stundensatz ändert nie freigegebene Zeiten.",
     "empty": "Noch keine Stundensätze. Zeiten ohne Stundensatz haben keinen Wert.",
     "end": "Beenden",

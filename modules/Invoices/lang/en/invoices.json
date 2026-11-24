@@ -19,6 +19,7 @@
     "credit.title": "Credit note",
     "dashboard.open": "Open invoices",
     "dashboard.overdue": "Overdue invoices",
+    "dashboard.step": "Issue the first invoice",
     "description": "Issued invoices never change. Cancel and issue a new one instead.",
     "discard": "Discard draft",
     "discard_confirm": "The draft is deleted. Its time can be billed again.",

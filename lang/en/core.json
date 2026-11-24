@@ -663,5 +663,19 @@
     "roles.customer": "Customer",
     "project_roles.project_lead": "Project lead",
     "project_roles.project_member": "Member",
-    "project_roles.project_viewer": "Viewer"
+    "project_roles.project_viewer": "Viewer",
+    "license.warning.invalid": "The license is not valid. Commercial functions are read-only; Community works as before.",
+    "license.warning.read_only": "The license has ended. Commercial functions are read-only; nothing is deleted.",
+    "license.warning.grace": "The license has ended. Everything keeps working for a few days; please renew it.",
+    "license.warning.pending": "The payment of the license is still open.",
+    "license.warning.not_yet": "The license is not valid yet.",
+    "license.warning.seats": "{used} users, {seats} licensed. Nothing is locked; please add seats.",
+    "license.warning.renewal": "{days, plural, one {The license ends in # day.} other {The license ends in # days.}}",
+    "dashboard.steps": "Getting started",
+    "dashboard.steps_done": "{done} of {all} done",
+    "dashboard.hide": "Hide",
+    "dashboard.show": "Show getting started",
+    "dashboard.step.team": "Invite your team",
+    "dashboard.done": "done",
+    "dashboard.open": "open"
 }

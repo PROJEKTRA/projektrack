@@ -21,6 +21,7 @@ use App\Licensing\InstanceId;
 use App\Licensing\InstanceLicense;
 use App\Licensing\InvalidLicense;
 use App\Models\Tenant;
+use App\Modules\EditionNotLicensed;
 use App\Modules\ModuleRegistry;
 use App\Modules\TenantModules;
 use App\Release\ReleaseVerifier;
@@ -106,7 +107,13 @@ Artisan::command('projektrack:modules:enable {tenant : Slug of the tenant} {modu
         return 1;
     }
 
-    $plan = $context->run($tenant, fn (): array => app(TenantModules::class)->enable($key));
+    try {
+        $plan = $context->run($tenant, fn (): array => app(TenantModules::class)->enable($key));
+    } catch (EditionNotLicensed $e) {
+        $this->error($e->getMessage());
+
+        return 1;
+    }
     $this->info($plan === [] ? 'Already on.' : 'Switched on: '.implode(', ', $plan));
 
     return 0;

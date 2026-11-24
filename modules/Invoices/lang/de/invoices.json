@@ -19,6 +19,7 @@
     "credit.title": "Rechnungskorrektur",
     "dashboard.open": "Offene Rechnungen",
     "dashboard.overdue": "Überfällige Rechnungen",
+    "dashboard.step": "Erste Rechnung ausstellen",
     "description": "Ausgestellte Rechnungen ändern sich nie. Stornieren Sie stattdessen und stellen Sie eine neue aus.",
     "discard": "Entwurf verwerfen",
     "discard_confirm": "Der Entwurf wird gelöscht. Die Zeiten können erneut abgerechnet werden.",

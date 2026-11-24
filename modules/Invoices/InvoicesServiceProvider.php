@@ -23,6 +23,7 @@ class InvoicesServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
         $this->loadRoutesFrom(__DIR__.'/Http/routes.php');
+        $this->app->make(Dashboard::class)->step('invoices', 'invoices:dashboard.step', fn (): string => route('invoices.index', absolute: false), fn (): bool => Invoice::query()->where('status', 'finalized')->exists());
         $this->app->make(Dashboard::class)->add('invoices', function (User $user): array {
             if (! $user->can('invoices.view')) {
                 return [];

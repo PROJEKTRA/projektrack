@@ -1,6 +1,7 @@
 {
     "add_contact": "Add contact",
     "add_site": "Add site",
+    "dashboard.step": "Add the first customer",
     "description": "Companies you work for, with contacts and billing data.",
     "dialog_description": "Everything for this customer is saved together.",
     "edit": "Edit",

@@ -38,6 +38,7 @@ class ProjectsServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
         $this->loadRoutesFrom(__DIR__.'/Http/routes.php');
+        $this->app->make(Dashboard::class)->step('projects', 'projects:dashboard.step', fn (): string => route('projects.index', absolute: false), fn (): bool => Project::query()->exists());
         $this->app->make(Dashboard::class)->add('projects', fn (User $user): array => $user->can('projects.view') ? [['label' => 'projects:dashboard.active', 'value' => (string) Project::query()->where('status', 'active')->count(), 'href' => route('projects.index', absolute: false)]] : []);
     }
 }

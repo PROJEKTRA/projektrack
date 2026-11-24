@@ -9,6 +9,7 @@
     "column.rate": "Stundensatz",
     "column.user": "Person",
     "csv": "CSV",
+    "dashboard.step": "Ersten Leistungsnachweis erstellen",
     "description": "Aus freigegebenen Zeiten erstellt. Ein Leistungsnachweis ändert sich nie; erstellen Sie stattdessen einen neuen.",
     "document.amount": "Gesamtbetrag, netto",
     "document.correction": "Korrektur:",

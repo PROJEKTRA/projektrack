@@ -7,9 +7,11 @@
 
 namespace Modules\Rates;
 
+use App\Dashboard\Dashboard;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Modules\Rates\Contracts\TimeValues;
+use Modules\Rates\Domain\RateRule;
 use Modules\Rates\Domain\Rates;
 use Modules\Rates\Domain\StoredValues;
 use Modules\Timesheets\Contracts\TimeApproved;
@@ -28,6 +30,7 @@ class RatesServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
         $this->loadRoutesFrom(__DIR__.'/Http/routes.php');
+        $this->app->make(Dashboard::class)->step('rates', 'rates:dashboard.step', fn (): string => route('rates.index', absolute: false), fn (): bool => RateRule::query()->exists());
         Event::listen(TimeApproved::class, fn (TimeApproved $event) => $this->app->make(Rates::class)->value($event));
     }
 }

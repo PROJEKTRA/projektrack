@@ -15,6 +15,7 @@
     "correct_title": "Freigegebene Zeit korrigieren",
     "correction": "Korrektur: {reason}",
     "dashboard.approvals": "Zeiten zur Freigabe",
+    "dashboard.step": "Erste Zeit buchen",
     "dashboard.week": "Meine Stunden in dieser Woche",
     "decided": "{count, plural, one {Über # Zeitbuchung entschieden.} other {Über # Zeitbuchungen entschieden.}}",
     "description": "Geben Sie 1:30 oder 1,5 ein. Jede Zelle wird sofort gespeichert.",

@@ -663,5 +663,19 @@
     "roles.customer": "Kunde",
     "project_roles.project_lead": "Projektleiter",
     "project_roles.project_member": "Mitglied",
-    "project_roles.project_viewer": "Betrachter"
+    "project_roles.project_viewer": "Betrachter",
+    "license.warning.invalid": "Die Lizenz ist nicht gültig. Kommerzielle Funktionen sind nur lesbar; Community arbeitet weiter wie bisher.",
+    "license.warning.read_only": "Die Lizenz ist abgelaufen. Kommerzielle Funktionen sind nur lesbar; nichts wird gelöscht.",
+    "license.warning.grace": "Die Lizenz ist abgelaufen. Alles funktioniert noch einige Tage; bitte verlängern Sie sie.",
+    "license.warning.pending": "Die Zahlung der Lizenz ist noch offen.",
+    "license.warning.not_yet": "Die Lizenz gilt noch nicht.",
+    "license.warning.seats": "{used} Benutzer, {seats} lizenziert. Nichts wird gesperrt; bitte erweitern Sie die Lizenz.",
+    "license.warning.renewal": "{days, plural, one {Die Lizenz endet in # Tag.} other {Die Lizenz endet in # Tagen.}}",
+    "dashboard.steps": "Erste Schritte",
+    "dashboard.steps_done": "{done} von {all} erledigt",
+    "dashboard.hide": "Ausblenden",
+    "dashboard.show": "Erste Schritte anzeigen",
+    "dashboard.step.team": "Team einladen",
+    "dashboard.done": "erledigt",
+    "dashboard.open": "offen"
 }

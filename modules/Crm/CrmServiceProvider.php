@@ -7,8 +7,10 @@
 
 namespace Modules\Crm;
 
+use App\Dashboard\Dashboard;
 use Illuminate\Support\ServiceProvider;
 use Modules\Crm\Contracts\CompanyDirectory;
+use Modules\Crm\Domain\Company;
 use Modules\Crm\Domain\Directory;
 
 /**
@@ -25,5 +27,6 @@ class CrmServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
         $this->loadRoutesFrom(__DIR__.'/Http/routes.php');
+        $this->app->make(Dashboard::class)->step('crm', 'crm:dashboard.step', fn (): string => route('crm.companies.index', absolute: false), fn (): bool => Company::query()->exists());
     }
 }

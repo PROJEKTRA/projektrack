@@ -14,6 +14,7 @@ use App\Doctor\DoctorAccess;
 use App\I18n\Formats;
 use App\I18n\Strings;
 use App\Licensing\LicenseAccess;
+use App\Licensing\LicenseWarning;
 use App\Models\AppNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -69,6 +70,8 @@ class HandleInertiaRequests extends Middleware
             'strings' => $this->strings(),
             // Regional format and time zone for dates and amounts (S-0919).
             'formats' => app(Formats::class)->current()->toArray(),
+            // What operator administrators should know about the license (S-0977).
+            'licenseWarning' => fn (): ?string => $user instanceof User && app(LicenseAccess::class)->allows($user) && ($warning = app(LicenseWarning::class)->current()) !== null ? __($warning['message'], $warning['args']) : null,
             // Menu entry of the license, for operator administrators (S-0976).
             'licenseAccess' => fn (): bool => $user instanceof User && app(LicenseAccess::class)->allows($user),
             // Critical findings of the system check for operator administrators
