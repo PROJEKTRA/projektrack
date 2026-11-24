@@ -11,6 +11,7 @@ use App\Domain\Money\Amount;
 use Brick\Money\Currency;
 use DOMDocument;
 use DOMElement;
+use horstoeko\zugferdublbridge\XmlConverterCiiToUbl;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -45,7 +46,7 @@ final class EInvoice
         if ($buyer['einvoice_format'] !== 'pdf' && Currency::of($currency)->getDefaultFractionDigits() > 2) {
             return ['x_currency'];
         }
-        if ($buyer['einvoice_format'] !== 'xrechnung_cii') {
+        if (! str_starts_with($buyer['einvoice_format'], 'xrechnung')) {
             return [];
         }
 
@@ -63,7 +64,7 @@ final class EInvoice
     {
         $buyer = self::map($c['buyer'] ?? null);
         $seller = self::map($c['seller'] ?? null);
-        $xrechnung = self::text($buyer, 'einvoice_format') === 'xrechnung_cii';
+        $xrechnung = str_starts_with(self::text($buyer, 'einvoice_format'), 'xrechnung');
         $this->currency = self::text($c, 'currency');
         $this->xml = new DOMDocument('1.0', 'UTF-8');
         $root = $this->xml->createElementNS(self::RSM, 'rsm:CrossIndustryInvoice');
@@ -109,7 +110,8 @@ final class EInvoice
             throw ValidationException::withMessages(['invoice' => __('invoices:errors.einvoice')]);
         }
 
-        return $out;
+        // The other syntax of the same standard, made from the checked document.
+        return self::text($buyer, 'einvoice_format') === 'xrechnung_ubl' ? XmlConverterCiiToUbl::fromString($out)->convert()->saveXmlString() : $out;
     }
 
     /** @return list<string> problems against the schema of EN 16931 */

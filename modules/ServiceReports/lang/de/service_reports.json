@@ -21,6 +21,7 @@
     "document.title": "Leistungsnachweis",
     "document.total": "Gesamt",
     "document.unvalued": "{count, plural, one {# Zeitbuchung hat keinen Stundensatz und keinen Betrag.} other {# Zeitbuchungen haben keinen Stundensatz und keinen Betrag.}}",
+    "docx": "DOCX",
     "empty": "Noch keine Leistungsnachweise.",
     "errors.empty": "In diesem Zeitraum gibt es keine freigegebenen Zeiten.",
     "errors.too_long": "Der Leistungsnachweis ist zu lang. Wählen Sie einen kürzeren Zeitraum.",

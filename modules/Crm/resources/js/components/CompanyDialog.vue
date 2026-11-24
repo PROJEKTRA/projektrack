@@ -284,7 +284,7 @@ function submit(): void {
                         <TextField
                             v-if="
                                 form.tax.tax_status === 'public_sector' ||
-                                form.einvoice_format === 'xrechnung_cii'
+                                form.einvoice_format.startsWith('xrechnung')
                             "
                             v-model="form.leitweg_id"
                             name="leitweg_id"

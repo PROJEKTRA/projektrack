@@ -82,8 +82,8 @@ Everything in it is synthetic; nobody can sign in as a sample person, and no inv
 | Weekly timesheet, approval, corrections, month close | ready |
 | Hourly rates, service reports (PDF, CSV) | ready |
 | Invoices for sellers in DE and BA, cancellation, payments (PDF) | ready; legal notices must be confirmed by an accountant |
-| Timer, XLSX, invoices by email, ZUGFeRD and XRechnung (CII) | ready; not yet checked with the official validators (KoSIT, veraPDF) |
-| Quotes, expenses, absences, DOCX, XRechnung UBL | not built yet |
+| Timer, XLSX, DOCX, invoices by email, ZUGFeRD and XRechnung (CII, UBL) | ready; not yet checked with the official validators (KoSIT, veraPDF) |
+| Quotes, expenses, absences, down payments | not built yet |
 | Encrypted backup and restore on plain hosting | ready |
 | Web installer, Nginx sample | not built yet |
 

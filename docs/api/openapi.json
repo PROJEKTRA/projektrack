@@ -161,7 +161,8 @@
                                             "enum": [
                                                 "pdf",
                                                 "zugferd",
-                                                "xrechnung_cii"
+                                                "xrechnung_cii",
+                                                "xrechnung_ubl"
                                             ]
                                         },
                                         "leitweg_id": {
@@ -301,7 +302,8 @@
                                         "enum": [
                                             "pdf",
                                             "zugferd",
-                                            "xrechnung_cii"
+                                            "xrechnung_cii",
+                                            "xrechnung_ubl"
                                         ]
                                     },
                                     "leitweg_id": {
@@ -409,7 +411,8 @@
                                             "enum": [
                                                 "pdf",
                                                 "zugferd",
-                                                "xrechnung_cii"
+                                                "xrechnung_cii",
+                                                "xrechnung_ubl"
                                             ]
                                         },
                                         "leitweg_id": {
@@ -567,7 +570,8 @@
                                             "enum": [
                                                 "pdf",
                                                 "zugferd",
-                                                "xrechnung_cii"
+                                                "xrechnung_cii",
+                                                "xrechnung_ubl"
                                             ]
                                         },
                                         "leitweg_id": {
@@ -727,7 +731,8 @@
                                         "enum": [
                                             "pdf",
                                             "zugferd",
-                                            "xrechnung_cii"
+                                            "xrechnung_cii",
+                                            "xrechnung_ubl"
                                         ]
                                     },
                                     "leitweg_id": {

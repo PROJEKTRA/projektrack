@@ -38,7 +38,7 @@ class Company extends Model
 
     public const array STATUSES = ['active', 'archived'];
 
-    public const array EINVOICE_FORMATS = ['pdf', 'zugferd', 'xrechnung_cii'];
+    public const array EINVOICE_FORMATS = ['pdf', 'zugferd', 'xrechnung_cii', 'xrechnung_ubl'];
 
     /** @return HasMany<CompanyTaxProfile, $this> */
     public function taxProfiles(): HasMany

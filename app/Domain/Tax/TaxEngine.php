@@ -50,7 +50,8 @@ final class TaxEngine
         if ($c->sellerStatus !== 'registered') {
             throw new TaxReviewRequired('seller_status');
         }
-        if ($case === TaxCase::EuB2bReverseCharge && ! $c->customerHasVatId) {
+        $liableRecipient = $case === TaxCase::EuB2bReverseCharge || ($case === TaxCase::BaExportService && in_array($c->customerCountry, self::EU, true));
+        if ($liableRecipient && ! $c->customerHasVatId) {
             throw new TaxReviewRequired('vat_id_missing');
         }
         $rule = $c->sellerCountry.'.override';

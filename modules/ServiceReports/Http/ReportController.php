@@ -22,6 +22,7 @@ use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Projects\Contracts\ProjectDirectory;
+use Modules\ServiceReports\Domain\ReportDoc;
 use Modules\ServiceReports\Domain\Reports;
 use Modules\ServiceReports\Domain\ReportSheet;
 use Modules\ServiceReports\Domain\ServiceReport;
@@ -89,6 +90,15 @@ class ReportController extends Controller
         $audit->record('service_reports.exported', $model, ['number' => $model->number, 'as' => 'xlsx'], $this->currentUser($request));
 
         return response($file, 200, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition' => "attachment; filename=\"{$model->number}.xlsx\"", 'Cache-Control' => 'private, no-store']);
+    }
+
+    public function docx(Request $request, string $report, ReportDoc $doc, AuditLog $audit): HttpResponse
+    {
+        $model = $this->find($request, $report);
+        $file = $doc->render($model);
+        $audit->record('service_reports.exported', $model, ['number' => $model->number, 'as' => 'docx'], $this->currentUser($request));
+
+        return response($file, 200, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition' => "attachment; filename=\"{$model->number}.docx\"", 'Cache-Control' => 'private, no-store']);
     }
 
     public function csv(Request $request, string $report, Strings $strings, AuditLog $audit): HttpResponse

@@ -7,6 +7,7 @@
 
 use App\Authorization\RoleManager;
 use App\Documents\Numbers;
+use App\Domain\Money\Amount;
 use App\Domain\Tax\TaxCase;
 use App\I18n\RegionalFormat;
 use App\I18n\StringEditor;
@@ -561,6 +562,11 @@ it('never credits more than a tax group holds, whatever was paid', function () {
     expect($invoice->refresh()->credited_minor)->toBe(-$invoice->gross_minor);
 });
 
+it('never credits more than the invoice when a tax group is negative', function () {
+    $invoice = issue(draft([freeLine('1', '1000'), freeLine('1', '-200', 'reduced')]));
+    expect($invoice->gross_minor)->toBe(97600)->and(fn () => app(Invoices::class)->credit($invoice, [1 => 100000], 'x', $this->controller))->toThrow(ValidationException::class);
+});
+
 it('returns exactly the tax that was charged over many small notes', function () {
     $invoice = issue(draft([freeLine('1', '0.50'), freeLine('1', '10', 'reduced')]));
     foreach (range(1, 16) as $i) {
@@ -601,6 +607,36 @@ it('never lets a person choose VAT for a seller who may not charge it', function
     sellerData();
     app(Invoices::class)->override($invoice, TaxCase::EuB2bReverseCharge, 'Confirmed by the accountant', $this->controller);
     expect(app(Invoices::class)->preview($invoice->refresh())['problems'])->toContain('tax_vat_id_missing');
+});
+
+it('writes the same amounts as UBL', function () {
+    $this->company->update(['einvoice_format' => 'xrechnung_ubl', 'leitweg_id' => '04011000-1234512345-06']);
+    app(Companies::class)->update($this->company, ['company' => [], 'contacts' => [['last_name' => 'Amt', 'email' => 'rechnung@amt.test', 'invoice_recipient' => true]]], $this->controller);
+    $invoice = issue(draft([freeLine('3', '33.33'), freeLine('1', '49.99', 'reduced')]));
+    $doc = new DOMDocument;
+    $doc->loadXML($invoice->content()['xml']);
+    $x = new DOMXPath($doc);
+    $x->registerNamespace('b', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
+    $x->registerNamespace('a', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
+    $text = fn (string $p): string => $x->evaluate("string({$p})");
+    expect($doc->documentElement->localName)->toBe('Invoice')
+        ->and($text('/*/b:ID'))->toBe($invoice->number)->and($text('/*/b:BuyerReference'))->toBe('04011000-1234512345-06')->and($text('/*/b:CustomizationID'))->toContain('xrechnung_3.0')
+        ->and($text('/*/a:LegalMonetaryTotal/b:PayableAmount'))->toBe(Amount::decimal($invoice->gross_minor, 'EUR'))
+        ->and($text('/*/a:TaxTotal/b:TaxAmount'))->toBe(Amount::decimal($invoice->tax_minor, 'EUR'))
+        ->and($x->query('/*/a:InvoiceLine')->length)->toBe(2)->and($text('(/*/a:InvoiceLine)[1]/b:LineExtensionAmount'))->toBe('99.99');
+});
+
+it('writes the report as a Word document', function () {
+    [$project] = billedProject();
+    $this->actingAs($this->controller)->post('/service-reports', ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-31', 'with_amounts' => true]);
+    $file = tempnam(sys_get_temp_dir(), 'd');
+    file_put_contents($file, $this->get('/service-reports/'.ServiceReport::query()->sole()->id.'/docx')->assertOk()->getContent());
+    $zip = new ZipArchive;
+    $zip->open($file);
+    $xml = (string) $zip->getFromName('word/document.xml');
+    $zip->close();
+    unlink($file);
+    expect(@simplexml_load_string($xml))->not->toBeFalse()->and($xml)->toContain('SR-2026-0001')->toContain('1 Consulting')->toContain('100.00')->not->toContain('PHPWord');
 });
 
 it('mails issued invoices to known contacts only', function () {

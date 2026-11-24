@@ -394,6 +394,10 @@ final class Invoices
             }
             $sumNet = array_sum(array_column($groups, 'net_minor'));
             $sumTax = array_sum(array_column($groups, 'tax_minor'));
+            // Also when another group is negative: never more than the whole invoice.
+            if ($locked->gross_minor + $locked->credited_minor + $sumNet + $sumTax < 0) {
+                throw ValidationException::withMessages(['lines' => __('invoices:errors.credit_amount')]);
+            }
             $number = $this->numbers->next('cancellation', 'CN');
             $today = now($this->tenant->current()->timezone)->toDateString();
             $this->ensureYear($number, $today);
@@ -435,7 +439,7 @@ final class Invoices
     /** Told when the rest was paid, not when nothing was ever paid. A return and a new payment tell it again. */
     private function announcePaid(Invoice $invoice, int $openBefore): void
     {
-        if ($openBefore > 0 && $invoice->openMinor() <= 0 && $invoice->paid_minor > 0) {
+        if ($openBefore > 0 && $invoice->openMinor() <= 0 && $invoice->paid_minor > 0 && $invoice->credited_minor > -$invoice->gross_minor) {
             DB::afterCommit(fn () => event(new InvoicePaid($invoice->id)));
         }
     }
@@ -533,7 +537,7 @@ final class Invoices
     private function seal(Invoice $invoice, array $content, User $actor): void
     {
         // Part of the sealed content, so the hash covers it too.
-        if (is_array($content['buyer'] ?? null) && in_array($content['buyer']['einvoice_format'] ?? null, ['zugferd', 'xrechnung_cii'], true)) {
+        if (is_array($content['buyer'] ?? null) && in_array($content['buyer']['einvoice_format'] ?? null, ['zugferd', 'xrechnung_cii', 'xrechnung_ubl'], true)) {
             $content['xml'] = $this->einvoice->write($content);
         }
         $snapshot = CanonicalJson::encode($content);
