@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class ProfileController extends Controller
 {
@@ -87,7 +88,11 @@ class ProfileController extends Controller
 
         // The old address hears of it, so a takeover is noticed.
         if ($user->email !== $former) {
-            Notification::route('mail', $former)->notify(new EmailWasChanged($user));
+            try {
+                Notification::route('mail', $former)->notify(new EmailWasChanged($user));
+            } catch (Throwable $e) {
+                report($e);
+            }
         }
 
         // A new language applies to this confirmation already.
@@ -122,6 +127,7 @@ class ProfileController extends Controller
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        Inertia::clearHistory();
 
         return redirect('/');
     }

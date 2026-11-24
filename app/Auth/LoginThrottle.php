@@ -9,6 +9,7 @@ namespace App\Auth;
 
 use App\Tenancy\TenantContext;
 use Illuminate\Contracts\Cache\LockProvider;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Str;
 
@@ -60,7 +61,11 @@ final class LoginThrottle
         }
 
         $lock = $store->lock($this->key($email).'.lock', 10);
-        $lock->block(5);
+        try {
+            $lock->block(5);
+        } catch (LockTimeoutException) {
+            return $this->count($email);
+        }
         try {
             return $this->count($email);
         } finally {

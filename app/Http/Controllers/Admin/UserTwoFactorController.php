@@ -24,7 +24,7 @@ class UserTwoFactorController extends Controller
     public function destroy(Request $request, User $user, ResetTwoFactor $reset, Permissions $permissions): RedirectResponse
     {
         // Nobody weakens the sign-in of someone who may do more.
-        abort_if(array_diff($permissions->of($user), $permissions->of($this->currentUser($request))) !== [], 403);
+        abort_if(array_diff($permissions->anywhere($user), $permissions->of($this->currentUser($request))) !== [], 403);
 
         $reset($user, $this->currentUser($request));
 

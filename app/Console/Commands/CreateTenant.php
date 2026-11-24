@@ -53,7 +53,7 @@ class CreateTenant extends Command
             'slug' => $this->option('slug'),
             'name' => $this->option('name'),
             'domain' => is_string($this->option('domain')) ? strtolower(rtrim($this->option('domain'), '.')) : null,
-            'admin_email' => $this->option('admin-email'),
+            'admin_email' => is_string($email = $this->option('admin-email')) ? mb_strtolower(trim($email)) : $email,
             'admin_name' => $this->option('admin-name'),
             'locale' => $this->option('locale'),
             'country' => $this->option('country'),

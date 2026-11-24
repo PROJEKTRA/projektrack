@@ -17,6 +17,11 @@ rules:
               - pattern: $Q->havingRaw($SQL, ...)
               - pattern: $Q->groupByRaw($SQL, ...)
               - pattern: DB::raw($SQL)
+              - pattern: DB::select($SQL, ...)
+              - pattern: DB::statement($SQL, ...)
+              - pattern: DB::unprepared($SQL)
+              - pattern: $M::whereRaw($SQL, ...)
+              - pattern: $M::selectRaw($SQL, ...)
           - pattern-not: $Q->whereRaw("...", ...)
           - pattern-not: $Q->orWhereRaw("...", ...)
           - pattern-not: $Q->selectRaw("...", ...)
@@ -24,6 +29,11 @@ rules:
           - pattern-not: $Q->havingRaw("...", ...)
           - pattern-not: $Q->groupByRaw("...", ...)
           - pattern-not: DB::raw("...")
+          - pattern-not: DB::select("...", ...)
+          - pattern-not: DB::statement("...", ...)
+          - pattern-not: DB::unprepared("...")
+          - pattern-not: $M::whereRaw("...", ...)
+          - pattern-not: $M::selectRaw("...", ...)
     paths:
       include: ['/app/**', '/modules/**', '/ee/**']
   - id: weak-random

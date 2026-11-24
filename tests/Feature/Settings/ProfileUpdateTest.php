@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Notifications\EmailWasChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use RuntimeException;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -65,6 +66,15 @@ class ProfileUpdateTest extends TestCase
         $change(['current_password' => 'password'])->assertSessionHasNoErrors();
         $this->assertSame('new@example.com', $user->refresh()->email);
         Notification::assertSentOnDemand(EmailWasChanged::class, fn ($n, $channels, $to): bool => $to->routes === ['mail' => 'old@example.com'] && $n->toMail()->subject !== '');
+    }
+
+    public function test_a_failing_mail_server_does_not_break_the_change()
+    {
+        $user = User::factory()->create();
+        Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('smtp'));
+
+        $this->actingAs($user)->patch(route('profile.update'), ['name' => 'Test User', 'email' => 'new@example.com', 'current_password' => 'password'])->assertRedirect(route('profile.edit'));
+        $this->assertSame('new@example.com', $user->refresh()->email);
     }
 
     public function test_guessing_the_password_locks_the_account()
