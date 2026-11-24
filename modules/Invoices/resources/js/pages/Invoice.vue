@@ -365,7 +365,12 @@ function openEdit(): void {
                         >{{ $t('invoices:cancel') }}</Button
                     >
                     <Button
-                        v-if="can.pay && invoice.open_minor > 0"
+                        v-if="
+                            can.pay &&
+                            ['open', 'partially_paid', 'paid'].includes(
+                                invoice.status,
+                            )
+                        "
                         data-test="pay"
                         @click="dialog = 'pay'"
                         >{{ $t('invoices:pay') }}</Button
