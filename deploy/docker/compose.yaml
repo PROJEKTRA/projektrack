@@ -41,7 +41,7 @@ x-app-env: &app-env
   APP_KEY: ${APP_KEY:?APP_KEY is not set}
   APP_URL: https://${PROJEKTRACK_DOMAIN:?PROJEKTRACK_DOMAIN is not set}
   APP_LOCALE: ${APP_LOCALE:-bs}
-  I18N_LOCALES: ${I18N_LOCALES:-bs,en}
+  I18N_LOCALES: ${I18N_LOCALES:-bs,en,de}
   LOG_CHANNEL: stderr
   LOG_LEVEL: ${LOG_LEVEL:-info}
   # Compiled views in the tmpfs of each container, not on the shared volume.

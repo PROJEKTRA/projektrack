@@ -81,7 +81,7 @@ class InvoiceController extends Controller
                 'groups' => $content['groups'] ?? $preview['totals']->groups ?? [],
                 'net_minor' => $i->net_minor, 'tax_minor' => $preview['totals']->taxMinor ?? $i->tax_minor, 'gross_minor' => $i->isDraft() ? ($preview['totals']?->grossMinor() ?? null) : $i->gross_minor,
                 'problems' => array_map(fn (string $p): string => __("invoices:problem.{$p}"), $preview['problems'] ?? []),
-                'notices' => $content['notices'] ?? array_map(fn (string $n): string => __($n), $preview['notices'] ?? []),
+                'notices' => $content['notices'] ?? array_values(array_unique(array_map(fn (string $n): string => __($n), $preview['notices'] ?? []))),
                 'cancels' => $i->cancels_id === null ? null : Invoice::query()->findOrFail($i->cancels_id)->only(['id', 'number']),
                 'credit_notes' => Invoice::query()->where('credits_id', $i->id)->orderBy('number')->get()->map(fn (Invoice $c): array => $c->only(['id', 'number']))->all(),
                 'credits' => $i->credits_id === null ? null : Invoice::query()->findOrFail($i->credits_id)->only(['id', 'number']),

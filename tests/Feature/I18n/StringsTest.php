@@ -301,6 +301,15 @@ describe('compiled strings', function () {
 });
 
 describe('shipped strings', function () {
+    it('ships German for every identifier, each valid ICU', function () {
+        $catalog = app(StringCatalog::class);
+        $de = $catalog->messages('de');
+        expect(array_keys($de))->toEqualCanonicalizing(array_keys($catalog->messages('en')));
+        foreach ($de as $message) {
+            expect(new MessageFormatter('de', $message))->toBeInstanceOf(MessageFormatter::class);
+        }
+    });
+
     it('has the same identifiers in en and bs, each valid ICU', function () {
         $catalog = app(StringCatalog::class);
         $en = $catalog->messages('en');

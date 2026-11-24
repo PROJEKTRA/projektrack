@@ -2,13 +2,13 @@
 
 Vom Kunden zur bezahlten Rechnung. Ihre Rolle verlangt die Zwei-Faktor-Anmeldung: siehe Schnellstart für Mitarbeiter.
 
-Die Oberfläche gibt es auf Bosnisch und Englisch. Die deutschen Bezeichnungen hier sind Übersetzungen.
+Die Bezeichnungen in der Oberfläche können leicht abweichen.
 
 ## Kunde und Vertrag
 
 1. Öffnen Sie **Kunden**, wählen Sie **Neuer Kunde** und erfassen Sie **Name** und **Rechnungsadresse**.
 2. Wählen Sie unter **Steuer** den **Steuerstatus**. Geben Sie **USt-IdNr.** oder **Steuernummer** ein.
-3. Legen Sie unter **Rechnungsstellung** **Dokumentsprache**, **Währung**, **Zahlungsziel (Tage)** und **Rechnungsformat** fest. Wählen Sie Bosnisch oder Englisch als Dokumentsprache.
+3. Legen Sie unter **Rechnungsstellung** **Dokumentsprache**, **Währung**, **Zahlungsziel (Tage)** und **Rechnungsformat** fest.
 4. Ergänzen Sie einen Kontakt mit E-Mail und schalten Sie **Erhält Rechnungen** ein. Wählen Sie **Speichern**.
 5. Öffnen Sie das Projekt unter **Projekte** und wählen Sie **Neuer Vertrag**.
 6. Erfassen Sie **Nummer**, **Vertragsart**, **Budget (Stunden)** und **Aufrunden auf (Minuten)**. Wählen Sie **Speichern**.

@@ -2,7 +2,7 @@
 
 Buchen Sie Ihre Woche und reichen Sie sie ein. Sie brauchen ein Konto und einen Platz im Team eines Projekts.
 
-Die Oberfläche gibt es auf Bosnisch und Englisch. Die deutschen Bezeichnungen hier sind Übersetzungen.
+Die Bezeichnungen in der Oberfläche können leicht abweichen.
 
 ## Passwort festlegen
 

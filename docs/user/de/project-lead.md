@@ -2,7 +2,7 @@
 
 Legen Sie ein Projekt an, genehmigen Sie Zeit und erstellen Sie einen Leistungsnachweis. Anmeldung: siehe Schnellstart für Mitarbeiter.
 
-Die Oberfläche gibt es auf Bosnisch und Englisch. Die deutschen Bezeichnungen hier sind Übersetzungen.
+Die Bezeichnungen in der Oberfläche können leicht abweichen.
 
 ## Projekt anlegen
 

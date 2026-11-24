@@ -160,7 +160,7 @@ it('refuses to issue while something is missing and takes no number', function (
     'no VAT ID' => [fn () => draft([freeLine('1', '1')], tap(invCompany('eu_business', 'AT', 'ATU12345678'), fn (Company $c) => $c->taxProfiles()->update(['vat_id' => null]))), 'tax_vat_id_missing'],
     'negative total' => [fn () => draft([freeLine('-1', '100')]), 'negative_total'],
     'service not over' => [fn () => tap(draft([freeLine('1', '1')]), fn (Invoice $i) => $i->update(['service_to' => '2026-12-31'])), 'future_service'],
-    'language without texts' => [fn () => tap(draft([freeLine('1', '1')]), fn (Invoice $i) => $i->update(['locale' => 'de'])), 'language'],
+    'language without texts' => [fn () => tap(draft([freeLine('1', '1')]), fn (Invoice $i) => $i->update(['locale' => 'fr'])), 'language'],
     'private outside the EU' => [fn () => draft([freeLine('1', '1')], invCompany('private', 'CH', null)), 'tax_private_outside_eu'],
 ]);
 
@@ -542,6 +542,13 @@ it('credits parts of lines with their tax, never more than is left', function ()
     expect($this->get("/invoices/{$invoice->id}")->inertiaProps('invoice.status'))->toBe('paid');
     $this->post("/invoices/{$invoice->id}/cancel")->assertSessionHasErrors('invoice');
     $this->get("/invoices/{$note->id}/pdf")->assertOk();
+});
+
+it('issues in German with the German notice once', function () {
+    $company = invCompany('eu_business', 'AT', 'ATU12345678');
+    $company->update(['document_locale' => 'de']);
+    $content = issue(draft([freeLine('1', '100')], $company))->content();
+    expect($content['notices'])->toBe(['Steuerschuldnerschaft des Leistungsempfängers.'])->and($content['labels']['invoices:document.invoice'])->toBe('Rechnung');
 });
 
 it('mails issued invoices to known contacts only', function () {

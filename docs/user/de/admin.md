@@ -2,7 +2,7 @@
 
 Richten Sie Ihre Firma in einem Zug ein. Installation und Aktualisierung: `docs/admin/plain-hosting.md`. Ihre Rolle verlangt die Zwei-Faktor-Anmeldung: siehe Schnellstart für Mitarbeiter. Manche Seiten fragen zuerst nach Passwort oder Authenticator-Code.
 
-Die Oberfläche gibt es auf Bosnisch und Englisch. Die deutschen Bezeichnungen hier sind Übersetzungen.
+Die Bezeichnungen in der Oberfläche können leicht abweichen.
 
 ## Benutzer und Rollen
 

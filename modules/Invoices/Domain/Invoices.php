@@ -271,7 +271,8 @@ final class Invoices
                 'net_minor' => $totals->netMinor, 'tax_minor' => $totals->taxMinor, 'gross_minor' => $totals->grossMinor(),
                 'override' => $locked->override_case === null ? null : ['case' => $locked->override_case, 'reason' => $locked->override_reason, 'by' => $locked->override_by],
                 'labels' => $this->pdf->labels(['invoices:document.', 'invoices:unit.'], $locked->locale), 'format' => $this->pdf->format($locked->locale)->locale,
-                'notices' => array_map(fn (string $id): string => $this->strings->get($id, [], $locked->locale), $preview['notices']),
+                // Two notices can read the same in one language.
+                'notices' => array_values(array_unique(array_map(fn (string $id): string => $this->strings->get($id, [], $locked->locale), $preview['notices']))),
             ], $actor);
             $this->audit->record('invoices.finalized', $locked, ['number' => $number, 'gross_minor' => $locked->gross_minor, 'hash' => $locked->content_hash], $actor);
 
