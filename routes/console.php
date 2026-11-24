@@ -61,7 +61,11 @@ Artisan::command('projektrack:backup', function (Backups $backups) {
         return 1;
     }
     $backups->prune(config()->integer('backup.keep_days'));
+    foreach (Tenant::query()->get() as $tenant) {
+        app(TenantContext::class)->run($tenant, fn () => app(AuditLog::class)->record('backup.created', null, ['file' => basename($file)]));
+    }
     $this->info('Written '.$file.'. Copy it off the server.');
+    $this->line('SHA-256 '.hash_file('sha256', $file).' (note it elsewhere: restore only a file with this value)');
 
     return 0;
 })->purpose('Back up database and files into one encrypted file');
@@ -81,12 +85,16 @@ Artisan::command('projektrack:restore {file : Backup file} {--key-file= : File w
 
         return 1;
     }
-    $this->info('Restored. Use the .env of the old installation (APP_KEY), then delete the key file.');
+    foreach (Tenant::query()->get() as $tenant) {
+        app(TenantContext::class)->run($tenant, fn () => app(AuditLog::class)->record('backup.restored', null, ['file' => basename($file)]));
+    }
+    $this->call('projektrack:audit:verify');
+    $this->info('Restored. API tokens and shared links are expired. Use the .env of the old installation (APP_KEY), then delete the key file.');
 
     return 0;
 })->purpose('Restore a backup into an empty installation of the same version');
 
-Schedule::command('projektrack:backup')->dailyAt('02:30')->withoutOverlapping()->when(fn (): bool => config('backup.public_key') !== '');
+Schedule::command('projektrack:backup')->dailyAt('02:30')->withoutOverlapping(120)->when(fn (): bool => config('backup.public_key') !== '');
 
 // A module that arrived with an update, for one existing company (S-0939). New companies start with all of them.
 Artisan::command('projektrack:modules:enable {tenant : Slug of the tenant} {module : Key of the module, for example crm}', function (TenantContext $context, ModuleRegistry $registry) {

@@ -11,10 +11,12 @@ use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Pdo\Mysql;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use RuntimeException;
 use SplFileInfo;
+use ValueError;
 use ZipArchive;
 
 /**
@@ -26,6 +28,9 @@ final class Backups
     /** Tables that are rebuilt or short-lived. */
     private const array SKIP = ['cache', 'cache_locks', 'sessions', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens', 'sqlite_sequence'];
 
+    /** @var resource|null */
+    private $lock = null;
+
     public function folder(): string
     {
         return storage_path('backups');
@@ -33,7 +38,9 @@ final class Backups
 
     public function create(string $publicKey): string
     {
+        $this->ensureSupported();
         $work = $this->workFolder();
+        $zip = null;
         try {
             $zipFile = $work.'/backup.zip';
             $zip = new ZipArchive;
@@ -41,10 +48,17 @@ final class Backups
                 throw new RuntimeException('The backup could not be started.');
             }
             $migrations = DB::table('migrations')->orderBy('migration')->pluck('migration')->all();
-            // One picture of all tables.
-            $counts = DB::transaction(function () use ($work, $zip): array {
+            $tables = $this->tables();
+            if (! in_array('tenants', $tables, true)) {
+                throw new RuntimeException('The database has no tables of this application.');
+            }
+            // One picture of all tables, whatever the server has as default.
+            if (in_array($this->connection()->getDriverName(), ['mysql', 'mariadb'], true) && DB::transactionLevel() === 0) {
+                DB::statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            }
+            $counts = DB::transaction(function () use ($work, $zip, $tables): array {
                 $counts = [];
-                foreach ($this->tables() as $table) {
+                foreach ($tables as $table) {
                     $file = "{$work}/{$table}.jsonl";
                     $counts[$table] = $this->dump($table, $file);
                     $zip->addFile($file, "tables/{$table}.jsonl");
@@ -64,11 +78,23 @@ final class Backups
             }
             File::ensureDirectoryExists($this->folder(), 0700);
             $target = $this->folder().'/backup-'.now()->format('Ymd-His').'.ptkbak';
-            BackupFile::encrypt($zipFile, $target, $publicKey);
+            $free = disk_free_space($this->folder());
+            if ($free !== false && $free < filesize($zipFile) * 1.1) {
+                throw new RuntimeException('The disk is full.');
+            }
+            // Whole or not at all: an unfinished file never looks like a backup.
+            try {
+                BackupFile::encrypt($zipFile, $target.'.part', $publicKey);
+                if (! rename($target.'.part', $target)) {
+                    throw new RuntimeException('The backup could not be written.');
+                }
+            } finally {
+                @unlink($target.'.part');
+            }
 
             return $target;
         } finally {
-            File::deleteDirectory($work);
+            $this->release($zip, $work);
         }
     }
 
@@ -95,10 +121,9 @@ final class Backups
         if (DB::table('tenants')->exists()) {
             throw new RuntimeException('This installation has data. Restore into an empty one only.');
         }
-        if ($this->connection()->getDriverName() === 'pgsql') {
-            throw new RuntimeException('Restore on PostgreSQL is not supported; use the Docker tools.');
-        }
+        $this->ensureSupported();
         $work = $this->workFolder();
+        $zip = null;
         try {
             BackupFile::decrypt($file, $work.'/backup.zip', $secretKey);
             $zip = new ZipArchive;
@@ -111,6 +136,12 @@ final class Backups
                 throw new RuntimeException('The backup is of another version. Install that version first.');
             }
             $tables = $this->tables();
+            $family = fn (mixed $driver): string => is_string($driver) && in_array($driver, ['mysql', 'mariadb'], true) ? 'mysql' : (is_string($driver) ? $driver : '');
+            if ($family($manifest['driver'] ?? null) !== $family($this->connection()->getDriverName())) {
+                throw new RuntimeException('The backup is of another kind of database.');
+            }
+            $this->checkNames($zip);
+            // Files last, inside the transaction: if they fail, the database stays empty too.
             DB::transaction(function () use ($zip, $tables, $manifest): void {
                 foreach (array_reverse($tables) as $table) {
                     DB::table($table)->delete();
@@ -121,10 +152,17 @@ final class Backups
                         throw new RuntimeException("The backup of {$table} is not complete.");
                     }
                 }
+                // Access that was taken away since the backup does not come back.
+                DB::table('users')->update(['remember_token' => null]);
+                foreach (['api_tokens', 'shared_links'] as $table) {
+                    if (Schema::hasColumn($table, 'expires_at')) {
+                        DB::table($table)->update(['expires_at' => now()->subSecond()]);
+                    }
+                }
+                $this->files($zip);
             });
-            $this->files($zip);
         } finally {
-            File::deleteDirectory($work);
+            $this->release($zip, $work);
         }
     }
 
@@ -160,11 +198,25 @@ final class Backups
             throw new RuntimeException('The backup could not be written.');
         }
         $count = 0;
+        // Unbuffered: a large table never sits in memory as a whole.
+        $pdo = $this->connection()->getPdo();
+        $mysql = in_array($this->connection()->getDriverName(), ['mysql', 'mariadb'], true);
+        if ($mysql) {
+            $pdo->setAttribute(Mysql::ATTR_USE_BUFFERED_QUERY, false);
+        }
         foreach (DB::table($table)->cursor() as $row) {
-            fwrite($out, json_encode($row, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)."\n");
+            $line = json_encode($row, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)."\n";
+            if (fwrite($out, $line) !== strlen($line)) {
+                throw new RuntimeException('The disk is full.');
+            }
             $count++;
         }
-        fclose($out);
+        if ($mysql) {
+            $pdo->setAttribute(Mysql::ATTR_USE_BUFFERED_QUERY, true);
+        }
+        if (! fclose($out)) {
+            throw new RuntimeException('The disk is full.');
+        }
 
         return $count;
     }
@@ -216,33 +268,85 @@ final class Backups
         return $count;
     }
 
-    private function files(ZipArchive $zip): void
+    /** @return list<string> */
+    private function names(ZipArchive $zip): array
     {
-        $base = storage_path('app');
+        $names = [];
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $name = (string) $zip->getNameIndex($i);
-            if (! str_starts_with($name, 'files/')) {
-                continue;
+            if (str_starts_with($name, 'files/')) {
+                $names[] = substr($name, 6);
             }
-            $path = substr($name, 6);
-            // Never outside the folder, whatever the archive says.
+        }
+
+        return $names;
+    }
+
+    /** Never outside the folder, whatever the archive says. */
+    private function checkNames(ZipArchive $zip): void
+    {
+        foreach ($this->names($zip) as $path) {
             if ($path === '' || str_contains($path, '\\') || preg_match('#(^|/)\.\.(/|$)|^/|:#', $path) === 1) {
                 throw new RuntimeException('The backup holds a wrong file name.');
             }
+        }
+    }
+
+    private function files(ZipArchive $zip): void
+    {
+        $base = storage_path('app');
+        foreach ($this->names($zip) as $path) {
             File::ensureDirectoryExists(dirname("{$base}/{$path}"));
-            $in = $zip->getStream($name);
+            $in = $zip->getStream('files/'.$path);
             if ($in === false || file_put_contents("{$base}/{$path}", $in) === false) {
                 throw new RuntimeException("{$path} could not be restored.");
             }
         }
     }
 
+    private function ensureSupported(): void
+    {
+        if ($this->connection()->getDriverName() === 'pgsql') {
+            throw new RuntimeException('Not on PostgreSQL; use the Docker tools.');
+        }
+    }
+
+    /**
+     * A folder for the plain text while the backup is made, one run at a time.
+     * A run that was killed leaves nothing behind for longer than the next run.
+     */
     private function workFolder(): string
     {
+        File::ensureDirectoryExists(storage_path('framework'));
+        $lock = fopen(storage_path('framework/backup.lock'), 'c');
+        if ($lock === false || ! flock($lock, LOCK_EX | LOCK_NB)) {
+            throw new RuntimeException('Another backup or restore is running.');
+        }
+        $this->lock = $lock;
+        foreach (glob(storage_path('framework/backup-*'), GLOB_ONLYDIR) ?: [] as $old) {
+            File::deleteDirectory($old);
+        }
         $work = storage_path('framework/backup-'.bin2hex(random_bytes(8)));
         File::makeDirectory($work, 0700, true);
+        // Also after a fatal error, where "finally" does not run.
+        register_shutdown_function(fn () => is_dir($work) && File::deleteDirectory($work));
 
         return $work;
+    }
+
+    private function release(?ZipArchive $zip, string $work): void
+    {
+        // An open archive cannot be deleted on every system.
+        try {
+            $zip?->close();
+        } catch (ValueError) {
+            // Closed already.
+        }
+        File::deleteDirectory($work);
+        if ($this->lock !== null) {
+            fclose($this->lock);
+            $this->lock = null;
+        }
     }
 
     private function connection(): Connection

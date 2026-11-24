@@ -46,6 +46,13 @@ final class TaxEngine
         if (! in_array($case, self::choices($c->sellerCountry), true)) {
             throw new TaxReviewRequired('seller_country');
         }
+        // Who may not charge VAT cannot choose to, and reverse charge names the recipient.
+        if ($c->sellerStatus !== 'registered') {
+            throw new TaxReviewRequired('seller_status');
+        }
+        if ($case === TaxCase::EuB2bReverseCharge && ! $c->customerHasVatId) {
+            throw new TaxReviewRequired('vat_id_missing');
+        }
         $rule = $c->sellerCountry.'.override';
 
         return match ($case) {

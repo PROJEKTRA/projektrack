@@ -7,6 +7,7 @@
 
 use App\Authorization\RoleManager;
 use App\Documents\Numbers;
+use App\Domain\Tax\TaxCase;
 use App\I18n\RegionalFormat;
 use App\I18n\StringEditor;
 use App\Models\AuditEntry;
@@ -512,7 +513,7 @@ it('lets a person choose the tax case, with a reason and only of the country', f
     $put(['case' => 'BA_DOMESTIC_STANDARD', 'reason' => 'Confirmed by the accountant on the phone'])->assertSessionHasErrors('case');
     $put(['case' => 'DE_DOMESTIC_STANDARD', 'reason' => 'Confirmed by the accountant on the phone'])->assertSessionHasNoErrors();
     $issued = issue($invoice->refresh());
-    expect($issued->tax_minor)->toBe(1900)->and($issued->content()['override']['case'])->toBe('DE_DOMESTIC_STANDARD')
+    expect($issued->tax_minor)->toBe(1900)->and($issued->content()['override']['case'])->toBe('DE_DOMESTIC_STANDARD')->and($issued->content()['override']['original'])->toBe(['review:private_outside_eu'])
         ->and(AuditEntry::query()->where('action', 'invoices.tax_overridden')->sole()->contextData()['case'])->toBe('DE_DOMESTIC_STANDARD');
     $put(['case' => null, 'reason' => 'Confirmed by the accountant on the phone'])->assertSessionHasErrors('invoice');
     $this->actingAs(invUser('project_lead'));
@@ -534,6 +535,7 @@ it('credits parts of lines with their tax, never more than is left', function ()
         ->and($invoice->refresh()->openMinor())->toBe($invoice->gross_minor - 7020);
     $credit(['1' => '50'])->assertSessionHasErrors('lines.1');
     $credit(['1' => '49,99'])->assertSessionHasNoErrors();
+    expect($invoice->refresh()->credited_minor)->toBe(-(9999 + 1900 + 1000 + 70));
 
     // The rest is paid; the invoice is settled and cannot be cancelled.
     $open = $invoice->refresh()->openMinor();
@@ -549,6 +551,56 @@ it('issues in German with the German notice once', function () {
     $company->update(['document_locale' => 'de']);
     $content = issue(draft([freeLine('1', '100')], $company))->content();
     expect($content['notices'])->toBe(['Steuerschuldnerschaft des Leistungsempfängers.'])->and($content['labels']['invoices:document.invoice'])->toBe('Rechnung');
+});
+
+it('never credits more than a tax group holds, whatever was paid', function () {
+    $invoice = issue(draft([freeLine('1', '1000'), freeLine('1', '-200', changes: ['description' => 'Rabatt'])]));
+    app(Invoices::class)->pay($invoice, '2026-11-05', 1, null, $this->controller);
+    expect(fn () => app(Invoices::class)->credit($invoice, [1 => 100000], 'x', $this->controller))->toThrow(ValidationException::class);
+    app(Invoices::class)->credit($invoice, [1 => 80000], 'x', $this->controller);
+    expect($invoice->refresh()->credited_minor)->toBe(-$invoice->gross_minor);
+});
+
+it('returns exactly the tax that was charged over many small notes', function () {
+    $invoice = issue(draft([freeLine('1', '0.50'), freeLine('1', '10', 'reduced')]));
+    foreach (range(1, 16) as $i) {
+        app(Invoices::class)->credit($invoice, [1 => 3], 'x', $this->controller);
+    }
+    app(Invoices::class)->credit($invoice, [1 => 2, 2 => 1000], 'x', $this->controller);
+    expect($invoice->refresh()->credited_minor)->toBe(-$invoice->gross_minor)->and($invoice->openMinor())->toBe(0);
+});
+
+it('lets money be returned after a credit and tells payment once', function () {
+    Event::fake([InvoicePaid::class]);
+    $paid = issue(draft([freeLine('1', '100')]));
+    app(Invoices::class)->pay($paid, '2026-11-05', 11900, null, $this->controller);
+    app(Invoices::class)->credit($paid, [1 => 5000], 'x', $this->controller);
+    app(Invoices::class)->pay($paid, '2026-11-05', -2000, 'first part', $this->controller);
+    app(Invoices::class)->pay($paid, '2026-11-05', -3950, 'rest', $this->controller);
+    expect($paid->refresh()->openMinor())->toBe(0);
+    Event::assertDispatchedTimes(InvoicePaid::class, 1);
+
+    // The rest is credited, not paid: paid as well.
+    $second = issue(draft([freeLine('1', '100')]));
+    app(Invoices::class)->pay($second, '2026-11-05', 10710, null, $this->controller);
+    app(Invoices::class)->credit($second, [1 => 1000], 'x', $this->controller);
+    expect($second->refresh()->openMinor())->toBe(0);
+    Event::assertDispatchedTimes(InvoicePaid::class, 2);
+
+    // Fully credited and never paid is not a payment.
+    $third = issue(draft([freeLine('1', '100')]));
+    app(Invoices::class)->credit($third, [1 => 10000], 'x', $this->controller);
+    Event::assertDispatchedTimes(InvoicePaid::class, 2);
+});
+
+it('never lets a person choose VAT for a seller who may not charge it', function () {
+    $invoice = draft([freeLine('1', '100')]);
+    app(Invoices::class)->override($invoice, TaxCase::DeStandard, 'Confirmed by the accountant', $this->controller);
+    sellerData(['vat_status' => 'small_business']);
+    expect(app(Invoices::class)->preview($invoice->refresh())['problems'])->toContain('tax_seller_status');
+    sellerData();
+    app(Invoices::class)->override($invoice, TaxCase::EuB2bReverseCharge, 'Confirmed by the accountant', $this->controller);
+    expect(app(Invoices::class)->preview($invoice->refresh())['problems'])->toContain('tax_vat_id_missing');
 });
 
 it('mails issued invoices to known contacts only', function () {

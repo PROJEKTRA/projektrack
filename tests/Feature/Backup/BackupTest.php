@@ -70,6 +70,7 @@ it('restores every table and file into an empty installation', function () {
     file_put_contents($this->dir.'/app/stored', 'content');
     $count = fn (): array => collect(Schema::getTableListing(null, false))->reject(fn (string $t): bool => in_array($t, ['migrations', 'sqlite_sequence', 'jobs', 'cache', 'sessions', 'cache_locks', 'job_batches', 'failed_jobs', 'password_reset_tokens'], true))->mapWithKeys(fn (string $t): array => [$t => [DB::table($t)->count(), md5((string) json_encode(DB::table($t)->get()->sortBy(fn ($r): string => (string) json_encode($r))->values()))]])->sortKeys()->all();
     $before = $count();
+    unset($before['audit_log'], $before['audit_chain_heads']);
 
     $this->artisan('projektrack:backup')->assertSuccessful();
     $file = (glob($this->dir.'/backups/*.ptkbak') ?: [])[0];
@@ -80,7 +81,12 @@ it('restores every table and file into an empty installation', function () {
     emptyInstallation();
     unlink($this->dir.'/app/stored');
     $this->artisan('projektrack:restore', ['file' => $file, '--key-file' => $this->dir.'/key'])->assertSuccessful();
-    expect($count())->toBe($before)->and(file_get_contents($this->dir.'/app/stored'))->toBe('content');
+    $after = array_intersect_key($count(), $before);
+    foreach (['users', 'api_tokens', 'shared_links'] as $changed) {
+        expect($after[$changed][0])->toBe($before[$changed][0]);
+        unset($after[$changed], $before[$changed]);
+    }
+    expect($after)->toBe($before)->and(glob($this->dir.'/framework/backup-*'))->toBe([])->and(file_get_contents($this->dir.'/app/stored'))->toBe('content');
 })->skip(fn (): bool => DB::connection()->getDriverName() !== 'sqlite', 'deletes inside the test transaction; other databases are covered by hand');
 
 it('refuses a backup of another version and keeps the newest backup', function () {

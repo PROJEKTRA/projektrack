@@ -77,7 +77,9 @@ final class BackupFile
                 throw new RuntimeException('The backup is damaged.');
             }
             [$plain, $tag] = $result;
-            fwrite($out, $plain);
+            if (fwrite($out, $plain) !== strlen($plain)) {
+                throw new RuntimeException('The disk is full.');
+            }
         }
         fclose($in);
         fclose($out);
