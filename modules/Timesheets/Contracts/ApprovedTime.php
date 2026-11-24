@@ -17,6 +17,13 @@ interface ApprovedTime
     /** @return list<ApprovedRow> in date order */
     public function between(string $projectId, string $from, string $to): array;
 
+    /**
+     * All projects at once, only what sums need.
+     *
+     * @return array<string, list<array{id: string, minutes: int, billable_minutes: int}>> by project
+     */
+    public function sums(string $from, string $to): array;
+
     /** How many entries in the period are not approved yet. */
     public function openCount(string $projectId, string $from, string $to): int;
 }

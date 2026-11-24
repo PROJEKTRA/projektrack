@@ -44,6 +44,9 @@ ServerSignature Off
     # Never serve dotfiles (.env, .git and similar) if the document root is misconfigured
     RewriteRule (^|/)\.(?!well-known/) - [F,L]
 
+    # The asset manifest names the modules (S-0986); only the server needs it
+    RewriteRule ^build/manifest\.json$ - [R=404,L]
+
     # Redirect Trailing Slashes If Not A Folder...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$

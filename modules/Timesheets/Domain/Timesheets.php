@@ -148,7 +148,8 @@ final class Timesheets
         $entries = DB::transaction(function () use ($approver, $ids, $reason): array {
             $entries = $this->pendingFor($approver)->whereIn('id', $ids)->lockForUpdate()->get()->all();
             foreach ($entries as $entry) {
-                $entry->update(['status' => 'rejected', 'reject_reason' => $reason]);
+                $this->ensureOpen($entry->work_date->toDateString());
+                $entry->update([...$this->mergeCell($entry), 'status' => 'rejected', 'reject_reason' => $reason]);
                 $this->audit->record('timesheets.entry.rejected', $entry, [], $approver);
             }
 
@@ -162,6 +163,37 @@ final class Timesheets
         }
 
         return count($entries);
+    }
+
+    /**
+     * Time booked on the cell since the entry was submitted joins it, so a cell
+     * never holds two entries its owner may change.
+     *
+     * @return array{duration_minutes?: int, billable_minutes?: int, description?: string|null}
+     */
+    private function mergeCell(TimeEntry $entry): array
+    {
+        // Bookings of this person wait.
+        User::query()->whereKey($entry->user_id)->lockForUpdate()->firstOrFail();
+        $others = TimeEntry::query()->where('user_id', $entry->user_id)->where('work_package_id', $entry->work_package_id)->whereDate('work_date', $entry->work_date->toDateString())
+            ->whereIn('status', TimeEntry::EDITABLE)->whereNull('corrects_id')->whereKeyNot($entry->id)->orderBy('id')->lockForUpdate()->get();
+        if ($others->isEmpty()) {
+            return [];
+        }
+        $minutes = $entry->duration_minutes;
+        $notes = [$entry->description];
+        foreach ($others as $other) {
+            $minutes += $other->duration_minutes;
+            $notes[] = $other->description;
+            $other->delete();
+        }
+        $notes = array_unique(array_filter($notes, fn (?string $n): bool => $n !== null && trim($n) !== ''));
+
+        return [
+            'duration_minutes' => $minutes,
+            'billable_minutes' => $this->billable($entry->work_package_id, $this->projects->workPackages([$entry->work_package_id])[$entry->work_package_id]['billable'], $minutes),
+            'description' => $notes === [] ? null : mb_substr(implode('; ', $notes), 0, 2000),
+        ];
     }
 
     /** Book the difference to the right value; the approved entry itself stays. */

@@ -25,20 +25,21 @@ final class Margins
     public function between(string $from, string $to): array
     {
         $result = [];
+        $time = $this->time->sums($from, $to);
+        $values = $this->values($time === [] ? [] : array_column(array_merge(...array_values($time)), 'id'));
         foreach ($this->projects->all() as $project) {
-            $rows = $this->time->between($project['id'], $from, $to);
+            $rows = $time[$project['id']] ?? [];
             if ($rows === []) {
                 continue;
             }
             $sums = ['sales' => 0, 'cost' => 0];
             $found = ['sales' => [], 'cost' => []];
-            foreach (array_chunk(array_column($rows, 'id'), 500) as $ids) {
-                foreach (Valuation::query()->whereIn('time_entry_id', $ids)->get() as $v) {
-                    $kind = $v->kind === 'cost' ? 'cost' : 'sales';
+            foreach ($rows as $row) {
+                foreach ($values[$row['id']] ?? [] as [$kind, $currency, $minor]) {
                     // One currency per project; a value in another one cannot be added.
-                    if ($v->currency === $project['currency']) {
-                        $sums[$kind] += $v->amount_minor;
-                        $found[$kind][$v->time_entry_id] = true;
+                    if ($currency === $project['currency']) {
+                        $sums[$kind] += $minor;
+                        $found[$kind][$row['id']] = true;
                     }
                 }
             }
@@ -54,5 +55,23 @@ final class Margins
         }
 
         return $result;
+    }
+
+    /**
+     * @param  list<string>  $ids
+     * @return array<string, list<array{'cost'|'sales', string, int}>> by time entry
+     */
+    private function values(array $ids): array
+    {
+        $values = [];
+        foreach (array_chunk($ids, 500) as $chunk) {
+            foreach (Valuation::query()->whereIn('time_entry_id', $chunk)->toBase()->get(['time_entry_id', 'kind', 'currency', 'amount_minor']) as $v) {
+                if (is_string($v->time_entry_id) && is_string($v->currency) && is_numeric($v->amount_minor)) {
+                    $values[$v->time_entry_id][] = [$v->kind === 'cost' ? 'cost' : 'sales', $v->currency, (int) $v->amount_minor];
+                }
+            }
+        }
+
+        return $values;
     }
 }

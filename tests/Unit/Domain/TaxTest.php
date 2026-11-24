@@ -109,6 +109,25 @@ it('T12: converts with the stored rate', function () {
         ->and(Amount::convert(1000, 'JPY', 'EUR', '0.0062'))->toBe(620);
 });
 
+it('converts 100 EUR with the fixed rate to 195.58 BAM', function () {
+    expect(Amount::convert(10000, 'EUR', 'BAM', '1.95583'))->toBe(19558)->and(Amount::convert(-10000, 'EUR', 'BAM', '1.95583'))->toBe(-19558);
+});
+
+it('uses no floats in the money layer (S-0951)', function () {
+    $root = dirname(__DIR__, 3);
+    $files = [...(array) glob("{$root}/app/Domain/*/*.php"), ...(array) glob("{$root}/modules/Rates/Domain/*.php"), "{$root}/modules/Invoices/Domain/Invoices.php", "{$root}/modules/Invoices/Domain/EInvoice.php"];
+    expect(count($files))->toBeGreaterThan(10);
+    $found = [];
+    foreach ($files as $file) {
+        foreach (token_get_all((string) file_get_contents((string) $file)) as $token) {
+            if (is_array($token) && (in_array($token[0], [T_DNUMBER, T_DOUBLE_CAST], true) || ($token[0] === T_STRING && in_array(strtolower($token[1]), ['float', 'floatval', 'doubleval', 'round', 'fdiv', 'tofloat'], true)))) {
+                $found[] = basename((string) $file).":{$token[2]} {$token[1]}";
+            }
+        }
+    }
+    expect($found)->toBe([]);
+});
+
 it('negates exactly for cancellations', function () {
     $s = decision();
     $a = TaxTotals::of([['decision' => $s, 'net_minor' => 150]]);

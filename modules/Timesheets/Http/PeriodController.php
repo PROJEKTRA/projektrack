@@ -29,7 +29,10 @@ class PeriodController extends Controller
     {
         $month = $request->query('month');
         $start = CarbonImmutable::parse(is_string($month) && preg_match('/^20\d{2}-(0[1-9]|1[0-2])\z/', $month) === 1 ? "{$month}-01" : now($tenant->current()->timezone)->startOfMonth()->toDateString(), 'UTC');
-        $entries = TimeEntry::query()->whereDate('work_date', '>=', $start->toDateString())->whereDate('work_date', '<=', $start->endOfMonth()->toDateString())->orderBy('work_date')->orderBy('id')->limit(2000)->get();
+        // Plain comparisons, so the index on the date is used.
+        $inMonth = fn () => TimeEntry::query()->where('work_date', '>=', $start->toDateString())->where('work_date', '<', $start->addMonth()->toDateString());
+        $page = $inMonth()->orderBy('work_date')->orderBy('id')->paginate(200)->withQueryString();
+        $entries = $page->getCollection();
         $names = User::query()->whereIn('id', $entries->pluck('user_id')->unique()->values())->get()->keyBy('id');
         $packages = $projects->workPackages(array_values($entries->map(fn (TimeEntry $e): string => $e->work_package_id)->unique()->all()));
 
@@ -40,6 +43,9 @@ class PeriodController extends Controller
             'locked' => TimePeriod::isLocked($start->toDateString()),
             'canCorrect' => $this->currentUser($request)->can('timesheets.correct'),
             'me' => $this->currentUser($request)->id,
+            'unapproved' => $inMonth()->where('status', '!=', 'approved')->count(),
+            'previousPage' => $page->previousPageUrl(),
+            'nextPage' => $page->nextPageUrl(),
             'entries' => $entries->map(fn (TimeEntry $e): array => [
                 ...$e->only(['id', 'user_id', 'duration_minutes', 'billable_minutes', 'description', 'status', 'corrects_id', 'correction_reason']),
                 'date' => $e->work_date->toDateString(),

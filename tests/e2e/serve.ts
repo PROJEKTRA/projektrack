@@ -45,14 +45,16 @@ if (!database) {
     throw new Error('DB_DATABASE must name the browser test database.');
 }
 
-closeSync(openSync(database, 'w'));
+if ((process.env.DB_CONNECTION ?? 'sqlite') === 'sqlite') {
+    closeSync(openSync(database, 'w'));
+}
 
 execFileSync(
     'php',
     [
         'artisan',
         'migrate:fresh',
-        '--seeder=E2eSeeder',
+        `--seeder=${process.env.E2E_SEEDER ?? 'E2eSeeder'}`,
         '--force',
         '--no-interaction',
     ],

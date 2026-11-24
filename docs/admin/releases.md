@@ -75,3 +75,17 @@ Stolen or lost key: sign the next release with the standby key, remove the old p
 The workflow refuses a tag that is not a version, a commit that is not on `main` or whose CI is not green, and a missing SBOM. `approve.sh` checks the tag against the reviewed commit, repeats the other checks, and refuses files that the build did not name.
 
 GitHub cannot enforce branch or tag rules on this repository's plan. Anyone with write access can push to `main`, set tags and start builds. What protects existing instances is the key together with the review: nobody can give them an update they accept without a maintainer signing it.
+
+## Tests before production
+
+Every major release has a QA report, `docs/qa/X.Y.md` (`docs/qa/TEMPLATE.md`): test, record the findings, repair each with a test, retest. The release workflow refuses X.Y.0 without `Decision: approved` in it.
+
+No release reaches a production system unless all five kinds passed on its commit. CI runs them on every pull request and on `main`; the release workflow refuses a commit whose CI on `main` is not green.
+
+| Kind | CI job |
+|---|---|
+| Unit | Static checks (Vitest), Tests (Pest) |
+| Integration | Tests on MySQL, MariaDB, PostgreSQL and SQLite with at least 85 % coverage, e-invoices, plain hosting, Docker, update and rollback |
+| End to end | Browser tests |
+| Performance | Performance: 100,000 time entries, p95 of a page at most 300 ms, ten users at once at most 1 second and no error |
+| Security | Security (static analysis, secrets), Security (attack scan), dependency audit, crawl; independent review per milestone |

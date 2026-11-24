@@ -125,6 +125,8 @@ class ReportController extends Controller
     private static function cell(mixed $value): string
     {
         $text = is_scalar($value) ? (string) $value : '';
+        // Also where a program with another list separator would start a cell.
+        $text = preg_replace('/([,;\t\r\n]"?)(?=[=+@\-])/', "$1'", $text) ?? '';
 
         return preg_match('/^[=+@\t\r]|^-(?![0-9]+(\.[0-9]+)?\z)/', $text) === 1 ? "'".$text : $text;
     }

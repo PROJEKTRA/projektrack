@@ -12,6 +12,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -30,12 +31,19 @@ final class EnsureSessionIsValid
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+            Inertia::clearHistory();
 
             return redirect()->guest(route('login'));
         }
 
         /** @var Response $response */
         $response = $next($request);
+
+        // Nothing of a signed-in person stays in a browser after sign-out;
+        // files with an own lifetime (strings, logo) keep it.
+        if ($request->user() instanceof User && ! $response->headers->hasCacheControlDirective('max-age')) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+        }
 
         return $response;
     }

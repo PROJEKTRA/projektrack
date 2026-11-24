@@ -21,6 +21,7 @@ use App\Modules\TenantModules;
 use App\Settings\Settings;
 use App\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -676,6 +677,106 @@ it('exports the report as a workbook with formulas', function () {
     expect($texts)->toContain('s:=1+1')
         ->and($sheet->getCell('E6')->getValue())->toBe('=SUM(E2:E5)')->and(round($sheet->getCell('E6')->getCalculatedValue() * 1440))->toBe(90.0)
         ->and((string) $sheet->getCell('G6')->getValue())->toBe('150');
+});
+
+it('decides the tax again when the customer changes after drafting', function () {
+    $invoice = draft([freeLine('1', '100')]);
+    app(Companies::class)->update($this->company, ['company' => [], 'tax' => ['tax_status' => 'eu_business', 'country_code' => 'AT', 'vat_id' => 'ATU12345678'], 'address' => ['line1' => 'Weg 2', 'city' => 'Wien', 'postal_code' => '1010', 'country_code' => 'AT']], $this->controller);
+
+    $finalize = fn (int $gross): TestResponse => $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/finalize", ['gross_minor' => $gross]);
+    $finalize(11900)->assertSessionHasErrors('invoice');
+    expect($invoice->refresh()->number)->toBeNull();
+    $finalize(10000)->assertSessionHasNoErrors();
+    expect([$invoice->refresh()->number, $invoice->tax_minor, $invoice->content()['groups'][0]['category']])->toBe(['INV-2026-0001', 0, 'AE']);
+});
+
+it('takes the tax status of the last day of the service', function () {
+    app(Companies::class)->update($this->company, ['company' => [], 'tax' => ['tax_status' => 'eu_business', 'country_code' => 'AT', 'vat_id' => 'ATU12345678', 'valid_from' => '2026-11-01']], $this->controller);
+    $october = issue(draft([freeLine('1', '100')]));
+    $november = issue(app(Invoices::class)->draft($this->company->id, '2026-10-15', '2026-11-01', [freeLine('1', '100')], $this->controller));
+    expect([$october->tax_minor, $november->tax_minor])->toBe([1900, 0]);
+});
+
+it('bills and reports a rate change in the middle of the month', function () {
+    $project = Project::query()->create(['number' => 'P-00001', 'name' => 'GG', 'company_id' => $this->company->id, 'status' => 'active', 'billing_model' => 'time_and_material', 'currency' => 'EUR']);
+    $employee = invUser('employee');
+    ProjectMember::query()->create(['project_id' => $project->id, 'user_id' => $employee->id, 'project_role_id' => ProjectRole::query()->where('key', 'project_member')->firstOrFail()->id]);
+    $package = app(WorkBreakdown::class)->add($project, ['name' => 'Consulting', 'billable' => true], null);
+    app(Rates::class)->add('tenant', null, '100', 'EUR', '2026-01-01', $this->controller);
+    app(Rates::class)->add('tenant', null, '110', 'EUR', '2026-10-16', $this->controller);
+    foreach (['2026-10-14' => 20, '2026-10-15' => 20, '2026-10-16' => 20, '2026-10-30' => 5] as $date => $minutes) {
+        $entry = app(Timesheets::class)->book($employee, $package->id, $date, $minutes, 'Analysis');
+        app(Timesheets::class)->submitWeek($employee, $date);
+        app(Timesheets::class)->approve($this->controller, [$entry->id]);
+    }
+    $period = ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-31'];
+    $this->actingAs($this->controller)->post('/service-reports', [...$period, 'with_amounts' => true])->assertSessionHasNoErrors();
+    $this->post('/invoices/from-time', $period)->assertSessionHasNoErrors();
+
+    // 40 minutes at 100 and 25 at 110, each rounded once.
+    $invoice = Invoice::query()->sole();
+    expect($invoice->lines()->get()->map(fn (InvoiceLine $l): array => [$l->minutes, $l->unit_price, $l->net_minor])->all())->toBe([[40, '100.0000', 6667], [25, '110.0000', 4583]])
+        ->and($invoice->net_minor)->toBe(11250)
+        ->and(ServiceReport::query()->sole()->content()['amounts'])->toBe(['EUR' => 11250])
+        ->and(issue($invoice)->tax_minor)->toBe(2138);
+});
+
+it('counts people with the same name apart in a report', function () {
+    [$project, $employee] = billedProject();
+    $namesake = invUser('employee');
+    $namesake->update(['name' => $employee->name]);
+    ProjectMember::query()->create(['project_id' => $project->id, 'user_id' => $namesake->id, 'project_role_id' => ProjectRole::query()->where('key', 'project_member')->firstOrFail()->id]);
+    app()->forgetScopedInstances();
+    $entry = app(Timesheets::class)->book($namesake, TimeEntry::query()->firstOrFail()->work_package_id, '2026-10-05', 45, 'Other work');
+    app(Timesheets::class)->submitWeek($namesake, '2026-10-05');
+    app(Timesheets::class)->approve($this->controller, [$entry->id]);
+
+    $this->actingAs($this->controller)->post('/service-reports', ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-31'])->assertSessionHasNoErrors();
+    $content = ServiceReport::query()->sole()->content();
+    expect($content['minutes'])->toBe(105)->and($content['totals']['user'])->toHaveCount(2);
+});
+
+it('credits reverse charge without tax and in its category', function () {
+    $invoice = issue(draft([freeLine('1', '100')], invCompany('eu_business', 'AT', 'ATU12345678')));
+    $note = app(Invoices::class)->credit($invoice, [1 => 3333], 'Discount', $this->controller);
+    expect([$note->net_minor, $note->tax_minor, $note->gross_minor, $note->content()['groups'][0]['category']])->toBe([-3333, 0, -3333, 'AE'])
+        ->and($note->content()['notices'])->toBe($invoice->content()['notices'])->and($invoice->refresh()->openMinor())->toBe(6667);
+});
+
+it('numbers cancellations and credit notes in one sequence without gaps', function () {
+    $first = issue(draft([freeLine('1', '100')]));
+    $second = issue(draft([freeLine('1', '100')]));
+    $note = app(Invoices::class)->credit($first, [1 => 100], 'x', $this->controller);
+    // Refused: no number is used.
+    $this->actingAs($this->controller)->post("/invoices/{$first->id}/cancel")->assertSessionHasErrors('invoice');
+    $this->post("/invoices/{$first->id}/credit", ['lines' => ['1' => '100'], 'reason' => 'x'])->assertSessionHasErrors('lines.1');
+    $cancellation = app(Invoices::class)->cancel($second, $this->controller);
+    expect([$note->number, $cancellation->number])->toBe(['CN-2026-0001', 'CN-2026-0002'])->and($second->refresh()->status)->toBe('cancelled');
+    // A cancelled invoice takes neither money nor credit.
+    $this->post("/invoices/{$second->id}/payments", ['amount' => '1', 'paid_on' => '2026-11-05'])->assertSessionHasErrors('amount');
+    $this->post("/invoices/{$second->id}/credit", ['lines' => ['1' => '1'], 'reason' => 'x'])->assertSessionHasErrors('lines');
+});
+
+it('knows amounts without minor units', function () {
+    $company = invCompany('eu_business', 'AT', 'ATU12345678');
+    $company->update(['currency' => 'JPY']);
+    $invoice = issue(draft([freeLine('1', '1000.5')], $company));
+    expect($invoice->gross_minor)->toBe(1001);
+    $pay = fn (string $amount): TestResponse => $this->actingAs($this->controller)->post("/invoices/{$invoice->id}/payments", ['amount' => $amount, 'paid_on' => '2026-11-05']);
+    $pay('1000.5')->assertSessionHasErrors('amount');
+    $pay('1001')->assertSessionHasNoErrors();
+    expect($invoice->refresh()->paid_minor)->toBe(1001)->and($invoice->openMinor())->toBe(0);
+});
+
+it('is due after the leap day', function () {
+    $this->travelTo('2028-02-20 09:00:00');
+    expect(issue(draft([freeLine('1', '1')]))->due_date?->toDateString())->toBe('2028-03-05');
+});
+
+it('keeps an issued invoice in the database itself', function () {
+    $invoice = issue(draft([freeLine('1', '100')]));
+    expect(fn () => DB::transaction(fn () => DB::table('invoices')->where('id', $invoice->id)->delete()))->toThrow(QueryException::class)
+        ->and(Invoice::query()->whereKey($invoice->id)->exists())->toBeTrue();
 });
 
 it('keeps formulas out of the CSV', function () {

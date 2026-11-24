@@ -42,7 +42,7 @@ rm -rf node_modules public/hot bootstrap/cache/strings
 printf '%s\n' "${version}" > VERSION
 
 # Development material is not part of a release.
-rm -rf tests modules/*/tests ee/modules/*/tests docs .github scripts playwright.config.ts phpunit.xml vitest.config.ts \
+rm -rf tests modules/*/tests ee/modules/*/tests docs .github scripts playwright*.config.ts .semgrep .gitleaks.toml phpunit.xml vitest.config.ts \
     eslint.config.js .prettierrc.json phpstan.neon pint.json .dockerignore .editorconfig
 find storage -type f ! -name .gitignore -delete
 

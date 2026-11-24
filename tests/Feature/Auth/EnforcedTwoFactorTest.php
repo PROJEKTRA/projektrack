@@ -200,7 +200,24 @@ describe('admin reset', function () {
         Event::assertDispatched(TwoFactorReset::class, fn (TwoFactorReset $e) => $e->userId === $target->id && $e->actorId === $admin->id);
 
         // The controller role still requires two-factor: enrollment is forced again.
+        $this->flushSession();
         $this->actingAs($fresh)->get('/dashboard')->assertRedirect(route('security.edit'));
+    });
+
+    it('is refused for someone who may do more', function () {
+        $manager = userWithRole('employee', enrolled: true);
+        $target = userWithRole('admin', enrolled: true);
+        app(RoleManager::class)->grant(Role::query()->where('key', 'employee')->firstOrFail(), ['core.users.manage']);
+        $equal = userWithRole('employee', enrolled: true);
+        // The grant made it a full user.
+        $manager->refresh();
+
+        $this->actingAs($manager)->withSession(passwordConfirmed())
+            ->delete("/users/{$target->id}/two-factor")->assertForbidden();
+        expect($target->fresh()?->hasEnabledTwoFactorAuthentication())->toBeTrue();
+
+        $this->from('/admin/users')->withSession(passwordConfirmed())->delete("/users/{$equal->id}/two-factor")->assertRedirect('/admin/users');
+        expect($equal->fresh()?->hasEnabledTwoFactorAuthentication())->toBeFalse();
     });
 
     it('is refused without core.users.manage', function () {

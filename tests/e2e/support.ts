@@ -45,6 +45,11 @@ export const USERS = {
         secret: 'PFXXK4RAONSWG4TF',
         locale: 'bs',
     },
+    reports: {
+        email: 'e2e-reports@example.test',
+        secret: 'NVSXE5DFNZ2GK4TT',
+        locale: 'bs',
+    },
 } as const;
 
 export type TestUser = keyof typeof USERS;

@@ -10,6 +10,9 @@ return [
     // The site sends no referrer (INV-04): validation errors and back() find the page here.
     'store_previous_url' => true,
 
+    // Pages in the browser history are encrypted; signing out drops the key.
+    'history' => ['encrypt' => true],
+
     /*
     |--------------------------------------------------------------------------
     | Server Side Rendering

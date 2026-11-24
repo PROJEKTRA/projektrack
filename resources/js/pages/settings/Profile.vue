@@ -10,6 +10,7 @@ import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileCo
 import DeleteUser from '@/components/DeleteUser.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -93,6 +94,18 @@ const user = computed(() => page.props.auth.user);
                     :placeholder="$t('core:settings.profile.email_placeholder')"
                 />
                 <InputError class="mt-2" :message="errors.email" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="current_password">{{
+                    $t('core:settings.profile.current_password_label')
+                }}</Label>
+                <PasswordInput
+                    id="current_password"
+                    name="current_password"
+                    autocomplete="current-password"
+                />
+                <InputError class="mt-2" :message="errors.current_password" />
             </div>
 
             <div v-if="page.props.mustVerifyEmail && !user.email_verified_at">

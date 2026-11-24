@@ -7,10 +7,12 @@
 
 namespace App\Auth\TwoFactor;
 
+use App\Auth\Sessions;
 use App\Models\User;
 use App\Notifications\TwoFactorWasReset;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * An admin removes a user's two-factor setup, for example after a lost phone
@@ -33,8 +35,16 @@ final class ResetTwoFactor
             DB::table(config()->string('session.table', 'sessions'))->where('user_id', $user->id)->delete();
         }
 
-        $user->notify(new TwoFactorWasReset);
+        // Whatever the session driver.
+        app(Sessions::class)->endAll($user);
 
         event(new TwoFactorReset($user->tenant_id, $user->id, $admin->id));
+
+        // Last: a mail server that fails must not leave the reset half done.
+        try {
+            $user->notify(new TwoFactorWasReset);
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 }

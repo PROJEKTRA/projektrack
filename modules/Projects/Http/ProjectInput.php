@@ -7,6 +7,7 @@
 
 namespace Modules\Projects\Http;
 
+use App\Domain\Money\Amount;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -42,7 +43,7 @@ final class ProjectInput
             'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
             'budget_minutes' => ['nullable', 'integer', 'between:0,60000000'],
             'budget_minor' => ['sometimes', 'nullable', 'integer', 'between:0,1000000000000'],
-            'currency' => ['required', 'string', 'regex:/^[A-Z]{3}\z/'],
+            'currency' => ['required', 'string', 'regex:/^[A-Z]{3}\z/', fn (string $attribute, mixed $value, callable $fail) => is_string($value) && Amount::isCurrency($value) ?: $fail(__('validation.in', ['attribute' => $attribute]))],
             'amber_percent' => ['sometimes', 'integer', 'between:1,100'],
         ])->validate();
 

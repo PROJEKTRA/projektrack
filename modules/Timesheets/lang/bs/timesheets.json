@@ -49,6 +49,8 @@
     "periods.locked": "Zaključan",
     "periods.next": "Sljedeći mjesec",
     "periods.open": "Otvoren",
+    "periods.page_next": "Još unosa",
+    "periods.page_previous": "Prethodni unosi",
     "periods.previous": "Prethodni mjesec",
     "periods.reopen": "Otključaj mjesec",
     "periods.title": "Zaključenje mjeseca",
