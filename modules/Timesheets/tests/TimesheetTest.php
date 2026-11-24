@@ -247,13 +247,18 @@ it('corrects with an entry for the difference', function () {
 
     $rows = app(ApprovedTime::class)->between($this->project->id, '2026-11-01', '2026-11-30');
     expect($rows)->toHaveCount(3)->and(array_sum(array_column($rows, 'billable_minutes')))->toBe(240);
+
+    // The sums count the same, first and last day included.
+    $sums = app(ApprovedTime::class)->sums($rows[0]['date'], $rows[2]['date'])[$this->project->id];
+    expect(array_column($sums, 'billable_minutes', 'id'))->toEqualCanonicalizing(array_column($rows, 'billable_minutes', 'id'))
+        ->and(app(ApprovedTime::class)->sums('2026-12-01', '2026-12-31'))->toBe([]);
 });
 
 it('locks a month for bookings, submissions, approvals and corrections', function () {
     $entry = approved(60);
     book($this->employee, 30, '2026-11-04');
     $controller = timeUser('controller');
-    $this->actingAs($controller)->get('/timesheets/periods?month=2026-11')->assertInertia(fn (AssertableInertia $p) => $p->has('entries', 2)->where('locked', false));
+    $this->actingAs($controller)->get('/timesheets/periods?month=2026-11')->assertInertia(fn (AssertableInertia $p) => $p->has('entries', 2)->where('unapproved', 1)->where('nextPage', null)->where('locked', false));
     $this->post('/timesheets/periods', ['month' => '2026-11', 'locked' => true])->assertSessionHasNoErrors();
 
     book($this->employee, 0, '2026-11-04')->assertUnprocessable();

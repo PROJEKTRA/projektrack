@@ -49,6 +49,8 @@
     "periods.locked": "Gesperrt",
     "periods.next": "Nächster Monat",
     "periods.open": "Offen",
+    "periods.page_next": "Weitere Einträge",
+    "periods.page_previous": "Vorherige Einträge",
     "periods.previous": "Vorheriger Monat",
     "periods.reopen": "Monat wieder öffnen",
     "periods.title": "Monatsabschluss",

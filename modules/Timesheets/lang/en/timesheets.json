@@ -49,6 +49,8 @@
     "periods.locked": "Locked",
     "periods.next": "Next month",
     "periods.open": "Open",
+    "periods.page_next": "More entries",
+    "periods.page_previous": "Earlier entries",
     "periods.previous": "Previous month",
     "periods.reopen": "Reopen month",
     "periods.title": "Month close",

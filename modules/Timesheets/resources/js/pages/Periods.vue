@@ -37,6 +37,9 @@ const props = defineProps<{
     locked: boolean;
     canCorrect: boolean;
     me: string;
+    unapproved: number;
+    previousPage: string | null;
+    nextPage: string | null;
     entries: Entry[];
 }>();
 
@@ -51,9 +54,6 @@ defineOptions({
     }),
 });
 
-const unapproved = computed(
-    () => props.entries.filter((e) => e.status !== 'approved').length,
-);
 const lockForm = useForm({ month: '', locked: true, reason: '' });
 const reopening = ref(false);
 const lockErrors = computed(
@@ -223,6 +223,18 @@ function submit(): void {
                     </tr>
                 </tbody>
             </table>
+        </div>
+        <div v-if="previousPage || nextPage" class="flex gap-2">
+            <Button v-if="previousPage" as-child variant="secondary"
+                ><Link :href="previousPage">{{
+                    $t('timesheets:periods.page_previous')
+                }}</Link></Button
+            >
+            <Button v-if="nextPage" as-child variant="secondary"
+                ><Link :href="nextPage">{{
+                    $t('timesheets:periods.page_next')
+                }}</Link></Button
+            >
         </div>
     </div>
 
