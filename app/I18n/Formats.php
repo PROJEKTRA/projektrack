@@ -120,7 +120,7 @@ final class Formats
     }
 
     /** Pattern override for the language of a format (config i18n.date_patterns). */
-    private static function datePattern(string $locale): ?string
+    public static function datePattern(string $locale): ?string
     {
         $pattern = config()->array('i18n.date_patterns')[Locale::getPrimaryLanguage($locale)] ?? null;
 

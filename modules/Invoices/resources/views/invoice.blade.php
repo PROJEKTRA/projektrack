@@ -4,7 +4,7 @@
 --}}
 <style>
     body { font-size: 9pt; color: #000d0e; } h1 { font-size: 16pt; color: #0e285c; margin: 8mm 0 4mm; } .small { font-size: 7.5pt; color: #444444; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; } th { background: #eef2f7; } th, td { padding: 1.4mm 1.6mm; border-bottom: 0.2mm solid #cccccc; vertical-align: top; text-align: start; } .plain td { border: 0; } .num { text-align: end; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; } th { background: #eef2f7; } th, td { padding: 1.4mm 1.6mm; border-bottom: 0.2mm solid #cccccc; vertical-align: top; text-align: start; } .plain td { border: 0; } .num { text-align: {{ $end }}; white-space: nowrap; }
 </style>
 <p class="small">{{ $i['seller']['name'] }}, {{ $i['seller']['street'] }}, {{ trim($i['seller']['postal_code'].' '.$i['seller']['city']) }}, {{ $i['seller']['country'] }}</p>
 <p>{{ $i['buyer']['name'] }}<br>{{ $i['buyer']['address']['line1'] }}<br>@if ($i['buyer']['address']['line2']){{ $i['buyer']['address']['line2'] }}<br>@endif{{ trim($i['buyer']['address']['postal_code'].' '.$i['buyer']['address']['city']) }}<br>{{ $i['buyer']['address']['country_code'] }}@if ($i['buyer']['tax']['tax_number'])<br>{{ $t('invoices:document.tax_number') }}: {{ $i['buyer']['tax']['tax_number'] }}@endif @if ($i['buyer']['tax']['vat_id'])<br>{{ $t('invoices:document.vat_id') }}: {{ $i['buyer']['tax']['vat_id'] }}@endif</p>
@@ -21,7 +21,7 @@
     @endforeach
     </tbody>
 </table>
-<table class="plain">
+<table class="plain" style="page-break-inside: avoid">
     <tr><td></td><td class="num">{{ $t('invoices:document.net_total') }}</td><td class="num">{{ $format->money($i['net_minor'], $i['currency']) }}</td></tr>
     @foreach ($i['groups'] as $group)
         <tr><td></td><td class="num">{{ $t('invoices:document.tax_on', ['rate' => $decimal(\App\Domain\Money\Amount::decimal(intdiv($group['rate_ppm'], 100), 'EUR'), 0), 'net' => $format->money($group['net_minor'], $i['currency'])]) }}</td><td class="num">{{ $format->money($group['tax_minor'], $i['currency']) }}</td></tr>

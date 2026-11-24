@@ -5,7 +5,7 @@
 <style>
     body { font-size: 9pt; color: #000d0e; } h1 { font-size: 16pt; color: #0e285c; margin: 0 0 4mm; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; } th { background: #eef2f7; } th, td { padding: 1.4mm 1.6mm; border-bottom: 0.2mm solid #cccccc; vertical-align: top; text-align: start; }
-    .num { text-align: end; white-space: nowrap; } .sign td { border: 0; padding-top: 18mm; width: 50%; }
+    .num { text-align: {{ $end }}; white-space: nowrap; } .sign td { border: 0; padding-top: 18mm; width: 50%; }
 </style>
 <h1>{{ $t('service_reports:document.title') }} {{ $r['number'] }}</h1>
 <table>
@@ -21,7 +21,7 @@
     </tbody>
 </table>
 @foreach (['package', 'user'] as $by)
-    <table>
+    <table style="page-break-inside: avoid">
         <thead><tr><th>{{ $by === 'package' ? $t('service_reports:document.per_package') : $t('service_reports:document.per_user') }}</th><th class="num">{{ $t('service_reports:column.hours') }}</th></tr></thead>
         @foreach ($r['totals'][$by] as $name => $minutes)
             <tr><td>{{ $name }}</td><td class="num">{{ $hours($minutes) }}</td></tr>
@@ -33,4 +33,4 @@
     <p class="num"><strong>{{ $t('service_reports:document.amount') }}: {{ $format->money($minor, $currency) }}</strong></p>
 @endforeach
 @if ($r['unvalued'] > 0)<p>{{ $t('service_reports:document.unvalued', ['count' => $r['unvalued']]) }}</p>@endif
-<table class="sign"><tr><td>____________________________<br>{{ $r['seller'] }}</td><td>____________________________<br>{{ $r['company'] }}</td></tr></table>
+<table class="sign" style="page-break-inside: avoid"><tr><td>____________________________<br>{{ $r['seller'] }}</td><td>____________________________<br>{{ $r['company'] }}</td></tr></table>
