@@ -48,7 +48,8 @@ ARG VENDOR=
 # A throwaway key for the build only; the file is gone before the layer ends.
 RUN if [ -n "${PROJEKTRACK_VERSION}" ]; then printf '%s\n' "${PROJEKTRACK_VERSION}" > VERSION; fi \
     && mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
-    && if [ -z "${VENDOR}" ]; then rm -rf ee; fi \
+    && if [ "${VENDOR}" != 1 ]; then rm -rf ee; fi \
+    && rm -rf modules/*/tests ee/modules/*/tests \
     && composer dump-autoload --optimize --no-dev --no-interaction \
     && cp .env.example .env \
     && php artisan key:generate --no-interaction \
