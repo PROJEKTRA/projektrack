@@ -106,7 +106,7 @@ class OrderController extends Controller
     {
         $o = LicenseOrder::query()->findOrFail($order);
         $manage = $this->currentUser($request)->can('licensing.subscriptions.manage');
-        $state = $o->invoice_id === null ? null : $invoices->state($o->invoice_id)['status'] ?? null;
+        $state = $o->invoice_id === null ? null : $invoices->state($o->invoice_id);
 
         return Inertia::render('Licensing::Order', [
             'order' => [...$o->only(['id', 'number', 'status', 'license_id', 'serial', 'full_seats', 'light_seats', 'instance_id', 'domain', 'invoice_id']), 'company' => $companies->names([$o->company_id])[$o->company_id] ?? '', 'token' => $manage ? $o->token : null, 'price_locked_until' => $o->price_locked_until->toDateString(), 'starts_on' => $o->starts_on->toDateString(), 'ends_on' => $o->ends_on->toDateString(), 'pending_until' => $o->pending_until?->toIso8601String()],
@@ -114,7 +114,7 @@ class OrderController extends Controller
             'events' => LicenseOrderEvent::query()->where('license_order_id', $o->id)->orderBy('created_at')->orderBy('id')->get()->map(fn (LicenseOrderEvent $e): array => ['id' => $e->id, 'event' => $e->event, 'at' => $e->created_at?->toIso8601String(), 'actor' => $e->actor_id === null ? null : User::query()->find($e->actor_id)?->name])->all(),
             'can' => [
                 'manage' => $manage, 'sign' => $manage && ! in_array($o->status, ['cancelled', 'review'], true),
-                'cancel' => $manage && $o->status !== 'cancelled' && $state !== 'finalized', 'invoice' => $manage && in_array($o->status, ['pending_payment', 'review'], true) && $state === 'cancelled',
+                'cancel' => $manage && $o->status !== 'cancelled' && ($state === null || $state['void'] || $state['status'] === 'draft'), 'invoice' => $manage && in_array($o->status, ['pending_payment', 'review'], true) && ($state['void'] ?? false),
             ],
         ]);
     }

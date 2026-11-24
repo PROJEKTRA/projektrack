@@ -20,7 +20,8 @@ mkdir -p "${out}"
 out="$(cd "${out}" && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
-name="projektrack${VENDOR:+-vendor}-${version}"
+name="projektrack-${version}"
+if [[ "${VENDOR:-}" == 1 ]]; then name="projektrack-vendor-${version}"; fi
 stage="${work}/${name}"
 mkdir "${stage}"
 
@@ -28,7 +29,7 @@ mkdir "${stage}"
 git -C "${root}" archive --format=tar HEAD | tar -x -C "${stage}"
 cd "${stage}"
 # The release is the Community edition. VENDOR=1 is the build for the licensor's own instance.
-if [[ -n "${VENDOR:-}" ]]; then rm -rf ee/licensing; else rm -rf ee; fi
+if [[ "${VENDOR:-}" == 1 ]]; then rm -rf ee/licensing; else rm -rf ee; fi
 
 composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
 npm ci --no-audit --no-fund

@@ -218,6 +218,14 @@ it('never changes or deletes approved time', function () {
         ->and(fn () => $this->employee->forceDelete())->toThrow(Exception::class);
 });
 
+it('keeps time that was not billable as it was approved', function () {
+    $this->package->update(['billable' => false]);
+    $entry = approved(60);
+    $this->package->update(['billable' => true]);
+    $this->actingAs(timeUser('controller'))->post("/timesheets/entries/{$entry->id}/corrections", ['minutes' => 45, 'reason' => 'typing error'])->assertSessionHasNoErrors();
+    expect(TimeEntry::query()->whereNotNull('corrects_id')->sole()->billable_minutes)->toBe(0);
+});
+
 it('corrects with an entry for the difference', function () {
     $contract = Contract::query()->create(['project_id' => $this->project->id, 'number' => 'X', 'contract_type' => 'time_and_material', 'status' => 'active', 'rounding_minutes' => 60, 'minimum_minutes' => 0]);
     $this->package->update(['contract_id' => $contract->id]);

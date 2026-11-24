@@ -15,6 +15,7 @@ use App\I18n\Strings;
 use App\Licensing\InvalidLicense;
 use App\Licensing\LicenseKeys;
 use App\Licensing\LicenseToken;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Tenancy\TenantContext;
 use Brick\Math\BigDecimal;
@@ -51,7 +52,7 @@ final class Orders
     {
         return DB::transaction(function () use ($plan, $companyId, $data, $actor): LicenseOrder {
             // Two confirmations of one instance wait for each other.
-            LicensePlan::query()->whereKey($plan->id)->lockForUpdate()->firstOrFail();
+            Tenant::query()->whereKey($this->tenant->id())->lockForUpdate()->first();
             if (LicenseOrder::query()->where('instance_id', $data['instance_id'])->whereIn('status', ['pending_payment', 'paid', 'review'])->exists()) {
                 throw ValidationException::withMessages(['instance_id' => __('licensing:errors.open_order')]);
             }
@@ -78,29 +79,34 @@ final class Orders
         return ($end->day === $start->day ? $end->subDay() : $end)->toDateString();
     }
 
-    /** A new draft at the agreed prices after the invoice was cancelled. */
+    /** A new draft at the agreed prices after the invoice was cancelled, or credited and refunded in full. */
     public function invoiceAgain(LicenseOrder $order, User $actor): void
     {
         DB::transaction(function () use ($order, $actor): void {
             $locked = $this->locked($order->id);
-            if (! in_array($locked->status, ['pending_payment', 'review'], true) || ($this->state($locked)['status'] ?? '') !== 'cancelled') {
+            if (! in_array($locked->status, ['pending_payment', 'review'], true) || ($this->state($locked)['void'] ?? false) !== true) {
                 throw ValidationException::withMessages(['order' => __('licensing:errors.state')]);
             }
-            $locked->update([...$this->invoice($locked, LicensePlan::query()->findOrFail($locked->license_plan_id), $actor), 'status' => 'pending_payment']);
+            $locked->update([...$this->invoice($locked, LicensePlan::query()->findOrFail($locked->license_plan_id), $actor), 'status' => 'pending_payment', 'serial' => $locked->serial + 1, 'pending_until' => now()->addDays(self::PENDING_DAYS)->endOfDay(), 'reminded_at' => null]);
             $this->log($locked, 'invoiced', $actor);
         }, 3);
     }
 
-    /** An issued invoice is cancelled first; a draft is free to be thrown away then. */
+    /** An issued invoice is cancelled first; a draft is thrown away. */
     public function cancel(LicenseOrder $order, User $actor): void
     {
         DB::transaction(function () use ($order, $actor): void {
             $locked = $this->locked($order->id);
-            $invoice = $this->state($locked)['status'] ?? 'draft';
-            if ($locked->status === 'cancelled' || $invoice === 'finalized') {
+            $invoice = $this->state($locked);
+            $draft = ($invoice['status'] ?? '') === 'draft' ? $locked->invoice_id : null;
+            if ($locked->status === 'cancelled' || ($invoice !== null && $draft === null && ! $invoice['void'])) {
                 throw ValidationException::withMessages(['order' => __('licensing:errors.cancel_invoice')]);
             }
-            $locked->update(['status' => 'cancelled', ...($invoice === 'draft' ? ['invoice_id' => null] : [])]);
+            $locked->update(['status' => 'cancelled', ...($draft !== null ? ['invoice_id' => null] : [])]);
+            if ($draft !== null) {
+                // Fails when it was issued meanwhile: then nothing is cancelled.
+                $this->invoices->discard($draft, $actor);
+            }
             $this->log($locked, 'cancelled', $actor);
         }, 3);
     }
@@ -191,30 +197,35 @@ final class Orders
     public function check(): int
     {
         $told = 0;
-        foreach (LicenseOrder::query()->whereIn('status', ['pending_payment', 'paid', 'active'])->get() as $order) {
-            $invoice = $this->state($order);
-            if ($order->status !== 'pending_payment') {
-                // A term that ended is history.
-                if (! $this->matches($order) && $order->ends_on->toDateString() >= $this->today()) {
-                    DB::transaction(fn () => $this->review($this->locked($order->id)));
-                    $told++;
+        foreach (LicenseOrder::query()->whereIn('status', ['pending_payment', 'paid', 'active', 'review'])->get() as $row) {
+            // Everything is decided on the locked order.
+            $told += DB::transaction(function () use ($row): int {
+                $order = $this->locked($row->id);
+                $invoice = $this->state($order);
+                if (in_array($order->status, ['paid', 'active'], true)) {
+                    // A term that ended is history.
+                    return $order->ends_on->toDateString() >= $this->today() && ! $this->matches($order) ? $this->review($order) : 0;
                 }
-            } elseif ($invoice !== null && $invoice['settled']) {
-                $this->paid((string) $order->invoice_id);
-            } elseif ($order->reminded_at === null && $order->pending_until?->isPast() === true && ($invoice['due_date'] ?? '') < $this->today()) {
-                DB::transaction(function () use ($order): void {
-                    $order->update(['reminded_at' => now()]);
-                    $this->log($order, 'overdue', null);
-                });
-                $this->tell('licensing:notice.overdue', $order);
-                $told++;
-            }
+                if ($order->status === 'review' ? $this->matches($order) : ($order->status === 'pending_payment' && $invoice !== null && $invoice['settled'])) {
+                    $this->paid((string) $order->invoice_id);
+
+                    return 1;
+                }
+                if ($order->status !== 'pending_payment' || $order->reminded_at !== null || $order->pending_until?->isPast() !== true || ($invoice['due_date'] ?? '') >= $this->today()) {
+                    return 0;
+                }
+                $order->update(['reminded_at' => now()]);
+                $this->log($order, 'overdue', null);
+                DB::afterCommit(fn () => $this->tell('licensing:notice.overdue', $order));
+
+                return 1;
+            }, 3);
         }
 
         return $told;
     }
 
-    /** @return array{status: string, net_minor: int, credited_minor: int, settled: bool, due_date: string|null}|null */
+    /** @return array{status: string, currency: string, net_minor: int, settled: bool, void: bool, due_date: string|null}|null */
     private function state(LicenseOrder $order): ?array
     {
         return $order->invoice_id === null ? null : $this->invoices->state($order->invoice_id);
@@ -225,25 +236,30 @@ final class Orders
     {
         $invoice = $this->state($order);
 
-        return $invoice !== null && $invoice['settled'] && $invoice['net_minor'] === $order->net_minor;
+        return $invoice !== null && $invoice['settled'] && $invoice['net_minor'] === $order->net_minor && $invoice['currency'] === $order->currency;
     }
 
-    private function review(LicenseOrder $order): void
+    private function review(LicenseOrder $order): int
     {
         if ($order->status === 'review') {
-            return;
+            return 0;
         }
-        // The next issue gets a serial of its own.
         $order->update(['status' => 'review']);
         $this->log($order, 'review', null);
         DB::afterCommit(fn () => $this->tell('licensing:notice.review', $order));
+
+        return 1;
     }
 
     /** @return array{invoice_id: string, net_minor: int} */
     private function invoice(LicenseOrder $order, LicensePlan $plan, User $actor): array
     {
         $today = $this->today();
-        $locale = $this->companies->billing($order->company_id, $today)['document_locale'] ?? abort(404);
+        $company = $this->companies->billing($order->company_id, $today) ?? abort(404);
+        if ($company['currency'] !== $order->currency) {
+            throw ValidationException::withMessages(['company_id' => $text = __('licensing:errors.company_currency', ['currency' => $order->currency]), 'order' => $text]);
+        }
+        $locale = $company['document_locale'];
         if (! $this->pdf->speaks(['licensing:line.'], $locale)) {
             throw ValidationException::withMessages(['company_id' => __('licensing:errors.language')]);
         }

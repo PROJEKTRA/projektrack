@@ -23,6 +23,9 @@ interface InvoiceDrafts
     /** @return array<string, string> what keeps a draft from being issued, key => text */
     public function problems(string $invoiceId): array;
 
-    /** @return array{status: string, net_minor: int, credited_minor: int, settled: bool, due_date: string|null}|null settled: issued and paid in full, nothing given back */
+    /** Throw a draft away; refused once it is issued. */
+    public function discard(string $invoiceId, User $actor): void;
+
+    /** @return array{status: string, currency: string, net_minor: int, settled: bool, void: bool, due_date: string|null}|null settled: issued and paid in full, nothing given back; void: cancelled, or credited and refunded in full */
     public function state(string $invoiceId): ?array;
 }

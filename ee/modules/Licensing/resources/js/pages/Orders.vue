@@ -68,6 +68,12 @@ const plan = useForm({
     onboarding_price: '0',
     currency: 'EUR',
 });
+// The first plan and customer may have been added after the page opened.
+function newOrder(): void {
+    order.plan_id ||= props.plans.find((p) => p.active)?.id ?? '';
+    order.company_id ||= props.companies[0]?.value ?? '';
+    orderOpen.value = true;
+}
 const orderErrors = computed(
     () => order.errors as Record<string, string | undefined>,
 );
@@ -94,8 +100,8 @@ const planErrors = computed(
                 >
                 <Button
                     v-if="can.orders"
-                    :disabled="plans.length === 0"
-                    @click="orderOpen = true"
+                    :disabled="!plans.some((p) => p.active)"
+                    @click="newOrder"
                     >{{ $t('licensing:new_order') }}</Button
                 >
             </div>

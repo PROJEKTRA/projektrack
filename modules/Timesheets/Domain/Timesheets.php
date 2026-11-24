@@ -188,12 +188,12 @@ final class Timesheets
             if ((int) $day + $minutes - $current > 1440) {
                 throw ValidationException::withMessages(['minutes' => __('timesheets:errors.day_full')]);
             }
-            $package = $this->projects->workPackages([$entry->work_package_id])[$entry->work_package_id];
 
+            // Billable as it was approved.
             $correction = TimeEntry::query()->create([
                 'user_id' => $entry->user_id, 'project_id' => $entry->project_id, 'work_package_id' => $entry->work_package_id, 'work_date' => $entry->work_date->toDateString(),
                 'duration_minutes' => $minutes - $current,
-                'billable_minutes' => $this->billable($entry->work_package_id, $entry->billable_minutes !== 0 || $package['billable'], $minutes) - $billed,
+                'billable_minutes' => $this->billable($entry->work_package_id, $entry->billable_minutes !== 0, $minutes) - $billed,
                 'status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'corrects_id' => $entry->id, 'correction_reason' => $reason,
             ]);
             $this->audit->record('timesheets.entry.corrected', $correction, ['entry' => $entry->id, 'minutes' => $correction->duration_minutes], $actor);

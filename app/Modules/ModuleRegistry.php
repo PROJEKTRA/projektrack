@@ -27,7 +27,7 @@ final class ModuleRegistry
     /**
      * @param  list<string>  $searchPaths  directories that contain one folder per module
      */
-    public function __construct(private readonly array $searchPaths, private readonly LoggerInterface $logger, private readonly bool $vendor = true)
+    public function __construct(private readonly array $searchPaths, private readonly LoggerInterface $logger, private readonly bool $vendor = false)
     {
         $this->discover();
     }

@@ -19,6 +19,7 @@ use App\Modules\TenantModules;
 use App\Settings\Settings;
 use App\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Testing\TestResponse;
 use Modules\Crm\Domain\Companies;
@@ -90,6 +91,31 @@ it('turns an order into an invoice draft, a license to sign and an active licens
     $this->get("/licensing/orders/{$order->id}/payload")->assertRedirect();
     $this->artisan('projektrack:licensing:check');
     expect($order->refresh()->status)->toBe('review');
+
+    // Paid again without anybody being told: the next check sees it.
+    Event::forget(InvoicePaid::class);
+    app(Invoices::class)->pay($invoice->refresh(), '2026-12-01', 100, null, $this->admin);
+    $this->artisan('projektrack:licensing:check');
+    expect([$order->refresh()->status, $order->serial])->toBe(['paid', 3]);
+
+    // Credited and refunded in full: a new invoice with a new serial and a new grace.
+    $order->update(['pending_until' => now()->subDay(), 'reminded_at' => now()]);
+    $lines = collect($invoice->content()['lines'])->mapWithKeys(fn (array $l): array => [$l['position'] => $l['net_minor']])->all();
+    app(Invoices::class)->credit($invoice->refresh(), $lines, 'refund', $this->admin);
+    $this->artisan('projektrack:licensing:check');
+    $this->withSession(['auth.password_confirmed_at' => now()->getTimestamp()])->post("/licensing/orders/{$order->id}/invoice")->assertSessionHasErrors('order');
+    app(Invoices::class)->pay($invoice->refresh(), '2026-12-01', -$invoice->paid_minor, 'refund', $this->admin);
+    $this->post("/licensing/orders/{$order->id}/invoice")->assertSessionHasNoErrors();
+    expect([$order->refresh()->status, $order->serial, $order->pending_until->isFuture()])->toBe(['pending_payment', 4, true]);
+    $enter($sign())->assertSessionHasNoErrors();
+});
+
+it('keeps the agreed currency when the invoice is drafted again', function () {
+    $order = sell();
+    $invoice = app(Invoices::class)->finalize(Invoice::query()->sole(), $this->admin);
+    app(Invoices::class)->cancel($invoice, $this->admin);
+    DB::table('companies')->where('id', $this->company->id)->update(['currency' => 'BAM']);
+    $this->post("/licensing/orders/{$order->id}/invoice")->assertSessionHasErrors('order');
 });
 
 it('refuses a license that was changed before it was signed', function () {
@@ -137,7 +163,7 @@ it('keeps order and invoice together when one is taken back', function () {
     $again = Invoice::query()->findOrFail($order->refresh()->invoice_id);
     expect($again->id)->not->toBe($draft->id)->and($again->net_minor)->toBe(388250);
     $this->post("/licensing/orders/{$order->id}/cancel")->assertSessionHasNoErrors();
-    $this->delete("/invoices/{$again->id}")->assertSessionHasNoErrors();
+    expect(Invoice::query()->find($again->id))->toBeNull();
     $this->get("/licensing/orders/{$order->id}/payload")->assertRedirect();
     expect($order->refresh()->status)->toBe('cancelled');
 });
@@ -194,4 +220,11 @@ it('keeps news out of the public strings and vendor modules off other instances'
     expect((new ModuleRegistry($paths, new NullLogger, false))->has('licensing'))->toBeFalse()
         ->and((new ModuleRegistry($paths, new NullLogger, true))->has('licensing'))->toBeTrue();
     $this->get('/about')->assertOk();
+});
+
+it('shows an error on the page, not on the file downloaded before', function () {
+    $order = sell();
+    $this->get("/licensing/orders/{$order->id}");
+    $this->get("/licensing/orders/{$order->id}/payload")->assertOk();
+    $this->post("/licensing/orders/{$order->id}/license", ['token' => ''])->assertRedirect("/licensing/orders/{$order->id}");
 });
