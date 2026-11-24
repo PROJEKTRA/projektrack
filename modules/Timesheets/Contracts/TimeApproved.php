@@ -21,6 +21,7 @@ final readonly class TimeApproved
         public string $projectId,
         public string $date,
         public int $billableMinutes,
+        public int $minutes,
         public ?string $corrects,
     ) {}
 }

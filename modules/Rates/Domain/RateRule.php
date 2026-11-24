@@ -14,10 +14,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * An hourly sales rate for a scope and a period.
+ * An hourly rate (sales or cost) for a scope and a period.
  *
  * @property string $id
  * @property string $tenant_id
+ * @property string $kind
  * @property string $scope
  * @property string|null $scope_id
  * @property string $rate
@@ -25,13 +26,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property CarbonInterface $valid_from
  * @property CarbonInterface|null $valid_to
  */
-#[Fillable(['scope', 'scope_id', 'rate', 'currency', 'valid_from', 'valid_to'])]
+#[Fillable(['kind', 'scope', 'scope_id', 'rate', 'currency', 'valid_from', 'valid_to'])]
 class RateRule extends Model
 {
     use BelongsToTenant, HasUlids;
 
-    /** Most specific first (ADR-0004 section 12; roles are not built). */
-    public const array SCOPES = ['work_package', 'contract', 'project', 'company', 'user', 'tenant'];
+    /** Most specific first (ADR-0004 section 12). */
+    public const array SCOPES = ['work_package', 'contract', 'project', 'company', 'user', 'job_role', 'tenant'];
 
     protected function casts(): array
     {

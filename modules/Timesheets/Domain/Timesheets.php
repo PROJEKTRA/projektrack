@@ -235,7 +235,7 @@ final class Timesheets
             // Read with a lock, so a parallel approval is counted.
             $this->budgets->approved($contract, fn (): int => (int) TimeEntry::query()->where('status', 'approved')->whereIn('work_package_id', $this->budgets->packagesOf($contract))->lockForUpdate()->get(['id', 'tenant_id', 'duration_minutes'])->sum('duration_minutes'));
         }
-        event(new TimeApproved($entry->id, $entry->user_id, $entry->work_package_id, $entry->project_id, $entry->work_date->toDateString(), $entry->billable_minutes, $entry->corrects_id));
+        event(new TimeApproved($entry->id, $entry->user_id, $entry->work_package_id, $entry->project_id, $entry->work_date->toDateString(), $entry->billable_minutes, $entry->duration_minutes, $entry->corrects_id));
     }
 
     private function ensureOpen(string $date): void

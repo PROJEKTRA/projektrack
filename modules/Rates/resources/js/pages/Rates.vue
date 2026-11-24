@@ -3,7 +3,7 @@
     SPDX-License-Identifier: AGPL-3.0-only
 -->
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { Plus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import RateController from '@/actions/Modules/Rates/Http/RateController';
@@ -17,6 +17,7 @@ import { t } from '@/i18n/strings';
 
 type Rule = {
     id: string;
+    kind: string;
     scope: string;
     name: string;
     rate: string;
@@ -34,6 +35,7 @@ const props = defineProps<{
         rate: string;
         date: string;
     }[];
+    kinds: string[];
     scopes: string[];
     choices: Record<string, { value: string; text: string }[]>;
     currency: string;
@@ -52,6 +54,7 @@ const open = ref(false);
 const ending = ref<Rule | null>(null);
 const endOpen = ref(false);
 const form = useForm({
+    kind: 'sales',
     scope: 'tenant',
     scope_id: '',
     rate: '',
@@ -60,6 +63,20 @@ const form = useForm({
 });
 const endForm = useForm({ valid_to: props.today });
 const fxOpen = ref(false);
+const roleOpen = ref(false);
+const role = useForm({ name: '' });
+const roleErrors = computed(
+    () => role.errors as Record<string, string | undefined>,
+);
+const assignOpen = ref(false);
+const assign = useForm({
+    user_id: '',
+    job_role_id: '',
+    valid_from: props.today,
+});
+const assignErrors = computed(
+    () => assign.errors as Record<string, string | undefined>,
+);
 const fx = useForm({
     from_currency: 'USD',
     to_currency: props.currency,
@@ -141,7 +158,11 @@ function end(): void {
                 <tbody>
                     <tr v-for="r in rules" :key="r.id" class="border-t">
                         <td class="px-4 py-2">
-                            {{ $t(`rates:scope.${r.scope}`) }}
+                            {{
+                                kinds.length > 1
+                                    ? `${$t(`rates:kind.${r.kind}`)}: `
+                                    : ''
+                            }}{{ $t(`rates:scope.${r.scope}`) }}
                         </td>
                         <td class="px-4 py-2">
                             <bdi>{{ r.name }}</bdi>
@@ -191,6 +212,78 @@ function end(): void {
             </li>
         </ul>
     </div>
+    <div class="flex flex-wrap gap-2 px-4 pb-6">
+        <Button size="sm" variant="secondary" @click="roleOpen = true">{{
+            $t('rates:role.new')
+        }}</Button>
+        <Button
+            size="sm"
+            variant="secondary"
+            :disabled="choices.job_role.length === 0"
+            @click="assignOpen = true"
+            >{{ $t('rates:role.assign') }}</Button
+        >
+        <Button v-if="kinds.length > 1" as-child size="sm" variant="ghost"
+            ><Link :href="RateController.margin()">{{
+                $t('rates:margin.title')
+            }}</Link></Button
+        >
+    </div>
+    <FormDialog
+        v-model:open="roleOpen"
+        :title="$t('rates:role.new')"
+        :save="$t('rates:save')"
+        :processing="role.processing"
+        @submit="
+            role.post(RateController.jobRole.url(), {
+                preserveScroll: true,
+                onSuccess: () => ((roleOpen = false), role.reset()),
+            })
+        "
+    >
+        <TextField
+            v-model="role.name"
+            name="name"
+            :label="$t('rates:field.name')"
+            :errors="roleErrors"
+            required
+        />
+    </FormDialog>
+    <FormDialog
+        v-model:open="assignOpen"
+        :title="$t('rates:role.assign')"
+        :save="$t('rates:save')"
+        :processing="assign.processing"
+        @submit="
+            assign.post(RateController.assign.url(), {
+                preserveScroll: true,
+                onSuccess: () => (assignOpen = false),
+            })
+        "
+    >
+        <SelectField
+            v-model="assign.user_id"
+            name="user_id"
+            :label="$t('rates:scope.user')"
+            :errors="assignErrors"
+            :options="[{ value: '', text: '' }, ...choices.user]"
+        />
+        <SelectField
+            v-model="assign.job_role_id"
+            name="job_role_id"
+            :label="$t('rates:scope.job_role')"
+            :errors="assignErrors"
+            :options="[{ value: '', text: '' }, ...choices.job_role]"
+        />
+        <TextField
+            v-model="assign.valid_from"
+            name="valid_from"
+            type="date"
+            :label="$t('rates:field.valid_from')"
+            :errors="assignErrors"
+            required
+        />
+    </FormDialog>
     <FormDialog
         v-model:open="fxOpen"
         :title="$t('rates:exchange.new')"
@@ -243,6 +336,19 @@ function end(): void {
         :processing="form.processing"
         @submit="submit"
     >
+        <SelectField
+            v-if="kinds.length > 1"
+            v-model="form.kind"
+            name="kind"
+            :label="$t('rates:field.kind')"
+            :errors="errors"
+            :options="
+                kinds.map((value) => ({
+                    value,
+                    text: t(`rates:kind.${value}`),
+                }))
+            "
+        />
         <SelectField
             v-model="form.scope"
             name="scope"

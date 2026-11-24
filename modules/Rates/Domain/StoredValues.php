@@ -20,14 +20,14 @@ final class StoredValues implements TimeValues
         // Originals first: a correction takes the rate of its entry.
         usort($rows, fn (array $a, array $b): int => ($a['corrects'] === null ? 0 : 1) <=> ($b['corrects'] === null ? 0 : 1));
 
-        return $this->rates->valueMissing(array_map(fn (array $r): TimeApproved => new TimeApproved($r['id'], $r['user_id'], $r['work_package_id'], $r['project_id'], $r['date'], $r['billable_minutes'], $r['corrects']), $rows), $actor);
+        return $this->rates->valueMissing(array_map(fn (array $r): TimeApproved => new TimeApproved($r['id'], $r['user_id'], $r['work_package_id'], $r['project_id'], $r['date'], $r['billable_minutes'], $r['minutes'], $r['corrects']), $rows), $actor);
     }
 
     public function of(array $entryIds): array
     {
         $values = [];
         foreach (array_chunk($entryIds, 500) as $ids) {
-            foreach (Valuation::query()->whereIn('time_entry_id', $ids)->get() as $v) {
+            foreach (Valuation::query()->where('kind', 'sales')->whereIn('time_entry_id', $ids)->get() as $v) {
                 $values[$v->time_entry_id] = ['rate' => $v->rate, 'currency' => $v->currency, 'minutes' => $v->minutes_valued, 'amount_minor' => $v->amount_minor, 'source' => $v->source];
             }
         }

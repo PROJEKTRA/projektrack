@@ -14,15 +14,18 @@
   ],
   "permissions": [
     "rates.view_sales",
+    "rates.view_cost",
     "rates.manage"
   ],
   "role_defaults": {
     "admin": [
       "rates.view_sales",
+      "rates.view_cost",
       "rates.manage"
     ],
     "controller": [
       "rates.view_sales",
+      "rates.view_cost",
       "rates.manage"
     ]
   }

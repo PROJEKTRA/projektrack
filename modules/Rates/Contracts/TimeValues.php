@@ -17,7 +17,7 @@ interface TimeValues
     /**
      * Value approved time without a value, by the rates of its days.
      *
-     * @param  list<array{id: string, user_id: string, work_package_id: string, project_id: string, date: string, billable_minutes: int, corrects: string|null}>  $rows
+     * @param  list<array{id: string, user_id: string, work_package_id: string, project_id: string, date: string, billable_minutes: int, minutes: int, corrects: string|null}>  $rows
      */
     public function valueMissing(array $rows, User $actor): int;
 

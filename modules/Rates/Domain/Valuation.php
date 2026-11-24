@@ -15,10 +15,11 @@ use Illuminate\Database\Eloquent\Model;
 use LogicException;
 
 /**
- * The frozen value of one approved time entry.
+ * The frozen value (sales or cost) of one approved time entry.
  *
  * @property string $id
  * @property string $tenant_id
+ * @property string $kind
  * @property string $time_entry_id
  * @property string|null $rate_rule_id
  * @property string $source
@@ -31,7 +32,7 @@ use LogicException;
  * @property string|null $rule_currency
  * @property string|null $fx_rate
  */
-#[Fillable(['time_entry_id', 'rate_rule_id', 'source', 'rate', 'currency', 'minutes_valued', 'amount_minor', 'valued_at', 'rule_rate', 'rule_currency', 'fx_rate'])]
+#[Fillable(['kind', 'time_entry_id', 'rate_rule_id', 'source', 'rate', 'currency', 'minutes_valued', 'amount_minor', 'valued_at', 'rule_rate', 'rule_currency', 'fx_rate'])]
 class Valuation extends Model
 {
     use BelongsToTenant, HasUlids;

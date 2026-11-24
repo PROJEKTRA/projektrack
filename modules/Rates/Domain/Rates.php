@@ -34,7 +34,7 @@ final class Rates
     ) {}
 
     /** The most specific rule in force on the day. */
-    public function resolve(string $userId, string $workPackageId, string $date): ?RateRule
+    public function resolve(string $userId, string $workPackageId, string $date, string $kind = 'sales'): ?RateRule
     {
         $package = $this->projects->workPackages([$workPackageId])[$workPackageId];
         $scopes = [
@@ -43,8 +43,9 @@ final class Rates
             'project' => $package['project_id'],
             'company' => $package['company_id'],
             'user' => $userId,
+            'job_role' => $this->jobRole($userId, $date),
         ];
-        $rules = RateRule::query()->whereDate('valid_from', '<=', $date)
+        $rules = RateRule::query()->where('kind', $kind)->whereDate('valid_from', '<=', $date)
             ->where(fn (Builder $q) => $q->whereNull('valid_to')->orWhereDate('valid_to', '>=', $date))
             ->where(function (Builder $q) use ($scopes): void {
                 $q->where('scope', 'tenant');
@@ -62,14 +63,30 @@ final class Rates
         return null;
     }
 
+    private function jobRole(string $userId, string $date): ?string
+    {
+        return UserJobRole::query()->where('user_id', $userId)->whereDate('valid_from', '<=', $date)
+            ->where(fn (Builder $q) => $q->whereNull('valid_to')->orWhereDate('valid_to', '>=', $date))->orderByDesc('valid_from')->first()?->job_role_id;
+    }
+
     /** Listener of the approval: no rate means no value, shown as a warning later. */
     public function value(TimeApproved $event): void
     {
-        $original = $event->corrects === null ? null : Valuation::query()->where('time_entry_id', $event->corrects)->first();
+        $this->valueAs('sales', $event, $event->billableMinutes);
+        // Every worked minute costs, billable or not.
+        $this->valueAs('cost', $event, $event->minutes);
+    }
+
+    private function valueAs(string $kind, TimeApproved $event, int $minutes): void
+    {
+        if (Valuation::query()->where('kind', $kind)->where('time_entry_id', $event->entryId)->exists()) {
+            return;
+        }
+        $original = $event->corrects === null ? null : Valuation::query()->where('kind', $kind)->where('time_entry_id', $event->corrects)->first();
         if ($event->corrects !== null && $original === null) {
             return;
         }
-        $rule = $original === null ? $this->resolve($event->userId, $event->workPackageId, $event->date) : null;
+        $rule = $original === null ? $this->resolve($event->userId, $event->workPackageId, $event->date, $kind) : null;
         if ($original === null && $rule === null) {
             return;
         }
@@ -92,13 +109,14 @@ final class Rates
         }
 
         Valuation::query()->create([
+            'kind' => $kind,
             'time_entry_id' => $event->entryId,
             'rate_rule_id' => $original->rate_rule_id ?? $rule?->id,
             'source' => $original->source ?? $rule->scope ?? 'tenant',
             'rate' => $rate,
             'currency' => $currency,
-            'minutes_valued' => $event->billableMinutes,
-            'amount_minor' => Amount::time($event->billableMinutes, $rate, $currency),
+            'minutes_valued' => $minutes,
+            'amount_minor' => Amount::time($minutes, $rate, $currency),
             'valued_at' => now(),
             'rule_rate' => $fx === null ? null : $rule?->rate,
             'rule_currency' => $fx === null ? null : $rule?->currency,
@@ -115,12 +133,13 @@ final class Rates
     public function valueMissing(array $entries, User $actor): int
     {
         return DB::transaction(function () use ($entries, $actor): int {
-            $before = Valuation::query()->whereIn('time_entry_id', array_map(fn (TimeApproved $e): string => $e->entryId, $entries))->pluck('time_entry_id')->all();
-            $missing = array_filter($entries, fn (TimeApproved $e): bool => ! in_array($e->entryId, $before, true));
-            foreach ($missing as $entry) {
+            $ids = array_map(fn (TimeApproved $e): string => $e->entryId, $entries);
+            $valued = fn (): int => Valuation::query()->whereIn('time_entry_id', $ids)->count();
+            $before = $valued();
+            foreach ($entries as $entry) {
                 $this->value($entry);
             }
-            $count = Valuation::query()->whereIn('time_entry_id', array_map(fn (TimeApproved $e): string => $e->entryId, $missing))->count();
+            $count = $valued() - $before;
             if ($count > 0) {
                 $this->audit->record('rates.valued_later', null, ['entries' => $count], $actor);
             }
@@ -133,17 +152,17 @@ final class Rates
      * Add a rate from a day on. The rule in force before ends the day before;
      * a rule that starts on the same day or later is not overwritten.
      */
-    public function add(string $scope, ?string $scopeId, string $rate, string $currency, string $validFrom, User $actor): RateRule
+    public function add(string $scope, ?string $scopeId, string $rate, string $currency, string $validFrom, User $actor, string $kind = 'sales'): RateRule
     {
-        return DB::transaction(function () use ($scope, $scopeId, $rate, $currency, $validFrom, $actor): RateRule {
+        return DB::transaction(function () use ($scope, $scopeId, $rate, $currency, $validFrom, $actor, $kind): RateRule {
             Tenant::query()->whereKey($this->tenant->id())->lockForUpdate()->first();
-            $same = fn (): Builder => RateRule::query()->where('scope', $scope)->where('scope_id', $scopeId);
+            $same = fn (): Builder => RateRule::query()->where('kind', $kind)->where('scope', $scope)->where('scope_id', $scopeId);
             if ($same()->whereDate('valid_from', '>=', $validFrom)->exists()) {
                 throw ValidationException::withMessages(['valid_from' => __('rates:errors.later_rule')]);
             }
             $same()->where(fn (Builder $q) => $q->whereNull('valid_to')->orWhereDate('valid_to', '>=', $validFrom))
                 ->update(['valid_to' => CarbonImmutable::parse($validFrom, 'UTC')->subDay()->toDateString()]);
-            $rule = RateRule::query()->create(['scope' => $scope, 'scope_id' => $scopeId, 'rate' => $rate, 'currency' => $currency, 'valid_from' => $validFrom]);
+            $rule = RateRule::query()->create(['kind' => $kind, 'scope' => $scope, 'scope_id' => $scopeId, 'rate' => $rate, 'currency' => $currency, 'valid_from' => $validFrom]);
             $this->audit->record('rates.rule.added', $rule, ['scope' => $scope, 'valid_from' => $validFrom], $actor);
 
             return $rule;
@@ -158,7 +177,7 @@ final class Rates
         }
         DB::transaction(function () use ($rule, $lastDay, $actor): void {
             Tenant::query()->whereKey($this->tenant->id())->lockForUpdate()->first();
-            $next = RateRule::query()->where('scope', $rule->scope)->where('scope_id', $rule->scope_id)->whereDate('valid_from', '>', $rule->valid_from->toDateString())->whereDate('valid_from', '<=', $lastDay)->exists();
+            $next = RateRule::query()->where('kind', $rule->kind)->where('scope', $rule->scope)->where('scope_id', $rule->scope_id)->whereDate('valid_from', '>', $rule->valid_from->toDateString())->whereDate('valid_from', '<=', $lastDay)->exists();
             if ($next) {
                 throw ValidationException::withMessages(['valid_to' => __('rates:errors.later_rule')]);
             }

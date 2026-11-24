@@ -20,6 +20,7 @@ use Modules\Projects\Domain\ProjectMember;
 use Modules\Projects\Domain\WorkBreakdown;
 use Modules\Rates\Contracts\TimeValues;
 use Modules\Rates\Domain\ExchangeRates;
+use Modules\Rates\Domain\JobRole;
 use Modules\Rates\Domain\RateRule;
 use Modules\Rates\Domain\Rates;
 use Modules\Rates\Domain\Valuation;
@@ -141,10 +142,51 @@ it('values in the currency of the project with the rate of the day', function ()
     $add(['rate' => '0', 'rate_date' => '2026-10-01'])->assertSessionHasErrors('rate');
     $add(['from_currency' => 'BAM'])->assertSessionHasErrors('rate');
     $add(['rate_date' => '2026-11-06'])->assertSessionHasErrors('rate_date');
-    $row = fn (TimeEntry $e): array => ['id' => $e->id, 'user_id' => $e->user_id, 'work_package_id' => $e->work_package_id, 'project_id' => $e->project_id, 'date' => $e->work_date->toDateString(), 'billable_minutes' => $e->billable_minutes, 'corrects' => null];
+    $row = fn (TimeEntry $e): array => ['id' => $e->id, 'user_id' => $e->user_id, 'work_package_id' => $e->work_package_id, 'project_id' => $e->project_id, 'date' => $e->work_date->toDateString(), 'billable_minutes' => $e->billable_minutes, 'minutes' => $e->duration_minutes, 'corrects' => null];
     expect(app(TimeValues::class)->valueMissing([$row($waiting->refresh())], $this->controller))->toBe(1)
         ->and(app(TimeValues::class)->of([$waiting->id])[$waiting->id]['amount_minor'])->toBe(9900)
         ->and(app(TimeValues::class)->valueMissing([$row($waiting)], $this->controller))->toBe(0);
+});
+
+it('uses the job role of the day between employee and company default', function () {
+    $this->actingAs($this->controller);
+    foreach (['Junior Consultant', 'Technical Architect'] as $name) {
+        $this->post('/rates/job-roles', ['name' => $name])->assertSessionHasNoErrors();
+    }
+    $this->post('/rates/job-roles', ['name' => 'Junior Consultant'])->assertSessionHasErrors('name');
+    [$junior, $architect] = JobRole::query()->orderBy('name')->get()->all();
+    $assign = fn (JobRole $r, string $from) => $this->post('/rates/job-roles/assign', ['user_id' => $this->employee->id, 'job_role_id' => $r->id, 'valid_from' => $from]);
+    $assign($junior, '2026-01-01')->assertSessionHasNoErrors();
+    $assign($architect, '2026-11-01')->assertSessionHasNoErrors();
+    $assign($junior, '2026-11-01')->assertSessionHasErrors('valid_from');
+    rate('tenant', null, '70');
+    rate('job_role', $junior->id, '80');
+    rate('job_role', $architect->id, '130');
+    $on = fn (string $d): ?string => app(Rates::class)->resolve($this->employee->id, $this->package->id, $d)?->rate;
+    expect([$on('2026-10-31'), $on('2026-11-01'), $on('2025-12-31')])->toBe(['80.0000', '130.0000', null]);
+    rate('user', $this->employee->id, '99');
+    expect($on('2026-11-01'))->toBe('99.0000');
+});
+
+it('keeps cost apart, values every worked minute and shows the margin to those who may', function () {
+    rate('tenant', null, '100');
+    $this->actingAs($this->controller)->post('/rates', ['kind' => 'cost', 'scope' => 'tenant', 'rate' => '40', 'currency' => 'EUR', 'valid_from' => '2026-01-01'])->assertSessionHasNoErrors();
+    $entry = approve_('2026-11-03', 90);
+    $this->package->update(['billable' => false]);
+    approve_('2026-11-04', 60);
+    expect(app(TimeValues::class)->of([$entry->id])[$entry->id]['amount_minor'])->toBe(15000)
+        ->and(Valuation::query()->where('kind', 'cost')->sum('amount_minor'))->toEqual(10000);
+
+    $row = $this->get('/rates/margin?from=2026-11-01&to=2026-11-30')->assertOk()->inertiaProps('rows.0');
+    expect([$row['minutes'], $row['sales_minor'], $row['cost_minor'], $row['margin_minor'], $row['without_sales'], $row['without_cost']])->toBe([150, 15000, 10000, 5000, 0, 0]);
+
+    app(RoleManager::class)->revokePermissions(Role::query()->where('key', 'controller')->firstOrFail(), ['rates.view_cost']);
+    app()->forgetScopedInstances();
+    $this->get('/rates/margin')->assertForbidden();
+    $page = (string) $this->get('/rates')->assertOk()->getContent();
+    expect($page)->not->toContain('40.0000');
+    $this->post('/rates', ['kind' => 'cost', 'scope' => 'tenant', 'rate' => '1', 'currency' => 'EUR', 'valid_from' => '2026-12-01'])->assertForbidden();
+    $this->post('/rates/'.RateRule::query()->where('kind', 'cost')->sole()->id.'/end', ['valid_to' => '2026-12-31'])->assertNotFound();
 });
 
 it('is for those who manage rates, in their tenant', function () {
