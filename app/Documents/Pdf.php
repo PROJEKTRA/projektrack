@@ -84,13 +84,15 @@ final class Pdf
      */
     public function render(string $view, array $data, string $locale, string $title, array $labels = [], ?string $formatLocale = null, ?string $facturX = null): string
     {
-        $format = $formatLocale === null ? $this->format($locale) : new RegionalFormat($formatLocale, $this->tenant->current()->timezone);
+        $format = $formatLocale === null ? $this->format($locale) : new RegionalFormat($formatLocale, $this->tenant->current()->timezone, Formats::datePattern($formatLocale));
         $temp = storage_path('framework/pdf');
         File::ensureDirectoryExists($temp, 0700);
         $html = View::make($view, [
             ...$data,
             'format' => $format,
             'dir' => $this->strings->direction($locale),
+            // The PDF library does not know "end".
+            'end' => $this->strings->direction($locale) === 'rtl' ? 'left' : 'right',
             't' => function (string $id, array $args = []) use ($labels, $locale): string {
                 /** @var array<string, mixed> $args */
                 $sealed = $labels[$id] ?? null;
@@ -121,15 +123,19 @@ final class Pdf
 
     public function format(string $locale): RegionalFormat
     {
-        return new RegionalFormat(Formats::defaultFor($locale), $this->tenant->current()->timezone);
+        $format = Formats::defaultFor($locale);
+
+        return new RegionalFormat($format, $this->tenant->current()->timezone, Formats::datePattern($format));
     }
 
     /** A decimal string with the separator of the language; never through a float. */
-    private static function decimal(string $value, int $least, string $locale): string
+    public static function decimal(string $value, int $least, string $locale): string
     {
         [$whole, $fraction] = [...explode('.', $value, 2), ''];
         $fraction = str_pad(rtrim($fraction, '0'), $least, '0');
-        $separator = (new NumberFormatter($locale, NumberFormatter::DECIMAL))->getSymbol(NumberFormatter::DECIMAL_SEPARATOR_SYMBOL);
+        $symbols = new NumberFormatter($locale, NumberFormatter::DECIMAL);
+        $separator = $symbols->getSymbol(NumberFormatter::DECIMAL_SEPARATOR_SYMBOL);
+        $whole = (string) preg_replace('/(?<=\d)(?=(\d{3})+\z)/', $symbols->getSymbol(NumberFormatter::GROUPING_SEPARATOR_SYMBOL), $whole);
 
         return $fraction === '' ? $whole : $whole.$separator.$fraction;
     }

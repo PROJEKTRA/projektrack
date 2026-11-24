@@ -7,6 +7,7 @@
 
 use App\Authorization\RoleManager;
 use App\Documents\Numbers;
+use App\Documents\Pdf;
 use App\Domain\Money\Amount;
 use App\Domain\Tax\TaxCase;
 use App\I18n\RegionalFormat;
@@ -685,3 +686,7 @@ it('keeps formulas out of the CSV', function () {
     $this->actingAs($this->controller)->post('/service-reports', ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-31']);
     expect($this->get('/service-reports/'.ServiceReport::query()->sole()->id.'/csv')->getContent())->toContain('"\'=HYPERLINK(""x"")"');
 });
+
+it('writes numbers and dates of documents like the app does', function (string $value, string $locale, string $text) {
+    expect(Pdf::decimal($value, 2, $locale))->toBe($text)->and(app(Pdf::class)->format('bs')->day('2026-12-08'))->toBe('08.12.2026');
+})->with([['1234567.5000', 'bs-BA', '1.234.567,50'], ['-1234.5', 'de-DE', '-1.234,50'], ['1234.5', 'en-GB', '1,234.50'], ['999', 'bs-BA', '999,00'], ['0.125', 'de-DE', '0,125']]);

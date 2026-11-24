@@ -8,6 +8,7 @@
 namespace Modules\ServiceReports\Domain;
 
 use App\Documents\Pdf;
+use App\I18n\Formats;
 use App\I18n\RegionalFormat;
 use App\I18n\Strings;
 use App\Tenancy\TenantContext;
@@ -16,6 +17,7 @@ use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Settings;
+use PhpOffice\PhpWord\SimpleType\Jc;
 use PhpOffice\PhpWord\Writer\Word2007;
 
 /**
@@ -36,7 +38,7 @@ final class ReportDoc
         $c = $report->content();
         $labels = is_array($c['labels'] ?? null) ? $c['labels'] : [];
         $t = fn (string $id): string => is_string($labels[$id] ?? null) ? $labels[$id] : $this->strings->get($id, [], $report->locale);
-        $format = is_string($c['format'] ?? null) ? new RegionalFormat($c['format'], $this->tenant->current()->timezone) : $this->pdf->format($report->locale);
+        $format = is_string($c['format'] ?? null) ? new RegionalFormat($c['format'], $this->tenant->current()->timezone, Formats::datePattern($c['format'])) : $this->pdf->format($report->locale);
         $rtl = $this->strings->direction($report->locale) === 'rtl';
 
         $word = new PhpWord;
@@ -52,13 +54,13 @@ final class ReportDoc
 
         $heads = ['date', 'user', 'package', 'description', 'hours', ...($report->with_amounts ? ['rate', 'amount'] : [])];
         $table = $this->table($section, $rtl);
-        $this->row($table, array_map(fn (string $h): string => $t("service_reports:column.{$h}"), $heads), true, $rtl);
+        $this->row($table, array_map(fn (string $h): string => $t("service_reports:column.{$h}"), $heads), true, $rtl, 4);
         foreach (is_array($c['lines'] ?? null) ? $c['lines'] : [] as $line) {
             if (is_array($line)) {
                 $minor = $line['amount_minor'] ?? null;
                 $currency = $line['currency'] ?? null;
                 $cells = [$format->day(self::text($line, 'date')), self::text($line, 'user'), self::text($line, 'package'), self::text($line, 'description'), self::hours($line['minutes'] ?? 0)];
-                $this->row($table, $report->with_amounts ? [...$cells, self::text($line, 'rate'), is_int($minor) && is_string($currency) ? $format->money($minor, $currency) : ''] : $cells, false, $rtl);
+                $this->row($table, $report->with_amounts ? [...$cells, self::text($line, 'rate') === '' ? '' : Pdf::decimal(self::text($line, 'rate'), 2, $format->locale), is_int($minor) && is_string($currency) ? $format->money($minor, $currency) : ''] : $cells, false, $rtl, 4);
             }
         }
         foreach (['package', 'user'] as $by) {
@@ -77,8 +79,10 @@ final class ReportDoc
             }
         }
         $section->addTextBreak(3);
-        $section->addText('____________________________          ____________________________');
-        $section->addText(self::text($c, 'seller').'          '.self::text($c, 'company'), ['rtl' => $rtl], ['bidi' => $rtl]);
+        $sign = $section->addTable(['bidiVisual' => $rtl, 'width' => 5000, 'unit' => 'pct']);
+        foreach ([['____________________________', '____________________________'], [self::text($c, 'seller'), self::text($c, 'company')]] as $cells) {
+            $this->row($sign, $cells, false, $rtl, 2);
+        }
 
         $folder = storage_path('framework/sheets');
         File::ensureDirectoryExists($folder, 0700);
@@ -98,12 +102,15 @@ final class ReportDoc
         return $section->addTable(['borderSize' => 4, 'borderColor' => 'CCCCCC', 'cellMargin' => 60, 'bidiVisual' => $rtl, 'width' => 5000, 'unit' => 'pct']);
     }
 
-    /** @param list<string> $cells */
-    private function row(Table $table, array $cells, bool $bold, bool $rtl): void
+    /**
+     * @param  list<string>  $cells
+     * @param  int  $numbers  from this column on numbers stand at the end
+     */
+    private function row(Table $table, array $cells, bool $bold, bool $rtl, int $numbers = 1): void
     {
-        $table->addRow();
-        foreach ($cells as $text) {
-            $table->addCell()->addText($text, ['bold' => $bold, 'rtl' => $rtl], ['bidi' => $rtl]);
+        $table->addRow(null, ['cantSplit' => true]);
+        foreach ($cells as $i => $text) {
+            $table->addCell()->addText($text, ['bold' => $bold, 'rtl' => $rtl], ['bidi' => $rtl, 'spaceAfter' => 0, 'alignment' => $i >= $numbers ? Jc::END : Jc::START]);
         }
     }
 
