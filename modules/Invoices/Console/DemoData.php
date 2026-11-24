@@ -55,13 +55,13 @@ class DemoData extends Command
         }
 
         return $context->run($tenant, function (): int {
-            foreach (['service_reports', 'invoices'] as $module) {
-                app(TenantModules::class)->enable($module);
-            }
             if (Company::query()->exists()) {
                 $this->error('This tenant has customers already. Sample data goes into an empty one only.');
 
                 return self::FAILURE;
+            }
+            foreach (['service_reports', 'invoices'] as $module) {
+                app(TenantModules::class)->enable($module);
             }
             DB::transaction(fn () => $this->fill());
             $this->info('Sample data added: 3 customers, 5 projects, 8 people, 3 months of approved time, reports and draft invoices.');

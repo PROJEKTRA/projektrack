@@ -7,6 +7,9 @@
 
 use App\Authorization\Permissions;
 use App\Authorization\RoleManager;
+use App\I18n\LanguageChangeRefused;
+use App\I18n\StringCatalog;
+use App\I18n\TenantLanguages;
 use App\Models\AuditEntry;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -41,6 +44,29 @@ it('invites a person with a role and a link, never a password', function () {
     $this->get('/admin/users')->assertInertia(fn (AssertableInertia $p) => $p->component('admin/Users')->has('users.data', 2));
     $this->post('/admin/users', ['name' => 'Again', 'email' => 'new@example.test', 'roles' => [userRole('employee')->id]])->assertSessionHasErrors('email');
     $this->post('/admin/users', ['name' => 'None', 'email' => 'none@example.test', 'roles' => []])->assertSessionHasErrors('roles');
+});
+
+it('stores the address as sign-in compares it', function () {
+    $this->post('/admin/users', ['name' => 'Ana', 'email' => ' Ana@Example.test', 'roles' => [userRole('employee')->id]])->assertSessionHasNoErrors();
+    $this->post('/admin/users', ['name' => 'Ana', 'email' => 'ana@example.test', 'roles' => [userRole('employee')->id]])->assertSessionHasErrors('email');
+});
+
+it('never lets the last administrator delete the own account', function () {
+    $this->delete('/settings/profile', ['password' => 'password'])->assertSessionHasErrors('password');
+    expect(User::query()->whereKey($this->admin->id)->exists())->toBeTrue();
+});
+
+it('keeps legal texts out of language files without the permission', function () {
+    $role = userRole('controller');
+    app(RoleManager::class)->grant($role, ['core.strings.customize']);
+    $editor = User::factory()->withTwoFactor()->create();
+    app(RoleManager::class)->assign($editor, $role);
+    $languages = app(TenantLanguages::class);
+    $languages->copy('en', 'fr', 'Français', 'ltr', $this->admin);
+    $id = 'invoices:legal_notice.reverse_charge';
+    expect(fn () => $languages->import('fr', [$id => 'Changed'], $editor))->toThrow(LanguageChangeRefused::class);
+    expect($languages->import('fr', [$id => app(StringCatalog::class)->message('en', $id)], $editor))->toBe(1);
+    expect($languages->import('fr', ['core:common.save' => 'Enregistrer'], $editor))->toBe(1);
 });
 
 it('changes roles, but not the own ones', function () {

@@ -70,7 +70,7 @@ final class RoleManager
     {
         $this->sameTenant($user->tenant_id, $role->tenant_id);
 
-        if ($role->key === Role::ADMIN && $this->isLastAdministrator($user, $role)) {
+        if ($role->key === Role::ADMIN && $this->isOnlyAdministrator($user)) {
             throw new InvalidRoleChange('The last administrator of a tenant cannot lose the administrator role.');
         }
 
@@ -307,6 +307,14 @@ final class RoleManager
     {
         User::query()->whereIn('user_type', [UserType::Full->value, UserType::Light->value])
             ->each(fn (User $user) => $this->refreshUserType($user));
+    }
+
+    /** Whether nobody else administers the tenant; one answer at a time. */
+    public function isOnlyAdministrator(User $user): bool
+    {
+        $role = Role::query()->where('key', Role::ADMIN)->lockForUpdate()->first();
+
+        return $role !== null && in_array($role->id, $this->permissions->roleIdsOf($user), true) && $this->isLastAdministrator($user, $role);
     }
 
     private function isLastAdministrator(User $user, Role $role): bool

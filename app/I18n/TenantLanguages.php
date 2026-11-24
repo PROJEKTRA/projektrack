@@ -8,6 +8,7 @@
 namespace App\I18n;
 
 use App\Audit\AuditLog;
+use App\Authorization\Permissions;
 use App\Models\StringOverride;
 use App\Models\TenantLanguage;
 use App\Models\User;
@@ -334,6 +335,32 @@ final class TenantLanguages
     }
 
     /**
+     * Legal texts need their own permission, also in a file. Texts that are
+     * shipped or stored already may come back unchanged.
+     *
+     * @param  array<string, string>  $messages
+     *
+     * @throws LanguageChangeRefused
+     */
+    private function assertLegalUnchanged(string $locale, array $messages, User $actor): void
+    {
+        $protected = array_filter($messages, StringEditor::isProtected(...), ARRAY_FILTER_USE_KEY);
+        if ($protected === [] || app(Permissions::class)->allows($actor, StringEditor::LEGAL_PERMISSION)) {
+            return;
+        }
+        $stored = DB::table('string_overrides')->where('tenant_id', $this->tenants->id())->where('locale', $locale)->whereIn('identifier', array_keys($protected))->pluck('value', 'identifier');
+        foreach ($protected as $identifier => $message) {
+            $known = [$stored->get($identifier)];
+            foreach ($this->base->available() as $shipped) {
+                $known[] = $this->catalog->message($shipped, $identifier);
+            }
+            if (! in_array($message, $known, true)) {
+                throw LanguageChangeRefused::because('file', 'core:strings.error_protected');
+            }
+        }
+    }
+
+    /**
      * Import translated strings into one of the tenant's own languages. The
      * import is all or nothing: one invalid message refuses all of them.
      *
@@ -375,6 +402,8 @@ final class TenantLanguages
         if ($reasons !== []) {
             throw new LanguageChangeRefused('file', $reasons);
         }
+
+        $this->assertLegalUnchanged($locale, $valid, $actor);
 
         if ($valid === []) {
             throw LanguageChangeRefused::because('file', 'core:languages.error_import_empty');

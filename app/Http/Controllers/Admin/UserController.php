@@ -55,6 +55,8 @@ class UserController extends Controller
     public function store(Request $request, RoleManager $manager, AuditLog $audit, TenantContext $tenant): RedirectResponse
     {
         $actor = $this->currentUser($request);
+        // As sign-in compares it.
+        $request->merge(['email' => Str::lower(trim($request->string('email')->toString()))]);
         /** @var array{name: string, email: string, roles: list<string>} $data */
         $data = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:200'],
