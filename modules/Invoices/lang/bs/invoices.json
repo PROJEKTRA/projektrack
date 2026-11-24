@@ -113,6 +113,10 @@
     "problem.tax_seller_status": "Vaš PDV status ne odgovara vašoj državi.",
     "problem.tax_vat_id_missing": "Klijentu je potreban PDV broj.",
     "problem.texts_not_confirmed": "Zakonsku napomenu mora potvrditi računovođa (Postavke > Fakture).",
+    "problem.x_contact": "XRechnung zahtijeva kontakt osobu, telefon i e-mail (Postavke > Fakture).",
+    "problem.x_email": "XRechnung zahtijeva kontakt klijenta koji prima fakture e-mailom.",
+    "problem.x_iban": "XRechnung zahtijeva vaš IBAN (Postavke > Fakture).",
+    "problem.x_leitweg": "XRechnung zahtijeva Leitweg-ID klijenta.",
     "rate_class.reduced": "Snižena",
     "rate_class.standard": "Standardna",
     "remove": "Ukloni",
@@ -132,6 +136,9 @@
     "settings.bic": "BIC",
     "settings.city": "Grad",
     "settings.contact": "Kontakt podaci",
+    "settings.contact_email": "E-mail (e-fakture)",
+    "settings.contact_name": "Kontakt osoba (e-fakture)",
+    "settings.contact_phone": "Telefon (e-fakture)",
     "settings.iban": "IBAN",
     "settings.legal_name": "Pravni naziv na fakturama",
     "settings.legal_texts_confirmed": "Zakonske napomene potvrdio računovođa",
@@ -156,5 +163,6 @@
     "unit.day": "dana",
     "unit.flat": "paušal",
     "unit.hour": "h",
-    "unit.piece": "kom"
+    "unit.piece": "kom",
+    "xml": "XML"
 }

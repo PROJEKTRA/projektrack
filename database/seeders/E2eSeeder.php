@@ -70,7 +70,7 @@ class E2eSeeder extends Seeder
             app(TenantModules::class)->enable('service_reports');
             app(TenantModules::class)->enable('invoices');
             app(TenantContext::class)->current()->update(['country_code' => 'BA', 'base_currency' => 'BAM']);
-            app(Settings::class)->save('invoices', ['legal_name' => 'E2E Company d.o.o.', 'street' => 'Testna 2', 'postal_code' => '72270', 'city' => 'Travnik', 'tax_number' => '4000000000000', 'vat_id' => '123456789012', 'vat_status' => 'registered', 'bank' => null, 'iban' => null, 'bic' => null, 'contact' => null, 'legal_texts_confirmed' => true], User::factory()->create(['email' => 'e2e-settings@example.test']));
+            app(Settings::class)->save('invoices', ['legal_name' => 'E2E Company d.o.o.', 'street' => 'Testna 2', 'postal_code' => '72270', 'city' => 'Travnik', 'tax_number' => '4000000000000', 'vat_id' => '123456789012', 'vat_status' => 'registered', 'bank' => null, 'iban' => null, 'bic' => null, 'contact' => null, 'contact_name' => null, 'contact_phone' => null, 'contact_email' => null, 'legal_texts_confirmed' => true], User::factory()->create(['email' => 'e2e-settings@example.test']));
             app(Companies::class)->create(['company' => ['name' => 'E2E Customer GmbH', 'kind' => 'customer', 'document_locale' => 'en', 'currency' => 'BAM', 'payment_days' => 14, 'einvoice_format' => 'pdf'], 'tax' => ['tax_status' => 'domestic', 'country_code' => 'BA', 'tax_number' => '4200000000000'], 'address' => ['line1' => 'Testna 1', 'city' => 'Travnik', 'postal_code' => '72270', 'country_code' => 'BA']], User::factory()->create(['email' => 'e2e-seed@example.test']));
 
             foreach (self::USERS as $key => $user) {

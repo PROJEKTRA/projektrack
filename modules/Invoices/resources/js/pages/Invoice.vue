@@ -68,6 +68,7 @@ const props = defineProps<{
     invoice: InvoiceData;
     today: string;
     confirmed: boolean;
+    hasXml: boolean;
     recipients: string[];
     deliveries: {
         id: string;
@@ -247,6 +248,13 @@ function openEdit(): void {
                             :href="InvoiceController.pdf.url(invoice.id)"
                             download
                             >{{ $t('invoices:pdf') }}</a
+                        ></Button
+                    >
+                    <Button v-if="hasXml" as-child variant="ghost"
+                        ><a
+                            :href="InvoiceController.xml.url(invoice.id)"
+                            download
+                            >{{ $t('invoices:xml') }}</a
                         ></Button
                     >
                     <Button

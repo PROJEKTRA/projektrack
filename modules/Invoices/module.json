@@ -11,7 +11,8 @@
     "crm",
     "projects",
     "timesheets",
-    "rates"
+    "rates",
+    "service_reports"
   ],
   "permissions": [
     "invoices.view",
@@ -28,7 +29,7 @@
       "invoices.finalize",
       "invoices.cancel",
       "invoices.payments.record",
-    "tax.legal_notice.override"
+      "tax.legal_notice.override"
     ],
     "controller": [
       "invoices.view",
@@ -36,7 +37,7 @@
       "invoices.finalize",
       "invoices.cancel",
       "invoices.payments.record",
-    "tax.legal_notice.override"
+      "tax.legal_notice.override"
     ]
   },
   "settings_schema": "settings.schema.json"

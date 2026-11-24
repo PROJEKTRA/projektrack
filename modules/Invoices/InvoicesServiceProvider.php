@@ -11,6 +11,7 @@ use App\Dashboard\Dashboard;
 use App\Models\User;
 use App\Tenancy\TenantContext;
 use Illuminate\Support\ServiceProvider;
+use Modules\Invoices\Console\DemoData;
 use Modules\Invoices\Domain\Invoice;
 
 /**
@@ -34,6 +35,7 @@ class InvoicesServiceProvider extends ServiceProvider
                 ['label' => 'invoices:dashboard.overdue', 'value' => (string) $overdue, 'href' => route('invoices.index', ['show' => 'open'], absolute: false), 'alert' => $overdue > 0],
             ];
         });
+        $this->commands([DemoData::class]);
         $this->loadViewsFrom(__DIR__.'/resources/views', 'invoices');
     }
 }

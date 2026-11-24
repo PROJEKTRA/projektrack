@@ -113,6 +113,10 @@
     "problem.tax_seller_status": "Your VAT status does not fit your country.",
     "problem.tax_vat_id_missing": "The customer needs a VAT ID.",
     "problem.texts_not_confirmed": "The legal notice must be confirmed by an accountant (Settings > Invoices).",
+    "problem.x_contact": "XRechnung needs your contact person, phone and email (Settings > Invoices).",
+    "problem.x_email": "XRechnung needs a contact of the customer that receives invoices by email.",
+    "problem.x_iban": "XRechnung needs your IBAN (Settings > Invoices).",
+    "problem.x_leitweg": "XRechnung needs the Leitweg-ID of the customer.",
     "rate_class.reduced": "Reduced",
     "rate_class.standard": "Standard",
     "remove": "Remove",
@@ -132,6 +136,9 @@
     "settings.bic": "BIC",
     "settings.city": "City",
     "settings.contact": "Contact line",
+    "settings.contact_email": "Email (e-invoices)",
+    "settings.contact_name": "Contact person (e-invoices)",
+    "settings.contact_phone": "Phone (e-invoices)",
     "settings.iban": "IBAN",
     "settings.legal_name": "Legal name on invoices",
     "settings.legal_texts_confirmed": "Legal notices confirmed by an accountant",
@@ -156,5 +163,6 @@
     "unit.day": "days",
     "unit.flat": "flat",
     "unit.hour": "h",
-    "unit.piece": "pcs"
+    "unit.piece": "pcs",
+    "xml": "XML"
 }

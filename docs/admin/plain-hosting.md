@@ -58,6 +58,16 @@ LOG_LEVEL=debug
 
 Remaining `CHANGE-ME` values of the mail server do not matter then. After cron ran once (`php artisan schedule:run`), the setup link is in the newest file of `storage/logs/`. That log holds sign-in links: never use these values on a reachable server.
 
+## Sample data
+
+On a test installation (`APP_ENV=staging`), for an empty company:
+
+```
+php artisan projektrack:demo <slug>
+```
+
+Everything in it is synthetic; nobody can sign in as a sample person, and no invoice is issued.
+
 ## What can be tested today
 
 | Area | State |
@@ -72,7 +82,8 @@ Remaining `CHANGE-ME` values of the mail server do not matter then. After cron r
 | Weekly timesheet, approval, corrections, month close | ready |
 | Hourly rates, service reports (PDF, CSV) | ready |
 | Invoices for sellers in DE and BA, cancellation, payments (PDF) | ready; legal notices must be confirmed by an accountant |
-| E-invoices, quotes, expenses, absences, timer, DOCX and XLSX | not built yet |
+| Timer, XLSX, invoices by email, ZUGFeRD and XRechnung (CII) | ready; not yet checked with the official validators (KoSIT, veraPDF) |
+| Quotes, expenses, absences, DOCX, XRechnung UBL | not built yet |
 | Web installer, backup on plain hosting, Nginx sample | not built yet |
 
 ## Newer ZIP

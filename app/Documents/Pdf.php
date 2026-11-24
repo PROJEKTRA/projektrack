@@ -23,6 +23,24 @@ use NumberFormatter;
  */
 final class Pdf
 {
+    /** Tells readers that the file holds an e-invoice (Factur-X 1.0, profile EN 16931). */
+    private const string FACTUR_X = <<<'XML'
+        <rdf:Description rdf:about="" xmlns:fx="urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#">
+          <fx:DocumentType>INVOICE</fx:DocumentType><fx:DocumentFileName>factur-x.xml</fx:DocumentFileName><fx:Version>1.0</fx:Version><fx:ConformanceLevel>EN 16931</fx:ConformanceLevel>
+        </rdf:Description>
+        <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
+          <pdfaExtension:schemas><rdf:Bag><rdf:li rdf:parseType="Resource">
+            <pdfaSchema:schema>Factur-X PDFA Extension Schema</pdfaSchema:schema><pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#</pdfaSchema:namespaceURI><pdfaSchema:prefix>fx</pdfaSchema:prefix>
+            <pdfaSchema:property><rdf:Seq>
+              <rdf:li rdf:parseType="Resource"><pdfaProperty:name>DocumentFileName</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>name of the embedded XML invoice file</pdfaProperty:description></rdf:li>
+              <rdf:li rdf:parseType="Resource"><pdfaProperty:name>DocumentType</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>INVOICE</pdfaProperty:description></rdf:li>
+              <rdf:li rdf:parseType="Resource"><pdfaProperty:name>Version</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>version of the XML data</pdfaProperty:description></rdf:li>
+              <rdf:li rdf:parseType="Resource"><pdfaProperty:name>ConformanceLevel</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>conformance level of the XML data</pdfaProperty:description></rdf:li>
+            </rdf:Seq></pdfaSchema:property>
+          </rdf:li></rdf:Bag></pdfaExtension:schemas>
+        </rdf:Description>
+        XML;
+
     public function __construct(
         private readonly Strings $strings,
         private readonly TenantContext $tenant,
@@ -63,7 +81,7 @@ final class Pdf
      * @param  array<string, mixed>  $data
      * @param  array<array-key, mixed>  $labels  sealed texts; others are read now
      */
-    public function render(string $view, array $data, string $locale, string $title, array $labels = [], ?string $formatLocale = null): string
+    public function render(string $view, array $data, string $locale, string $title, array $labels = [], ?string $formatLocale = null, ?string $facturX = null): string
     {
         $format = $formatLocale === null ? $this->format($locale) : new RegionalFormat($formatLocale, $this->tenant->current()->timezone);
         $temp = storage_path('framework/pdf');
@@ -81,7 +99,11 @@ final class Pdf
             'hours' => fn (int $minutes): string => ($minutes < 0 ? '-' : '').intdiv(abs($minutes), 60).':'.sprintf('%02d', abs($minutes) % 60),
         ])->render();
 
-        $pdf = new Mpdf(['tempDir' => $temp, 'default_font' => 'dejavusans', 'exposeVersion' => false, 'margin_top' => 18, 'margin_bottom' => 22, 'autoScriptToLang' => true, 'autoLangToFont' => true]);
+        $pdf = new Mpdf(['tempDir' => $temp, 'default_font' => 'dejavusans', 'exposeVersion' => false, 'margin_top' => 18, 'margin_bottom' => 22, 'autoScriptToLang' => true, 'autoLangToFont' => true, ...($facturX === null ? [] : ['PDFA' => true, 'PDFAauto' => true, 'PDFAversion' => '3-B'])]);
+        if ($facturX !== null) {
+            $pdf->SetAssociatedFiles([['name' => 'factur-x.xml', 'mime' => 'text/xml', 'description' => 'Factur-X', 'AFRelationship' => 'Alternative', 'content' => $facturX]]);
+            $pdf->SetAdditionalXmpRdf(self::FACTUR_X);
+        }
         $pdf->SetTitle($title);
         // The product name stays out of the file.
         $pdf->SetCreator('');

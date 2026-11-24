@@ -20,7 +20,7 @@ final class Seller
         private readonly TenantContext $tenant,
     ) {}
 
-    /** @return array{name: string, street: string, postal_code: string, city: string, country: string, tax_number: string, vat_id: string, vat_status: string, bank: string, iban: string, bic: string, contact: string} */
+    /** @return array{name: string, street: string, postal_code: string, city: string, country: string, tax_number: string, vat_id: string, vat_status: string, bank: string, iban: string, bic: string, contact: string, contact_name: string, contact_phone: string, contact_email: string} */
     public function data(): array
     {
         $get = function (string $key): string {
@@ -31,7 +31,7 @@ final class Seller
 
         return [
             'name' => $get('legal_name'), 'street' => $get('street'), 'postal_code' => $get('postal_code'), 'city' => $get('city'), 'country' => $this->tenant->current()->country_code,
-            'tax_number' => $get('tax_number'), 'vat_id' => $get('vat_id'), 'vat_status' => $get('vat_status'), 'bank' => $get('bank'), 'iban' => $get('iban'), 'bic' => $get('bic'), 'contact' => $get('contact'),
+            'tax_number' => $get('tax_number'), 'vat_id' => $get('vat_id'), 'vat_status' => $get('vat_status'), 'bank' => $get('bank'), 'iban' => $get('iban'), 'bic' => $get('bic'), 'contact' => $get('contact'), 'contact_name' => $get('contact_name'), 'contact_phone' => $get('contact_phone'), 'contact_email' => $get('contact_email'),
         ];
     }
 

@@ -52,6 +52,10 @@ class SendInvoice implements ShouldBeEncrypted, ShouldQueue
                 ->line($strings->get('invoices:send.body', $args, $invoice->locale))
                 ->salutation(is_string($args['seller']) ? $args['seller'] : '')
                 ->attachData(app(InvoicePdf::class)->render($invoice), $invoice->number.'.pdf', ['mime' => 'application/pdf']);
+            // An XRechnung is the XML; the PDF is only its picture.
+            if (is_string($content['xml'] ?? null) && is_array($content['buyer'] ?? null) && ($content['buyer']['einvoice_format'] ?? null) === 'xrechnung_cii') {
+                $mail->attachData($content['xml'], $invoice->number.'.xml', ['mime' => 'application/xml']);
+            }
             Notification::route('mail', $delivery->recipient)->notifyNow(new InvoiceMail($mail));
             $delivery->update(['status' => 'sent']);
         });

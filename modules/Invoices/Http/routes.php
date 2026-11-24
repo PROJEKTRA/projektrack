@@ -20,6 +20,7 @@ Route::middleware(['web', 'auth', 'verified', 'module:invoices', 'permission:inv
         Route::delete('/', 'discard')->middleware('permission:invoices.create')->name('discard');
         Route::get('pdf', 'pdf')->middleware('throttle:60,1')->name('pdf');
         Route::get('confirm', 'confirm')->middleware(RequirePassword::class)->name('confirm');
+        Route::get('xml', 'xml')->middleware('throttle:60,1')->name('xml');
         Route::post('finalize', 'finalize')->middleware(['permission:invoices.finalize', RequirePassword::class])->name('finalize');
         Route::post('cancel', 'cancel')->middleware(['permission:invoices.cancel', RequirePassword::class])->name('cancel');
         Route::post('payments', 'pay')->middleware('permission:invoices.payments.record')->name('pay');

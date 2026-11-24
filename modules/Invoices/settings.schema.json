@@ -106,6 +106,33 @@
       "maxLength": 191,
       "x-label": "invoices:settings.contact"
     },
+    "contact_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 120,
+      "x-label": "invoices:settings.contact_name"
+    },
+    "contact_phone": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 120,
+      "x-label": "invoices:settings.contact_phone"
+    },
+    "contact_email": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 120,
+      "x-label": "invoices:settings.contact_email"
+    },
     "legal_texts_confirmed": {
       "type": "boolean",
       "default": false,

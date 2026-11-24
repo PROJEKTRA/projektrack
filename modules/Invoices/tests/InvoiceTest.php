@@ -26,6 +26,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia;
 use Modules\Crm\Domain\Companies;
 use Modules\Crm\Domain\Company;
+use Modules\Invoices\Domain\EInvoice;
 use Modules\Invoices\Domain\Invoice;
 use Modules\Invoices\Domain\InvoiceDelivery;
 use Modules\Invoices\Domain\InvoiceLine;
@@ -68,7 +69,7 @@ function invUser(string $role): User
 /** @param array<string, mixed> $changes */
 function sellerData(array $changes = []): void
 {
-    app(Settings::class)->save('invoices', array_replace(['legal_name' => 'Synthetic Seller GmbH', 'street' => 'Teststr. 1', 'postal_code' => '70173', 'city' => 'Stuttgart', 'tax_number' => '99/999/99999', 'vat_id' => 'DE999999999', 'vat_status' => 'registered', 'bank' => 'Test Bank', 'iban' => 'DE00 0000', 'bic' => 'TESTDEXX', 'contact' => 'billing@example.test', 'legal_texts_confirmed' => true], $changes), invUser('admin'));
+    app(Settings::class)->save('invoices', array_replace(['legal_name' => 'Synthetic Seller GmbH', 'street' => 'Teststr. 1', 'postal_code' => '70173', 'city' => 'Stuttgart', 'tax_number' => '99/999/99999', 'vat_id' => 'DE999999999', 'vat_status' => 'registered', 'bank' => 'Test Bank', 'iban' => 'DE00 0000', 'bic' => 'TESTDEXX', 'contact' => 'billing@example.test', 'contact_name' => 'Test Contact', 'contact_phone' => '+49 000 0000', 'contact_email' => 'billing@example.test', 'legal_texts_confirmed' => true], $changes), invUser('admin'));
     app()->forgetScopedInstances();
 }
 
@@ -418,6 +419,76 @@ it('lets project leads report hours of their project, never amounts', function (
     $priced = ServiceReport::query()->where('with_amounts', true)->sole();
     $this->actingAs($lead)->get("/service-reports/{$priced->id}/pdf")->assertNotFound();
     $this->get('/service-reports')->assertInertia(fn (AssertableInertia $p) => $p->has('reports', 1));
+});
+
+it('writes valid ZUGFeRD for the reference set', function (string $status, string $country, ?string $vatId, array $lines, string $category, string $seller) {
+    if ($seller === 'BA') {
+        $this->tenant->update(['country_code' => 'BA']);
+    }
+    $company = invCompany($status, $country, $vatId);
+    $company->update(['einvoice_format' => 'zugferd']);
+    $invoice = issue(draft($lines, $company));
+    $xml = $invoice->content()['xml'];
+    $doc = new DOMDocument;
+    $doc->loadXML($xml);
+    $x = new DOMXPath($doc);
+    $x->registerNamespace('ram', 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100');
+    $sum = fn (string $p): int => (int) array_sum(array_map(fn (DOMNode $n): int => (int) round(((float) $n->textContent) * 100), iterator_to_array($x->query($p))));
+
+    expect(app(EInvoice::class)->validate($xml))->toBe([])
+        ->and($x->evaluate('string(//ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CategoryCode)'))->toBe($category)
+        // BR-CO-10, 13, 14, 15: the parts add up to the totals.
+        ->and($sum('//ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount'))->toBe($invoice->net_minor)
+        ->and($sum('//ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:BasisAmount'))->toBe($invoice->net_minor)
+        ->and($sum('//ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CalculatedAmount'))->toBe($invoice->tax_minor)
+        ->and($sum('//ram:GrandTotalAmount'))->toBe($invoice->gross_minor)
+        ->and($x->query('//ram:ChargeAmount[starts-with(., "-")]')->length)->toBe(0);
+    if ($category === 'O') {
+        expect($x->query('//ram:ID[@schemeID="VA"]')->length)->toBe(0)->and($x->query('//ram:RateApplicablePercent')->length)->toBe(0);
+    }
+    $this->actingAs($this->controller)->get("/invoices/{$invoice->id}/xml")->assertOk()->assertHeader('Content-Type', 'application/xml');
+    $pdf = $this->get("/invoices/{$invoice->id}/pdf")->assertOk()->getContent();
+    expect($pdf)->toContain('factur-x.xml')->toContain('/AFRelationship');
+
+    $cancellation = app(Invoices::class)->cancel($invoice, $this->controller);
+    expect(app(EInvoice::class)->validate($cancellation->content()['xml']))->toBe([])->and($cancellation->content()['xml'])->toContain('>384<')->toContain("<ram:IssuerAssignedID>{$invoice->number}<");
+})->with([
+    'domestic' => ['domestic', 'DE', null, [freeLine('2', '100')], 'S', 'DE'],
+    'mixed rates and a discount line' => ['domestic', 'DE', null, [freeLine('10', '100'), freeLine('1', '-50', changes: ['description' => 'Rabatt & <b>']), freeLine('1', '49.99', 'reduced')], 'S', 'DE'],
+    'reverse charge' => ['eu_business', 'AT', 'ATU12345678', [freeLine('40', '100', changes: ['unit' => 'hour'])], 'AE', 'DE'],
+    'outside the EU' => ['non_eu_business', 'CH', null, [freeLine('1', '2500')], 'O', 'DE'],
+    'BA seller to DE' => ['eu_business', 'DE', 'DE123456789', [freeLine('40', '100')], 'AE', 'BA'],
+]);
+
+it('writes time lines without rounding twice', function () {
+    $this->company->update(['einvoice_format' => 'zugferd']);
+    [$project] = billedProject();
+    $this->actingAs($this->controller)->post('/invoices/from-time', ['project_id' => $project->id, 'period_from' => '2026-10-01', 'period_to' => '2026-10-06']);
+    $xml = issue(Invoice::query()->sole())->content()['xml'];
+    expect($xml)->toContain('<ram:BilledQuantity unitCode="MIN">40<')->toContain('<ram:BasisQuantity unitCode="MIN">60<')->toContain('<ram:LineTotalAmount>66.67<');
+});
+
+it('asks for everything an XRechnung needs', function () {
+    $this->company->update(['einvoice_format' => 'xrechnung_cii']);
+    sellerData(['iban' => null, 'contact_phone' => null]);
+    $invoice = draft([freeLine('1', '100')]);
+    expect(app(Invoices::class)->preview($invoice)['problems'])->toBe(['x_leitweg', 'x_contact', 'x_iban', 'x_email']);
+    sellerData();
+    app(Companies::class)->update($this->company, ['company' => ['leitweg_id' => '04011000-1234512345-06'], 'contacts' => [['last_name' => 'Amt', 'email' => 'rechnung@amt.test', 'invoice_recipient' => true]]], $this->controller);
+    $xml = issue($invoice)->content()['xml'];
+    expect(app(EInvoice::class)->validate($xml))->toBe([])->and($xml)->toContain('xrechnung_3.0')->toContain('<ram:BuyerReference>04011000-1234512345-06<')->toContain('schemeID="EM">rechnung@amt.test<');
+});
+
+it('fills an empty test installation with sample data, once and never in production', function () {
+    Company::query()->toBase()->delete();
+    $this->artisan('projektrack:demo', ['tenant' => $this->tenant->slug])->assertSuccessful();
+    expect(Company::query()->count())->toBe(3)->and(Project::query()->count())->toBe(5)->and(TimeEntry::query()->where('status', '!=', 'approved')->count())->toBe(0)
+        ->and(TimeEntry::query()->count())->toBeGreaterThan(200)->and(ServiceReport::query()->count())->toBe(5)->and(Invoice::query()->pluck('number')->all())->toBe([null, null]);
+    app(TenantContext::class)->set($this->tenant);
+    $this->artisan('projektrack:demo', ['tenant' => $this->tenant->slug])->assertFailed();
+    $this->app['env'] = 'production';
+    $this->artisan('projektrack:demo', ['tenant' => $this->tenant->slug])->assertFailed();
+    $this->app['env'] = 'testing';
 });
 
 it('mails issued invoices to known contacts only', function () {

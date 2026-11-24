@@ -83,6 +83,7 @@ class InvoiceController extends Controller
                 'cancelled_by' => $cancelled?->only(['id', 'number']),
                 'payments' => InvoicePayment::query()->where('invoice_id', $i->id)->orderBy('paid_on')->orderBy('created_at')->get()->map(fn (InvoicePayment $p): array => ['id' => $p->id, 'paid_on' => $p->paid_on->toDateString(), 'amount_minor' => $p->amount_minor, 'note' => $p->note])->all(),
             ],
+            'hasXml' => is_string($content['xml'] ?? null),
             'recipients' => $i->isDraft() ? [] : $companies->invoiceRecipients($i->company_id),
             'deliveries' => InvoiceDelivery::query()->where('invoice_id', $i->id)->orderByDesc('created_at')->limit(20)->get()->map(fn (InvoiceDelivery $d): array => ['id' => $d->id, 'recipient' => $d->recipient, 'status' => $d->status, 'at' => $d->created_at?->toIso8601String()])->all(),
             'confirmed' => (int) now()->timestamp - (is_int($at = $request->session()->get('auth.password_confirmed_at')) ? $at : 0) < config()->integer('auth.password_timeout'),
@@ -191,6 +192,16 @@ class InvoiceController extends Controller
         return response($file, 200, [
             'Content-Type' => 'application/pdf', 'Content-Disposition' => "attachment; filename=\"{$i->number}.pdf\"", 'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    public function xml(Request $request, string $invoice, AuditLog $audit): HttpResponse
+    {
+        $i = Invoice::query()->findOrFail($invoice);
+        $xml = $i->isDraft() ? null : ($i->content()['xml'] ?? null);
+        abort_unless(is_string($xml), 404);
+        $audit->record('invoices.downloaded', $i, ['number' => $i->number, 'as' => 'xml'], $this->currentUser($request));
+
+        return response($xml, 200, ['Content-Type' => 'application/xml', 'Content-Disposition' => "attachment; filename=\"{$i->number}.xml\"", 'Cache-Control' => 'private, no-store']);
     }
 
     /** @return array<string, mixed> */

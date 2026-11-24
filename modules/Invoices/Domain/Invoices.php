@@ -49,6 +49,7 @@ final class Invoices
         private readonly TenantContext $tenant,
         private readonly AuditLog $audit,
         private readonly Pdf $pdf,
+        private readonly EInvoice $einvoice,
     ) {}
 
     /** @param list<LineData> $lines */
@@ -180,6 +181,9 @@ final class Invoices
         }
         if (! $this->pdf->speaks(['invoices:document.', 'invoices:unit.', 'invoices:legal_notice.'], $invoice->locale)) {
             $problems[] = 'language';
+        }
+        if ($company !== null) {
+            array_push($problems, ...EInvoice::missing($seller, $company));
         }
         if ($company === null || $company['tax'] === null) {
             return ['problems' => [...$problems, 'customer_tax'], 'totals' => null, 'notices' => [], 'decisions' => []];
@@ -380,6 +384,10 @@ final class Invoices
     /** @param array<array-key, mixed> $content */
     private function seal(Invoice $invoice, array $content, User $actor): void
     {
+        // Part of the sealed content, so the hash covers it too.
+        if (is_array($content['buyer'] ?? null) && in_array($content['buyer']['einvoice_format'] ?? null, ['zugferd', 'xrechnung_cii'], true)) {
+            $content['xml'] = $this->einvoice->write($content);
+        }
         $snapshot = CanonicalJson::encode($content);
         $invoice->update([
             'status' => 'finalized', 'number' => $content['number'], 'issue_date' => $content['issue_date'], 'due_date' => $content['due_date'],

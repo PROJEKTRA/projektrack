@@ -29,7 +29,7 @@ final class Directory implements CompanyDirectory
         $a = Address::query()->where('owner_type', 'company')->where('owner_id', $c->id)->first();
 
         return [
-            'id' => $c->id, 'number' => $c->number, 'name' => $c->legal_name ?? $c->name, 'document_locale' => $c->document_locale, 'currency' => $c->currency, 'payment_days' => $c->payment_days,
+            'id' => $c->id, 'number' => $c->number, 'name' => $c->legal_name ?? $c->name, 'document_locale' => $c->document_locale, 'currency' => $c->currency, 'payment_days' => $c->payment_days, 'einvoice_format' => $c->einvoice_format, 'leitweg_id' => $c->leitweg_id, 'email' => $this->invoiceRecipients($c->id)[0] ?? null,
             'tax' => $tax === null ? null : ['tax_status' => $tax->tax_status, 'country_code' => $tax->country_code, 'vat_id' => $tax->vat_id, 'tax_number' => $tax->tax_number],
             'address' => $a === null ? null : ['line1' => $a->line1, 'line2' => $a->line2, 'postal_code' => $a->postal_code, 'city' => $a->city, 'region' => $a->region, 'country_code' => $a->country_code],
         ];
