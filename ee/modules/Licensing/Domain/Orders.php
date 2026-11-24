@@ -261,7 +261,7 @@ final class Orders
         }
         $locale = $company['document_locale'];
         if (! $this->pdf->speaks(['licensing:line.'], $locale)) {
-            throw ValidationException::withMessages(['company_id' => __('licensing:errors.language')]);
+            throw ValidationException::withMessages(['company_id' => $text = __('licensing:errors.language'), 'order' => $text]);
         }
         $format = $this->pdf->format($locale);
         $args = ['from' => $format->day($order->starts_on->toDateString()), 'to' => $format->day($order->ends_on->toDateString())];
@@ -277,7 +277,7 @@ final class Orders
         // An order whose invoice could never be issued is not confirmed.
         $never = array_filter($this->invoices->problems($id), fn (string $key): bool => preg_match('/^(tax_|customer_|language|negative_total)/', $key) === 1, ARRAY_FILTER_USE_KEY);
         if ($never !== []) {
-            throw ValidationException::withMessages(['company_id' => array_values($never)]);
+            throw ValidationException::withMessages(['company_id' => array_values($never), 'order' => array_values($never)]);
         }
 
         return ['invoice_id' => $id, 'net_minor' => $this->invoices->state($id)['net_minor'] ?? 0];

@@ -35,6 +35,8 @@ const props = defineProps<{
     }[];
     plans: Plan[];
     companies: { value: string; text: string }[];
+    previous: string | null;
+    next: string | null;
     today: string;
     can: { plans: boolean; orders: boolean };
 }>();
@@ -156,6 +158,15 @@ const planErrors = computed(
                 </tbody>
             </table>
         </div>
+        <nav v-if="previous || next" class="flex gap-2">
+            <Button v-if="previous" as-child variant="secondary"
+                ><Link :href="previous">{{
+                    $t('licensing:previous')
+                }}</Link></Button
+            ><Button v-if="next" as-child variant="secondary"
+                ><Link :href="next">{{ $t('licensing:next') }}</Link></Button
+            >
+        </nav>
         <section class="space-y-2">
             <h2 class="font-medium">{{ $t('licensing:plans') }}</h2>
             <ul class="text-sm">

@@ -72,5 +72,8 @@
     "errors.review": "Faktura se ne slaže s narudžbom. Ništa se ne može potpisati.",
     "errors.language": "Jezik dokumenata klijenta nema tekstove za licence.",
     "errors.price": "Cijena mora biti veća od nule.",
-    "errors.name": "Naziv je predug."
+    "errors.name": "Naziv je predug.",
+    "cancel_text": "Narudžba se trajno otkazuje. Nacrt fakture ove narudžbe se briše.",
+    "previous": "Prethodna",
+    "next": "Sljedeća"
 }
