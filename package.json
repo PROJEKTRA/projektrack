@@ -37,7 +37,7 @@
         "vue-sonner": "^2.0.0"
     },
     "devDependencies": {
-        "@formatjs/icu-messageformat-parser": "3.5.22",
+        "@formatjs/icu-messageformat-parser": "3.5.23",
         "@inertiajs/vite": "~3.11.0",
         "@laravel/vite-plugin-wayfinder": "^0.1.11",
         "@playwright/test": "~1.65.1",
