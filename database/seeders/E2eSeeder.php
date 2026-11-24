@@ -48,6 +48,7 @@ class E2eSeeder extends Seeder
         'projects' => ['email' => 'e2e-projects@example.test', 'secret' => 'NBSWY3DPEHPK3PXA', 'locale' => 'bs'],
         'time' => ['email' => 'e2e-time@example.test', 'secret' => 'ONSWG4TFOQQHI33M', 'locale' => 'bs'],
         'invoices' => ['email' => 'e2e-invoices@example.test', 'secret' => 'PFXXK4RAONSWG4TF', 'locale' => 'bs'],
+        'reports' => ['email' => 'e2e-reports@example.test', 'secret' => 'NVSXE5DFNZ2GK4TT', 'locale' => 'bs'],
     ];
 
     public function run(): void

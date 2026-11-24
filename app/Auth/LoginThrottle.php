@@ -8,6 +8,7 @@
 namespace App\Auth;
 
 use App\Tenancy\TenantContext;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Str;
 
@@ -50,6 +51,24 @@ final class LoginThrottle
      * locked the account, else 0.
      */
     public function failed(string $email): int
+    {
+        $store = $this->cache->getStore();
+
+        // Attempts at the same moment are all counted.
+        if (! $store instanceof LockProvider) {
+            return $this->count($email);
+        }
+
+        $lock = $store->lock($this->key($email).'.lock', 10);
+        $lock->block(5);
+        try {
+            return $this->count($email);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function count(string $email): int
     {
         $now = now()->getTimestamp();
         $state = $this->state($email);

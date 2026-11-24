@@ -37,6 +37,12 @@ final class EnsureSessionIsValid
         /** @var Response $response */
         $response = $next($request);
 
+        // Nothing of a signed-in person stays in a browser after sign-out;
+        // files with an own lifetime (strings, logo) keep it.
+        if ($request->user() instanceof User && ! $response->headers->hasCacheControlDirective('max-age')) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+        }
+
         return $response;
     }
 }

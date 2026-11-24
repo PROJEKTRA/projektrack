@@ -15,6 +15,7 @@ use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\I18n\Formats;
 use App\I18n\Strings;
 use App\I18n\TenantLanguages;
+use App\Notifications\EmailWasChanged;
 use App\Tenancy\TenantContext;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\QueryException;
@@ -23,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -65,7 +67,8 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $this->currentUser($request);
-        $user->fill($request->validated());
+        $former = $user->email;
+        $user->fill($request->profile());
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
@@ -81,6 +84,11 @@ class ProfileController extends Controller
                 $this->audit->record('users.profile_updated', $user, ['fields' => $changed]);
             }
         });
+
+        // The old address hears of it, so a takeover is noticed.
+        if ($user->email !== $former) {
+            Notification::route('mail', $former)->notify(new EmailWasChanged($user));
+        }
 
         // A new language applies to this confirmation already.
         App::setLocale($this->strings->chain($user->locale ?? app(TenantContext::class)->current()->default_locale)[0]);

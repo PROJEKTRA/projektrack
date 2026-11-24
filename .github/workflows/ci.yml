@@ -198,7 +198,7 @@ jobs:
           php-version: '8.4'
           extensions: pdo_sqlite, intl, bcmath, sodium, gd, fileinfo, :redis
           tools: composer:v2
-          coverage: none
+          coverage: pcov
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -213,8 +213,8 @@ jobs:
           php artisan key:generate
           npm run build
 
-      - name: Pest on SQLite
-        run: vendor/bin/pest --parallel
+      - name: Pest on SQLite, coverage of app and modules
+        run: vendor/bin/pest --parallel --coverage --min=85
 
   e2e:
     name: Browser tests (Playwright, bs and ar)
@@ -372,6 +372,128 @@ jobs:
 
       - name: Update, refuse, fail and roll back
         run: bash tests/docker/update.sh
+
+  # Performance budget: 100,000 time entries on MariaDB.
+  performance:
+    name: Performance (100,000 entries, MariaDB)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      db:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: secret
+          MARIADB_DATABASE: projektrack
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_CONNECTION: mariadb
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: projektrack
+      DB_USERNAME: root
+      DB_PASSWORD: secret
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, intl, bcmath, sodium, gd, fileinfo, opcache
+          ini-values: opcache.enable=1
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install and build
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci
+          cp .env.example .env
+          php artisan key:generate
+          npm run build
+          npx playwright install --with-deps chromium
+
+      - name: Performance budget
+        run: npx playwright test -c playwright.performance.config.ts
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: performance
+          path: test-results/performance.json
+          retention-days: 30
+
+  # Security baseline 9: code and the whole history.
+  security-static:
+    name: Security (static analysis, secrets)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Secrets in the history (Gitleaks 8.30.1)
+        run: docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git /repo --redact --verbose --no-banner
+
+      - name: Static analysis (Semgrep 1.186.0)
+        if: always()
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep@sha256:6e1b04340e60e910fbb4ddbf3c857ab0918f064417ad5ac530014ccb3cf8c8f1 \
+            semgrep scan --error --metrics=off --disable-version-check \
+            --config .semgrep --config p/php --config p/javascript --config p/typescript --config p/owasp-top-ten --config p/github-actions --config p/dockerfile
+
+  # Security baseline 9: attacks on the running application.
+  security-dynamic:
+    name: Security (attack scan, anonymous and signed in)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, intl, bcmath, sodium, gd, fileinfo
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install and build
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci
+          cp .env.example .env
+          php artisan key:generate
+          npm run build
+          npx playwright install --with-deps chromium
+
+      - name: ZAP 2.17.0
+        run: npx playwright test -c playwright.dast.config.ts
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: zap-reports
+          path: test-results/zap-*/report.json
+          retention-days: 30
 
   # S-0968, S-0969: synthetic e-invoices against the official validators.
   e-invoices:

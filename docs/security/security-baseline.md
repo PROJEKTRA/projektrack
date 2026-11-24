@@ -15,6 +15,8 @@ Principles: secure by design and by default; deny by default; no control depends
 
 ### 1.1 Control map
 
+Not yet in place in 0.9, whatever a row below says (review of 24.11.2026): the named test files under `tests/Security/` (other tests cover the topics in part), architecture tests, the route-enumerating cross-tenant suite, passkeys, `SafeHttpClient`, field encryption with key rotation, audit checkpoints and triggers on plain hosting, the license checker, the pull request template, the ASVS mapping, the threat models per module and `SECURITY.md`. ZAP runs an active scan on every pull request instead of a nightly one.
+
 Legend for enforcement: **Pest** = feature or architecture test in `tests/Security/`, **Arch** = Pest architecture test or PHPStan custom rule, **Semgrep** = rule in `.semgrep/`, **ZAP** = DAST job, **Crawl** = no-index crawl test, **Gate** = mandatory review step in the pull request template.
 
 | Area | ASVS 5.0 chapter | Level | Control | Enforced by |

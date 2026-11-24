@@ -12,6 +12,7 @@ use App\Auth\AuthenticateUser;
 use App\Auth\AuthenticationSubscriber;
 use App\Auth\ConfirmIdentity;
 use App\Auth\EnsureAccountIsNotLocked;
+use App\Auth\SignedOutResponse;
 use App\Auth\StartTwoFactorChallenge;
 use App\Auth\TwoFactor\DisableTwoFactorAuthentication;
 use App\Auth\TwoFactor\EnableTwoFactorAuthentication;
@@ -34,6 +35,7 @@ use Laravel\Fortify\Actions\GenerateNewRecoveryCodes as FortifyGenerate;
 use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
+use Laravel\Fortify\Contracts\LogoutResponse;
 use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
@@ -54,6 +56,8 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->bind(FortifyGenerate::class, GenerateNewRecoveryCodes::class);
         $this->app->bind(FortifyTwoFactorLoginRequest::class, TwoFactorLoginRequest::class);
         $this->app->bind(FortifyRecoveryCodeController::class, RecoveryCodeController::class);
+
+        $this->app->bind(LogoutResponse::class, SignedOutResponse::class);
 
         // S-0903: the reset link form answers the same for every address.
         $this->app->bind(FailedPasswordResetLinkRequestResponse::class, UniformPasswordResetLinkResponse::class);

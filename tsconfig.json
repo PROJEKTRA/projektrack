@@ -36,6 +36,10 @@
         "vitest.config.ts",
         "scripts/**/*.ts",
         "tests/e2e/**/*.ts",
+        "tests/performance/**/*.ts",
+        "tests/dast/**/*.ts",
+        "playwright.performance.config.ts",
+        "playwright.dast.config.ts",
         "playwright.config.ts"
     ]
 }

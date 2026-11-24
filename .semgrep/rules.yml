@@ -1,0 +1,46 @@
+# Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+# Project rules of the static security scan (security baseline 1.1 and 9).
+rules:
+  - id: raw-sql-from-variables
+    languages: [php]
+    severity: ERROR
+    message: Raw SQL only as a literal with bindings.
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: $Q->whereRaw($SQL, ...)
+              - pattern: $Q->orWhereRaw($SQL, ...)
+              - pattern: $Q->selectRaw($SQL, ...)
+              - pattern: $Q->orderByRaw($SQL, ...)
+              - pattern: $Q->havingRaw($SQL, ...)
+              - pattern: $Q->groupByRaw($SQL, ...)
+              - pattern: DB::raw($SQL)
+          - pattern-not: $Q->whereRaw("...", ...)
+          - pattern-not: $Q->orWhereRaw("...", ...)
+          - pattern-not: $Q->selectRaw("...", ...)
+          - pattern-not: $Q->orderByRaw("...", ...)
+          - pattern-not: $Q->havingRaw("...", ...)
+          - pattern-not: $Q->groupByRaw("...", ...)
+          - pattern-not: DB::raw("...")
+    paths:
+      include: ['app/**', 'modules/**', 'ee/**']
+  - id: weak-random
+    languages: [php]
+    severity: ERROR
+    message: Use random_int or random_bytes.
+    pattern-either:
+      - pattern: mt_rand(...)
+      - pattern: rand(...)
+      - pattern: uniqid(...)
+    paths:
+      include: ['app/**', 'modules/**', 'ee/**']
+  - id: tls-verification-off
+    languages: [php]
+    severity: ERROR
+    message: Outgoing connections verify certificates.
+    pattern-either:
+      - pattern: "['verify' => false]"
+      - pattern: $H->withoutVerifying()
+      - pattern: Http::withoutVerifying()

@@ -90,6 +90,8 @@ jobs:
         run: |
           # Without license keys no instance of this release could accept a license (S-0974).
           php -r 'exit((require "config/license-keys.php")["keys"] === [] ? 1 : 0);' || { echo "::error::config/license-keys.php has no key."; exit 1; }
+          # Without release keys no instance of this release could take a later one (S-0924).
+          grep -qvE '^(#|[[:space:]]*$)' resources/release/public-keys.txt || { echo "::error::resources/release/public-keys.txt has no key."; exit 1; }
           deploy/release/build-zip.sh "$VERSION" dist
           mkdir -p "$RUNNER_TEMP/unpacked"
           unzip -q "dist/projektrack-$VERSION.zip" -d "$RUNNER_TEMP/unpacked"

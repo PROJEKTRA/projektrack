@@ -7,6 +7,7 @@
 
 namespace App\Auth\TwoFactor;
 
+use App\Auth\Sessions;
 use App\Models\User;
 use App\Notifications\TwoFactorWasReset;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,9 @@ final class ResetTwoFactor
         }
 
         $user->notify(new TwoFactorWasReset);
+
+        // Whatever the session driver.
+        app(Sessions::class)->endAll($user);
 
         event(new TwoFactorReset($user->tenant_id, $user->id, $admin->id));
     }
