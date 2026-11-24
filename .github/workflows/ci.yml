@@ -393,6 +393,8 @@ jobs:
       - name: Write the samples
         run: |
           composer install --no-interaction --no-progress --prefer-dist
+          cp .env.example .env
+          php artisan key:generate
           EINVOICE_SAMPLES="$PWD/samples" vendor/bin/pest modules/Invoices/tests/EInvoiceSamplesTest.php
           test "$(ls samples/*.xml | wc -l)" -ge 45
           test "$(ls samples/*.pdf | wc -l)" -ge 15
