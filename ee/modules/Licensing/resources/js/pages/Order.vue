@@ -4,8 +4,9 @@
 -->
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import InvoiceController from '@/actions/Modules/Invoices/Http/InvoiceController';
+import FormDialog from '@/components/FormDialog.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +55,8 @@ defineOptions({
     }),
 });
 
+const cancelOpen = ref(false);
+const cancelling = useForm({});
 const form = useForm({ token: '' });
 const facts = computed(() => [
     ['plan', props.plan],
@@ -93,7 +96,7 @@ const facts = computed(() => [
                 }}</Link></Button
             >
             <Button v-if="can.sign" as-child variant="secondary"
-                ><a :href="`/licensing/orders/${order.id}/payload`" download>{{
+                ><a :href="`/licensing/orders/${order.id}/payload`">{{
                     $t('licensing:payload')
                 }}</a></Button
             >
@@ -108,7 +111,7 @@ const facts = computed(() => [
             <Button
                 v-if="can.cancel"
                 variant="destructive"
-                @click="router.post(`/licensing/orders/${order.id}/cancel`)"
+                @click="cancelOpen = true"
                 >{{ $t('licensing:cancel') }}</Button
             >
         </div>
@@ -160,4 +163,18 @@ const facts = computed(() => [
             </ul>
         </section>
     </div>
+
+    <FormDialog
+        v-model:open="cancelOpen"
+        :title="$t('licensing:cancel')"
+        :save="$t('licensing:cancel')"
+        :processing="cancelling.processing"
+        @submit="
+            cancelling.post(`/licensing/orders/${order.id}/cancel`, {
+                onFinish: () => (cancelOpen = false),
+            })
+        "
+    >
+        <p class="text-sm">{{ $t('licensing:cancel_text') }}</p>
+    </FormDialog>
 </template>

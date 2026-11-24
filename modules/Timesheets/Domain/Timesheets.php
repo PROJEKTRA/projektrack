@@ -168,6 +168,8 @@ final class Timesheets
     public function correct(User $actor, TimeEntry $original, int $minutes, string $reason): TimeEntry
     {
         return DB::transaction(function () use ($actor, $original, $minutes, $reason): TimeEntry {
+            // Like a booking: two changes of one user's day wait for each other.
+            User::query()->whereKey($original->user_id)->lockForUpdate()->firstOrFail();
             $entry = TimeEntry::query()->whereKey($original->id)->lockForUpdate()->firstOrFail();
             abort_if($entry->user_id === $actor->id, 403);
             if ($entry->status !== 'approved' || $entry->corrects_id !== null) {

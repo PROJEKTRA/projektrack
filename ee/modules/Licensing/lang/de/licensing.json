@@ -72,5 +72,8 @@
     "errors.review": "Die Rechnung passt nicht zur Bestellung. Es kann nichts signiert werden.",
     "errors.language": "Für die Dokumentsprache des Kunden fehlen Texte für Lizenzen.",
     "errors.price": "Der Preis muss größer als null sein.",
-    "errors.name": "Der Name ist zu lang."
+    "errors.name": "Der Name ist zu lang.",
+    "cancel_text": "Die Bestellung wird endgültig storniert. Ihr Rechnungsentwurf wird gelöscht.",
+    "previous": "Zurück",
+    "next": "Weiter"
 }

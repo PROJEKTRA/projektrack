@@ -40,7 +40,8 @@ class OrderController extends Controller
         return Inertia::render('Licensing::Orders', [
             'orders' => array_map(fn (LicenseOrder $o): array => [...$o->only(['id', 'number', 'status', 'full_seats', 'light_seats']), 'company' => $names[$o->company_id] ?? '', 'ends_on' => $o->ends_on->toDateString()], $orders->items()),
             'plans' => LicensePlan::query()->orderBy('name')->get()->map(fn (LicensePlan $p): array => $p->only(['id', 'key', 'name', 'edition', 'term_months', 'price_lock_months', 'full_price', 'light_price', 'onboarding_price', 'currency', 'active']))->all(),
-            'companies' => array_map(fn (array $c): array => ['value' => $c['id'], 'text' => $c['name']], $companies->choices()),
+            'previous' => $orders->previousPageUrl(), 'next' => $orders->nextPageUrl(),
+            'companies' => $user->can('licensing.subscriptions.manage') ? array_map(fn (array $c): array => ['value' => $c['id'], 'text' => $c['name']], $companies->choices()) : [],
             'today' => now($tenant->current()->timezone)->toDateString(),
             'can' => ['plans' => $user->can('licensing.plans.manage'), 'orders' => $user->can('licensing.subscriptions.manage')],
         ]);

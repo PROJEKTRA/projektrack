@@ -98,7 +98,7 @@ it('refuses a backup of another version and keeps the newest backup', function (
     expect(app(Backups::class)->prune(14))->toBe(0);
     file_put_contents($this->dir.'/backups/backup-29990101-000000.ptkbak', 'x');
     expect(app(Backups::class)->prune(14))->toBe(1);
-});
+})->skip(fn (): bool => DB::connection()->getDriverName() === 'pgsql', 'not on PostgreSQL; the Docker tools do that');
 
 it('does nothing without a key', function () {
     config(['backup.public_key' => '']);

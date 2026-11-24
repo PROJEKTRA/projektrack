@@ -72,5 +72,8 @@
     "errors.review": "The invoice does not match the order. Nothing can be signed.",
     "errors.language": "The document language of the customer has no texts for licenses.",
     "errors.price": "The price must be greater than zero.",
-    "errors.name": "The name is too long."
+    "errors.name": "The name is too long.",
+    "cancel_text": "The order is cancelled for good. A draft invoice of the order is deleted.",
+    "previous": "Previous",
+    "next": "Next"
 }
