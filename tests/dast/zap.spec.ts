@@ -13,7 +13,7 @@ import {
 import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { BASE_URL } from '../../playwright.config';
-import { signIn } from '../e2e/support';
+import { PASSWORD, signIn } from '../e2e/support';
 
 // ZAP 2.17.0
 const IMAGE =
@@ -80,6 +80,11 @@ test('an anonymous attacker finds nothing', async () => {
 
 test('a signed-in attacker finds nothing', async ({ page }) => {
     await signIn(page, 'bs');
+    // User administration asks for the password again.
+    await page.goto('/admin/users');
+    await page.locator('#password').fill(PASSWORD);
+    await page.getByTestId('confirm-password-button').click();
+    await page.waitForURL('**/admin/users');
     const urls = new Set<string>();
     for (const path of [
         '/dashboard',

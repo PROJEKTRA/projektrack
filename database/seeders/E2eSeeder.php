@@ -17,6 +17,9 @@ use App\Settings\Settings;
 use App\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
 use Modules\Crm\Domain\Companies;
+use Modules\Projects\Domain\Project;
+use Modules\Projects\Domain\WorkPackage;
+use Modules\Timesheets\Domain\TimeEntry;
 use RuntimeException;
 
 /**
@@ -72,7 +75,7 @@ class E2eSeeder extends Seeder
             app(TenantModules::class)->enable('invoices');
             app(TenantContext::class)->current()->update(['country_code' => 'BA', 'base_currency' => 'BAM']);
             app(Settings::class)->save('invoices', ['legal_name' => 'E2E Company d.o.o.', 'street' => 'Testna 2', 'postal_code' => '72270', 'city' => 'Travnik', 'tax_number' => '4000000000000', 'vat_id' => '123456789012', 'vat_status' => 'registered', 'bank' => null, 'iban' => null, 'bic' => null, 'contact' => null, 'contact_name' => null, 'contact_phone' => null, 'contact_email' => null, 'legal_texts_confirmed' => true], User::factory()->create(['email' => 'e2e-settings@example.test']));
-            app(Companies::class)->create(['company' => ['name' => 'E2E Customer GmbH', 'kind' => 'customer', 'document_locale' => 'en', 'currency' => 'BAM', 'payment_days' => 14, 'einvoice_format' => 'pdf'], 'tax' => ['tax_status' => 'domestic', 'country_code' => 'BA', 'tax_number' => '4200000000000'], 'address' => ['line1' => 'Testna 1', 'city' => 'Travnik', 'postal_code' => '72270', 'country_code' => 'BA']], User::factory()->create(['email' => 'e2e-seed@example.test']));
+            $customer = app(Companies::class)->create(['company' => ['name' => 'E2E Customer GmbH', 'kind' => 'customer', 'document_locale' => 'en', 'currency' => 'BAM', 'payment_days' => 14, 'einvoice_format' => 'pdf'], 'tax' => ['tax_status' => 'domestic', 'country_code' => 'BA', 'tax_number' => '4200000000000'], 'address' => ['line1' => 'Testna 1', 'city' => 'Travnik', 'postal_code' => '72270', 'country_code' => 'BA']], User::factory()->create(['email' => 'e2e-seed@example.test']));
 
             foreach (self::USERS as $key => $user) {
                 $users[$key] = User::factory()->create([
@@ -86,6 +89,11 @@ class E2eSeeder extends Seeder
                 ]);
                 app(RoleManager::class)->assign($users[$key], $admin);
             }
+
+            // Approved time of last month for a service report.
+            $project = Project::query()->create(['number' => 'E2E-1', 'name' => 'Report project', 'company_id' => $customer->id, 'status' => 'active', 'billing_model' => 'time_and_material', 'currency' => 'BAM']);
+            $package = WorkPackage::query()->create(['project_id' => $project->id, 'wbs_code' => '1', 'path' => '0001', 'sort_order' => 1, 'name' => 'Consulting', 'status' => 'open', 'billable' => true]);
+            TimeEntry::query()->create(['user_id' => $users['time']->id, 'project_id' => $project->id, 'work_package_id' => $package->id, 'work_date' => now()->startOfMonth()->subDays(10)->toDateString(), 'duration_minutes' => 90, 'billable_minutes' => 90, 'description' => 'Analysis', 'status' => 'approved', 'approved_by' => $users['reports']->id, 'approved_at' => now()]);
 
             app(TenantLanguages::class)->copy('en', 'ar', 'العربية', 'rtl', $users['bs']);
         });

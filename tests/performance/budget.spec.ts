@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
-import { signIn } from '../e2e/support';
+import { PASSWORD, signIn } from '../e2e/support';
 
 /*
  * Performance budget with 100,000 time entries in one tenant: the server
@@ -56,6 +56,11 @@ async function timed(request: APIRequestContext, path: string) {
 
 test('stays within the performance budget', async ({ page }) => {
     await signIn(page, 'bs');
+    // User administration asks for the password again.
+    await page.goto('/admin/users');
+    await page.locator('#password').fill(PASSWORD);
+    await page.getByTestId('confirm-password-button').click();
+    await page.waitForURL('**/admin/users');
     await page.goto('/projects');
     const project = await page
         .locator('a[href*="/projects/"]')

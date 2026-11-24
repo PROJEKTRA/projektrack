@@ -8,18 +8,13 @@ import { signIn } from './support';
 // S-0953 to S-0957: a report of a project, downloaded in every format.
 test('generates a service report', async ({ page }) => {
     await signIn(page, 'reports');
-    await page.goto('/projects');
-    await page.getByTestId('new-project').click();
-    const dialog = page.getByRole('dialog');
-    const field = (name: string) => dialog.locator(`[name="${name}"]`);
-    await field('name').fill('Report project');
-    await page.getByTestId('dialog-save').click();
-    await expect(page).toHaveURL(/\/projects\/[0-9a-z]{26}$/i);
-    const project = page.url().split('/').pop() ?? '';
-
     await page.goto('/service-reports');
     await page.getByTestId('new-report').click();
-    await field('project_id').selectOption(project);
+    // Approved time of last month comes from E2eSeeder.
+    await page
+        .getByRole('dialog')
+        .locator('[name="project_id"]')
+        .selectOption({ label: 'E2E-1 Report project' });
     await page.getByTestId('dialog-save').click();
     const row = page.getByRole('row').filter({ hasText: 'Report project' });
     await expect(row).toBeVisible();

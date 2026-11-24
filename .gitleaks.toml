@@ -1,0 +1,11 @@
+# Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+# SPDX-License-Identifier: AGPL-3.0-only
+[extend]
+useDefault = true
+
+# Synthetic authenticator secrets of the browser tests, 16 characters of base32.
+[[allowlists]]
+condition = "AND"
+paths = ['''^database/seeders/E2eSeeder\.php$''', '''^tests/e2e/support\.ts$''']
+regexTarget = "secret"
+regexes = ['''^[A-Z2-7]{16}$''']

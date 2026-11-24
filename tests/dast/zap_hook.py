@@ -15,3 +15,11 @@ def zap_started(zap, target):
         )
     for url in scan["urls"]:
         zap.core.access_url(url, False)
+
+
+def zap_active_scan(zap, target, policy):
+    with open("/zap/wrk/scan.json", encoding="utf-8") as file:
+        scan = json.load(file)
+    # This rule clicks everything in a browser, so it would sign out.
+    if scan["cookie"]:
+        zap.ascan.disable_scanners("40026", policy)
