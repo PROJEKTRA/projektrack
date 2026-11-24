@@ -193,7 +193,7 @@ final class Timesheets
             $correction = TimeEntry::query()->create([
                 'user_id' => $entry->user_id, 'project_id' => $entry->project_id, 'work_package_id' => $entry->work_package_id, 'work_date' => $entry->work_date->toDateString(),
                 'duration_minutes' => $minutes - $current,
-                'billable_minutes' => $this->billable($entry->work_package_id, $package['billable'], $minutes) - $billed,
+                'billable_minutes' => $this->billable($entry->work_package_id, $entry->billable_minutes !== 0 || $package['billable'], $minutes) - $billed,
                 'status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'corrects_id' => $entry->id, 'correction_reason' => $reason,
             ]);
             $this->audit->record('timesheets.entry.corrected', $correction, ['entry' => $entry->id, 'minutes' => $correction->duration_minutes], $actor);
@@ -233,7 +233,7 @@ final class Timesheets
         $contract = $this->projects->contractOf($entry->work_package_id);
         if ($contract !== null) {
             // Read with a lock, so a parallel approval is counted.
-            $this->budgets->approved($contract, fn (): int => (int) TimeEntry::query()->where('status', 'approved')->whereIn('work_package_id', $this->budgets->packagesOf($contract))->lockForUpdate()->get(['id', 'tenant_id', 'duration_minutes'])->sum('duration_minutes'));
+            $this->budgets->approved($contract, fn (): int => TimeEntry::query()->where('status', 'approved')->whereIn('work_package_id', $this->budgets->packagesOf($contract))->lockForUpdate()->get(['id', 'tenant_id', 'duration_minutes'])->sum(fn (TimeEntry $e): int => $e->duration_minutes));
         }
         event(new TimeApproved($entry->id, $entry->user_id, $entry->work_package_id, $entry->project_id, $entry->work_date->toDateString(), $entry->billable_minutes, $entry->duration_minutes, $entry->corrects_id));
     }

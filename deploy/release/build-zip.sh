@@ -20,13 +20,15 @@ mkdir -p "${out}"
 out="$(cd "${out}" && pwd)"
 work="$(mktemp -d)"
 trap 'rm -rf "${work}"' EXIT
-name="projektrack-${version}"
+name="projektrack${VENDOR:+-vendor}-${version}"
 stage="${work}/${name}"
 mkdir "${stage}"
 
 # Committed files only: nothing local, ignored or excluded can slip in.
 git -C "${root}" archive --format=tar HEAD | tar -x -C "${stage}"
 cd "${stage}"
+# The release is the Community edition. VENDOR=1 is the build for the licensor's own instance.
+if [[ -n "${VENDOR:-}" ]]; then rm -rf ee/licensing; else rm -rf ee; fi
 
 composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
 npm ci --no-audit --no-fund
@@ -39,7 +41,7 @@ rm -rf node_modules public/hot bootstrap/cache/strings
 printf '%s\n' "${version}" > VERSION
 
 # Development material is not part of a release.
-rm -rf tests modules/*/tests docs .github scripts ee/licensing playwright.config.ts phpunit.xml vitest.config.ts \
+rm -rf tests modules/*/tests ee/modules/*/tests docs .github scripts playwright.config.ts phpunit.xml vitest.config.ts \
     eslint.config.js .prettierrc.json phpstan.neon pint.json .dockerignore .editorconfig
 find storage -type f ! -name .gitignore -delete
 

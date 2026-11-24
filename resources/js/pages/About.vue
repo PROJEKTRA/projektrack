@@ -16,6 +16,12 @@ defineOptions({
 defineProps<{
     product: string;
     version: string | null;
+    news: {
+        title: string;
+        limits_title: string;
+        new: string[];
+        limits: string[];
+    };
     poweredBy: { product: string; licensor: string } | null;
     licensor: Record<string, string>;
 }>();
@@ -47,6 +53,21 @@ const fields = [
         <p v-if="poweredBy" class="text-sm text-muted-foreground">
             {{ $t('core:about.powered_by', poweredBy) }}
         </p>
+
+        <section class="space-y-3" data-test="news">
+            <Heading variant="small" :title="news.title" />
+            <ul class="list-disc space-y-1 ps-5 text-sm">
+                <li v-for="n in news.new" :key="n">
+                    {{ n }}
+                </li>
+            </ul>
+            <Heading variant="small" :title="news.limits_title" />
+            <ul class="list-disc space-y-1 ps-5 text-sm">
+                <li v-for="n in news.limits" :key="n">
+                    {{ n }}
+                </li>
+            </ul>
+        </section>
 
         <section class="space-y-3">
             <Heading

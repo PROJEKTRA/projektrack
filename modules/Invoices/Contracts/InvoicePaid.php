@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-namespace Modules\Invoices\Domain;
+namespace Modules\Invoices\Contracts;
 
 /** An invoice is paid in full. */
 final readonly class InvoicePaid

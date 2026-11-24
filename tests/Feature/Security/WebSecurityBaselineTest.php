@@ -138,6 +138,7 @@ describe('secrets at rest', function () {
         'api_tokens.tokenable_id' => 'the owner of a token, not a secret',
         'shared_links.token' => 'SHA-256 of the link token; the token is shown once (S-0987)',
         'instance_licenses.token' => 'signed license, readable by design and no secret (S-0974)',
+        'license_orders.token' => 'signed license, readable by design and no secret (S-0975)',
         'shared_links.password' => 'hashed (Argon2id) by SharedLinks (S-0987)',
     ];
 

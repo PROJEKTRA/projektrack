@@ -35,7 +35,9 @@ final class BackupFile
         $out = self::open($target, 'xb');
         @chmod($target, 0600);
         $key = sodium_crypto_secretstream_xchacha20poly1305_keygen();
-        [$state, $header] = sodium_crypto_secretstream_xchacha20poly1305_init_push($key);
+        /** @var array{string, string} $started */
+        $started = sodium_crypto_secretstream_xchacha20poly1305_init_push($key);
+        [$state, $header] = $started;
         $write = function (string $data) use ($out): void {
             if (fwrite($out, $data) !== strlen($data)) {
                 throw new RuntimeException('The backup could not be written. Is the disk full?');
@@ -76,6 +78,7 @@ final class BackupFile
                 // Also a file that was cut off: its last part is missing.
                 throw new RuntimeException('The backup is damaged.');
             }
+            /** @var array{string, int} $result */
             [$plain, $tag] = $result;
             if (fwrite($out, $plain) !== strlen($plain)) {
                 throw new RuntimeException('The disk is full.');

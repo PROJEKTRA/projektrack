@@ -191,5 +191,6 @@
     "unit.flat": "paušal",
     "unit.hour": "h",
     "unit.piece": "kom",
-    "xml": "XML"
+    "xml": "XML",
+    "errors.held": "Ovaj nacrt pripada narudžbi. Prvo otkažite narudžbu."
 }

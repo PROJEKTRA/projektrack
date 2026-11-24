@@ -16,6 +16,7 @@ import { formatHours } from '@/lib/hours';
 const props = defineProps<{
     from: string;
     to: string;
+    can: boolean;
     rows: {
         id: string;
         number: string;
@@ -24,7 +25,7 @@ const props = defineProps<{
         minutes: number;
         sales_minor: number;
         cost_minor: number;
-        margin_minor: number;
+        margin_minor: number | null;
         without_sales: number;
         without_cost: number;
     }[];
@@ -75,6 +76,17 @@ const to = ref(props.to);
             <Button type="submit" variant="secondary">{{
                 $t('rates:margin.show')
             }}</Button>
+            <Button
+                v-if="
+                    can && rows.some((r) => r.without_sales || r.without_cost)
+                "
+                type="button"
+                variant="secondary"
+                @click="
+                    router.post(RateController.valueMissing.url(), { from, to })
+                "
+                >{{ $t('rates:margin.value') }}</Button
+            >
         </form>
         <p v-if="rows.length === 0" class="text-muted-foreground">
             {{ $t('rates:margin.empty') }}
@@ -126,11 +138,15 @@ const to = ref(props.to);
                         <td
                             class="px-4 py-2 text-end font-medium tabular-nums"
                             :class="
-                                r.margin_minor < 0 ? 'text-destructive' : ''
+                                r.margin_minor !== null && r.margin_minor < 0
+                                    ? 'text-destructive'
+                                    : ''
                             "
                         >
                             <bdi>{{
-                                formatMoney(r.margin_minor, r.currency)
+                                r.margin_minor === null
+                                    ? $t('rates:margin.unknown')
+                                    : formatMoney(r.margin_minor, r.currency)
                             }}</bdi>
                         </td>
                         <td class="px-4 py-2">

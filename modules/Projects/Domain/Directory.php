@@ -41,6 +41,11 @@ final class Directory implements ProjectDirectory
         return array_values($this->list(Project::query()->where('status', 'active')->orderBy('name')->get()));
     }
 
+    public function all(): array
+    {
+        return array_values($this->list(Project::query()->orderBy('name')->get()));
+    }
+
     public function contractOf(string $workPackageId): ?string
     {
         return WorkPackage::query()->findOrFail($workPackageId)->contract_id;

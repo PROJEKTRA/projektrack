@@ -21,11 +21,11 @@ final class Margins
         private readonly ApprovedTime $time,
     ) {}
 
-    /** @return list<array{id: string, name: string, number: string, currency: string, minutes: int, sales_minor: int, cost_minor: int, margin_minor: int, without_sales: int, without_cost: int}> */
+    /** @return list<array{id: string, name: string, number: string, currency: string, minutes: int, sales_minor: int, cost_minor: int, margin_minor: int|null, without_sales: int, without_cost: int}> */
     public function between(string $from, string $to): array
     {
         $result = [];
-        foreach ($this->projects->active() as $project) {
+        foreach ($this->projects->all() as $project) {
             $rows = $this->time->between($project['id'], $from, $to);
             if ($rows === []) {
                 continue;
@@ -42,11 +42,14 @@ final class Margins
                     }
                 }
             }
+            $withoutSales = count(array_filter($rows, fn (array $r): bool => $r['billable_minutes'] !== 0 && ! isset($found['sales'][$r['id']])));
+            $withoutCost = count(array_filter($rows, fn (array $r): bool => ! isset($found['cost'][$r['id']])));
+            // Hours times rate is no revenue at a fixed price, and a sum with gaps is no margin.
+            $known = in_array($project['billing_model'], ['time_and_material', 'mixed'], true) && $withoutSales === 0 && $withoutCost === 0;
             $result[] = [
                 'id' => $project['id'], 'name' => $project['name'], 'number' => $project['number'], 'currency' => $project['currency'],
-                'minutes' => array_sum(array_column($rows, 'minutes')), 'sales_minor' => $sums['sales'], 'cost_minor' => $sums['cost'], 'margin_minor' => $sums['sales'] - $sums['cost'],
-                'without_sales' => count(array_filter($rows, fn (array $r): bool => $r['billable_minutes'] !== 0 && ! isset($found['sales'][$r['id']]))),
-                'without_cost' => count(array_filter($rows, fn (array $r): bool => ! isset($found['cost'][$r['id']]))),
+                'minutes' => array_sum(array_column($rows, 'minutes')), 'sales_minor' => $sums['sales'], 'cost_minor' => $sums['cost'], 'margin_minor' => $known ? $sums['sales'] - $sums['cost'] : null,
+                'without_sales' => $withoutSales, 'without_cost' => $withoutCost,
             ];
         }
 

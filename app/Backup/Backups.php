@@ -238,6 +238,7 @@ final class Backups
         $batch = [];
         $later = [];
         $flush = function () use (&$batch, $table): void {
+            /** @var list<array<string, mixed>> $batch */
             if ($batch !== []) {
                 DB::table($table)->insert($batch);
                 $batch = [];

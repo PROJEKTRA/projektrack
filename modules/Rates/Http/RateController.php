@@ -23,12 +23,14 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Crm\Contracts\CompanyDirectory;
 use Modules\Projects\Contracts\ProjectDirectory;
+use Modules\Rates\Contracts\TimeValues;
 use Modules\Rates\Domain\ExchangeRate;
 use Modules\Rates\Domain\JobRole;
 use Modules\Rates\Domain\Margins;
 use Modules\Rates\Domain\RateRule;
 use Modules\Rates\Domain\Rates;
 use Modules\Rates\Domain\UserJobRole;
+use Modules\Timesheets\Contracts\ApprovedTime;
 
 class RateController extends Controller
 {
@@ -125,14 +127,26 @@ class RateController extends Controller
         return to_route('rates.index');
     }
 
+    /** Give a value to approved time of the period that has none, by the rates of its days. */
+    public function valueMissing(Request $request, ProjectDirectory $projects, ApprovedTime $time, TimeValues $values): RedirectResponse
+    {
+        $request->validate(['from' => ['required', 'date_format:Y-m-d'], 'to' => ['required', 'date_format:Y-m-d']]);
+        $period = ['from' => $request->string('from')->toString(), 'to' => $request->string('to')->toString()];
+        foreach ($projects->all() as $project) {
+            $values->valueMissing($time->between($project['id'], $period['from'], $period['to']), $this->currentUser($request));
+        }
+
+        return to_route('rates.margin', $period);
+    }
+
     public function margin(Request $request, Margins $margins, TenantContext $tenant): Response
     {
         $start = CarbonImmutable::parse(now($tenant->current()->timezone)->startOfMonth()->subMonth()->toDateString(), 'UTC');
-        $date = fn (string $key, string $default): string => is_string($v = $request->query($key)) && preg_match('/^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\z/', $v) === 1 ? $v : $default;
+        $date = fn (string $key, string $default): string => is_string($v = $request->query($key)) && preg_match('/^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\z/', $v) === 1 && CarbonImmutable::parse($v, 'UTC')->toDateString() === $v ? $v : $default;
         $from = $date('from', $start->toDateString());
         $to = $date('to', $start->endOfMonth()->toDateString());
 
-        return Inertia::render('Rates::Margin', ['from' => $from, 'to' => $to, 'rows' => $margins->between($from, $to)]);
+        return Inertia::render('Rates::Margin', ['from' => $from, 'to' => $to, 'rows' => $margins->between($from, $to), 'can' => $this->currentUser($request)->can('rates.manage')]);
     }
 
     /** A stored exchange rate of a day. BAM and EUR are fixed by law and not editable. */

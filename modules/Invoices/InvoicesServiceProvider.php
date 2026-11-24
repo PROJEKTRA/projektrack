@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Tenancy\TenantContext;
 use Illuminate\Support\ServiceProvider;
 use Modules\Invoices\Console\DemoData;
+use Modules\Invoices\Contracts\InvoiceDrafts;
+use Modules\Invoices\Domain\Drafts;
 use Modules\Invoices\Domain\Invoice;
 
 /**
@@ -19,6 +21,11 @@ use Modules\Invoices\Domain\Invoice;
  */
 class InvoicesServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        $this->app->bind(InvoiceDrafts::class, Drafts::class);
+    }
+
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
