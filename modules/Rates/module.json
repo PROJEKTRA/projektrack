@@ -1,0 +1,32 @@
+{
+  "key": "rates",
+  "name_string": "rates:module_name",
+  "description_string": "rates:module_description",
+  "version": "1.0.0",
+  "core": "^0.9 || ^1.0",
+  "edition": "community",
+  "vendor": "projektra",
+  "requires": [
+    "core",
+    "crm",
+    "projects",
+    "timesheets"
+  ],
+  "permissions": [
+    "rates.view_sales",
+    "rates.view_cost",
+    "rates.manage"
+  ],
+  "role_defaults": {
+    "admin": [
+      "rates.view_sales",
+      "rates.view_cost",
+      "rates.manage"
+    ],
+    "controller": [
+      "rates.view_sales",
+      "rates.view_cost",
+      "rates.manage"
+    ]
+  }
+}

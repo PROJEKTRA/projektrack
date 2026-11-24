@@ -9,6 +9,10 @@ parameters:
         - config/
         - database/
         - ee/
+        - modules/
         - routes/
+
+    excludePaths:
+        - modules/*/tests/*
 
     level: max

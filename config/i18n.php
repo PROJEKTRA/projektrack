@@ -14,7 +14,7 @@ return [
     // language files exist; more arrive with language packs (S-0921, S-0922).
     'locales' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('I18N_LOCALES', 'bs,en')),
+        explode(',', (string) env('I18N_LOCALES', 'bs,en,de')),
     ))),
 
     // Default for a new installation and the first fallback after the user's

@@ -8,6 +8,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Audit\AuditLog;
+use App\Authorization\RoleManager;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
@@ -16,11 +17,13 @@ use App\I18n\Strings;
 use App\I18n\TenantLanguages;
 use App\Tenancy\TenantContext;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,6 +31,7 @@ class ProfileController extends Controller
 {
     public function __construct(
         private readonly AuditLog $audit,
+        private readonly RoleManager $roles,
         private readonly TenantLanguages $languages,
         private readonly Strings $strings,
     ) {}
@@ -92,11 +96,21 @@ class ProfileController extends Controller
     {
         $user = $this->currentUser($request);
 
-        $this->audit->record('users.deleted', $user, [], $user);
+        // Booked time and issued documents keep their people.
+        try {
+            DB::transaction(function () use ($user): void {
+                if ($this->roles->isOnlyAdministrator($user)) {
+                    throw ValidationException::withMessages(['password' => __('core:users.last_admin')]);
+                }
+                $this->audit->record('users.deleted', $user, [], $user);
+                $user->delete();
+            });
+        } catch (QueryException) {
+            throw ValidationException::withMessages(['password' => __('core:profile.in_use')]);
+        }
 
-        Auth::logout();
-
-        $user->delete();
+        // Not logout(): it would write the deleted user again (remember token).
+        Auth::guard('web')->logoutCurrentDevice();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

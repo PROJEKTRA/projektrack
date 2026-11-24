@@ -27,6 +27,7 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             /** Set when the audit log failed its integrity check (core.audit.view only). */
             auditWarning: string | null;
+            licenseWarning: string | null;
             /** Current string bundle (S-0916). */
             strings: StringsMeta;
             formats: FormatsMeta;

@@ -7,6 +7,7 @@
 
 namespace App\I18n;
 
+use Brick\Money\Currency;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -102,9 +103,8 @@ final readonly class RegionalFormat
     /** Minor unit digits of a currency (EUR 2, JPY 0, KWD 3). */
     public static function fractionDigits(string $currency): int
     {
-        $formatter = new NumberFormatter('en@currency='.strtoupper($currency), NumberFormatter::CURRENCY);
-
-        return (int) $formatter->getAttribute(NumberFormatter::MAX_FRACTION_DIGITS);
+        // ISO 4217, as amounts are stored; ICU shows some currencies (RSD) without them.
+        return Currency::of(strtoupper($currency))->getDefaultFractionDigits();
     }
 
     /**

@@ -53,7 +53,7 @@
             <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         @endif
 
-        @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
+        @vite(['resources/css/app.css', 'resources/js/app.ts', str_contains($page['component'], '::') ? 'modules/'.str_replace('::', '/resources/js/pages/', $page['component']).'.vue' : "resources/js/pages/{$page['component']}.vue"])
         <x-inertia::head>
             <title>{{ app(\App\Branding\Brand::class)->nameForRequest() ?: __('core:auth.login.page_title') }}</title>
         </x-inertia::head>

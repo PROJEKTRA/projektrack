@@ -144,7 +144,7 @@ final class StringCatalog
         }
 
         foreach ($this->modules->all() as $key => $manifest) {
-            $file = dirname($manifest->path).'/lang/'.$locale.'/'.$key.'.json';
+            $file = $manifest->path.'/lang/'.$locale.'/'.$key.'.json';
             if (is_file($file)) {
                 $this->merge($messages, $file, $key, $key);
             }

@@ -1,0 +1,65 @@
+{
+  "key": "projects",
+  "name_string": "projects:module_name",
+  "description_string": "projects:module_description",
+  "version": "1.0.0",
+  "core": "^0.9 || ^1.0",
+  "edition": "community",
+  "vendor": "projektra",
+  "requires": [
+    "core",
+    "crm"
+  ],
+  "permissions": [
+    "projects.view",
+    "projects.create",
+    "projects.manage",
+    "projects.members.manage",
+    "projects.contracts.manage",
+    "projects.wbs.manage",
+    "projects.budget.view"
+  ],
+  "role_defaults": {
+    "admin": [
+      "projects.view",
+      "projects.create",
+      "projects.manage",
+      "projects.members.manage",
+      "projects.contracts.manage",
+      "projects.wbs.manage",
+      "projects.budget.view"
+    ],
+    "controller": [
+      "projects.view",
+      "projects.create",
+      "projects.manage",
+      "projects.members.manage",
+      "projects.contracts.manage",
+      "projects.wbs.manage",
+      "projects.budget.view"
+    ],
+    "project_lead": [
+      "projects.create"
+    ]
+  },
+  "project_role_defaults": {
+    "project_lead": [
+      "projects.view",
+      "projects.manage",
+      "projects.members.manage",
+      "projects.wbs.manage"
+    ]
+  },
+  "api_scopes": [
+    {
+      "scope": "projects:read",
+      "label_string": "projects:scopes.read"
+    }
+  ],
+  "notifications": [
+    {
+      "type": "projects.budget",
+      "label_string": "projects:notice.budget_label"
+    }
+  ]
+}

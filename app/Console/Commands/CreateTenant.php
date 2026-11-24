@@ -14,6 +14,9 @@ use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\User;
+use App\Modules\Edition;
+use App\Modules\ModuleRegistry;
+use App\Modules\TenantModules;
 use App\Tenancy\TenantContext;
 use App\Tenancy\TenantScope;
 use Illuminate\Console\Command;
@@ -44,7 +47,7 @@ class CreateTenant extends Command
 
     protected $description = 'Create a tenant with its address and first administrator, who gets a setup link by mail';
 
-    public function handle(TenantContext $context, Locales $locales, RoleManager $roles, AuditLog $audit): int
+    public function handle(TenantContext $context, Locales $locales, RoleManager $roles, AuditLog $audit, ModuleRegistry $registry, TenantModules $modules): int
     {
         $input = [
             'slug' => $this->option('slug'),
@@ -100,7 +103,7 @@ class CreateTenant extends Command
             return self::FAILURE;
         }
 
-        $tenant = DB::transaction(function () use ($data, $context, $roles, $audit): Tenant {
+        $tenant = DB::transaction(function () use ($data, $context, $roles, $audit, $registry, $modules): Tenant {
             $tenant = Tenant::query()->create([
                 'slug' => $data['slug'],
                 'name' => $data['name'],
@@ -113,7 +116,7 @@ class CreateTenant extends Command
                 'edition' => 'community',
             ]);
 
-            $context->run($tenant, function () use ($data, $roles, $audit): void {
+            $context->run($tenant, function () use ($data, $roles, $audit, $registry, $modules): void {
                 TenantDomain::query()->create([
                     'host' => $data['domain'],
                     'kind' => 'custom',
@@ -131,6 +134,13 @@ class CreateTenant extends Command
                 ]);
 
                 $roles->assign($admin, Role::query()->where('key', Role::ADMIN)->firstOrFail());
+
+                // A new company starts with every Community module switched on.
+                foreach ($registry->all() as $key => $manifest) {
+                    if ($manifest->edition === Edition::Community) {
+                        $modules->enable($key, $admin);
+                    }
+                }
                 $audit->record('tenant.created', $admin, ['by' => 'console']);
             });
 

@@ -14,11 +14,13 @@ use App\Doctor\DoctorAccess;
 use App\I18n\Formats;
 use App\I18n\Strings;
 use App\Licensing\LicenseAccess;
+use App\Licensing\LicenseWarning;
 use App\Models\AppNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Middleware;
+use Symfony\Component\HttpFoundation\Response;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -61,11 +63,15 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 // For showing or hiding UI only; the server checks every action again.
                 'permissions' => $user instanceof User ? app(Permissions::class)->of($user) : [],
+                // Also what project roles give in at least one project (navigation).
+                'permissionsAnywhere' => $user instanceof User ? app(Permissions::class)->anywhere($user) : [],
             ],
             // Which string bundle the page needs (S-0916).
             'strings' => $this->strings(),
             // Regional format and time zone for dates and amounts (S-0919).
             'formats' => app(Formats::class)->current()->toArray(),
+            // What operator administrators should know about the license (S-0977).
+            'licenseWarning' => fn (): ?string => $user instanceof User && app(LicenseAccess::class)->allows($user) && ($warning = app(LicenseWarning::class)->current()) !== null ? __($warning['message'], $warning['args']) : null,
             // Menu entry of the license, for operator administrators (S-0976).
             'licenseAccess' => fn (): bool => $user instanceof User && app(LicenseAccess::class)->allows($user),
             // Critical findings of the system check for operator administrators
@@ -98,6 +104,12 @@ class HandleInertiaRequests extends Middleware
             'version' => $version,
             'url' => route('strings.bundle', ['chain' => implode('.', $chain), 'version' => $version], false),
         ];
+    }
+
+    /** Never the address of a shared link: it holds the token (S-0987). */
+    public function shouldStoreCurrentUrl(Request $request, Response $response): bool
+    {
+        return ! $request->routeIs('shared.*') && parent::shouldStoreCurrentUrl($request, $response);
     }
 
     private function auditWarning(mixed $user): ?string

@@ -53,6 +53,8 @@ Scenario: Sites and contacts
   Then a client can have several sites and contacts, and contacts can be marked as invoice recipients
 ```
 
+Implementation note (23.11.2026): module `crm`, dialog and API with the same checks. Payment terms are a number of days; VIES is not built. The tax case preview follows with the tax engine (S-0959). A module is switched on for new companies; for an existing one: `php artisan projektrack:modules:enable <tenant> crm`.
+
 ---
 
 ### S-0940 Projects with team and project roles

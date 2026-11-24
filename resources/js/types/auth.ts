@@ -19,6 +19,8 @@ export type Auth = {
     user: User;
     /** Effective global permissions; for showing or hiding UI only. */
     permissions: string[];
+    /** Also what project roles give in at least one project. */
+    permissionsAnywhere: string[];
 };
 
 export type TwoFactorConfigContent = {

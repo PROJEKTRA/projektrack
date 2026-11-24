@@ -37,8 +37,8 @@ zip="${out}/projektrack-0.0.0-test.zip"
 say 'Hosting: Apache with PHP, MariaDB, cron'
 docker build -q -t amp-web - >/dev/null <<'EOF'
 FROM php:8.4-apache
-RUN apt-get update -qq && apt-get install -y -qq libicu-dev unzip >/dev/null \
- && docker-php-ext-install -j"$(nproc)" intl pdo_mysql bcmath >/dev/null \
+RUN apt-get update -qq && apt-get install -y -qq libicu-dev libpng-dev libzip-dev unzip >/dev/null \
+ && docker-php-ext-install -j"$(nproc)" intl pdo_mysql bcmath gd zip >/dev/null \
  && a2enmod rewrite headers >/dev/null \
  && sed -i 's#/var/www/html#/srv/site/public#' /etc/apache2/sites-available/000-default.conf \
  && printf '<Directory /srv/>\nAllowOverride All\nRequire all granted\n</Directory>\nServerTokens Prod\nListen 81\n<VirtualHost *:81>\nDocumentRoot /srv/site\n</VirtualHost>\n' > /etc/apache2/conf-enabled/site.conf \

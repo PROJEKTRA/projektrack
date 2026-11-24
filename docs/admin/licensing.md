@@ -14,7 +14,7 @@ A license is refused if it was changed, is signed with an unknown or revoked key
 | State | Meaning |
 |---|---|
 | `active`, `pending_payment`, `grace` | Commercial features work. Grace follows the expiry, for the days the license names |
-| `read_only`, `not_yet_valid` | Commercial features can be viewed and exported. Their enforcement comes with S-0977 |
+| `read_only`, `not_yet_valid` | Commercial features can be viewed and exported, not changed |
 | `invalid` | The installed license was changed, or its key is not trusted any more: like `read_only`, with the reason in `license:show` and the log |
 
 The state is computed from the system clock. If the clock is more than 48 hours behind a time seen earlier, `license:show` warns and the log says so; nothing is locked. After a clock that ran wild into the future, clear it with `UPDATE instance_state SET latest_time = NULL`. Installations with several tenants set `DOCTOR_OPERATOR_TENANT`, so that a new license is recorded in that tenant's audit log.

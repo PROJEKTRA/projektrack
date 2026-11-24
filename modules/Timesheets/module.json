@@ -1,0 +1,71 @@
+{
+  "key": "timesheets",
+  "name_string": "timesheets:module_name",
+  "description_string": "timesheets:module_description",
+  "version": "1.0.0",
+  "core": "^0.9 || ^1.0",
+  "edition": "community",
+  "vendor": "projektra",
+  "requires": [
+    "core",
+    "crm",
+    "projects"
+  ],
+  "permissions": [
+    "timesheets.view",
+    "timesheets.book",
+    "timesheets.approve",
+    "timesheets.lock_period",
+    "timesheets.correct"
+  ],
+  "role_defaults": {
+    "admin": [
+      "timesheets.view",
+      "timesheets.book",
+      "timesheets.approve",
+      "timesheets.lock_period",
+      "timesheets.correct"
+    ],
+    "controller": [
+      "timesheets.view",
+      "timesheets.book",
+      "timesheets.approve",
+      "timesheets.lock_period",
+      "timesheets.correct"
+    ],
+    "project_lead": [
+      "timesheets.view",
+      "timesheets.book"
+    ],
+    "employee": [
+      "timesheets.view",
+      "timesheets.book"
+    ],
+    "external": [
+      "timesheets.view",
+      "timesheets.book"
+    ]
+  },
+  "project_role_defaults": {
+    "project_lead": [
+      "timesheets.approve"
+    ]
+  },
+  "settings_schema": "settings.schema.json",
+  "notifications": [
+    {
+      "type": "timesheets.rejected",
+      "label_string": "timesheets:notice.rejected_label"
+    }
+  ],
+  "api_scopes": [
+    {
+      "scope": "timesheets:read",
+      "label_string": "timesheets:scopes.read"
+    },
+    {
+      "scope": "timesheets:write",
+      "label_string": "timesheets:scopes.write"
+    }
+  ]
+}

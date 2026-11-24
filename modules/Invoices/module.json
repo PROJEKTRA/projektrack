@@ -1,0 +1,47 @@
+{
+  "key": "invoices",
+  "name_string": "invoices:module_name",
+  "description_string": "invoices:module_description",
+  "version": "1.0.0",
+  "core": "^0.9 || ^1.0",
+  "edition": "community",
+  "vendor": "projektra",
+  "requires": [
+    "core",
+    "crm",
+    "projects",
+    "timesheets",
+    "rates",
+    "service_reports"
+  ],
+  "permissions": [
+    "invoices.view",
+    "invoices.create",
+    "invoices.finalize",
+    "invoices.cancel",
+    "invoices.tax_override",
+    "invoices.payments.record",
+    "tax.legal_notice.override"
+  ],
+  "role_defaults": {
+    "admin": [
+      "invoices.view",
+      "invoices.create",
+      "invoices.finalize",
+      "invoices.cancel",
+      "invoices.tax_override",
+      "invoices.payments.record",
+      "tax.legal_notice.override"
+    ],
+    "controller": [
+      "invoices.view",
+      "invoices.create",
+      "invoices.finalize",
+      "invoices.cancel",
+      "invoices.tax_override",
+      "invoices.payments.record",
+      "tax.legal_notice.override"
+    ]
+  },
+  "settings_schema": "settings.schema.json"
+}

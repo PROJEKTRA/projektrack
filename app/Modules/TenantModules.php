@@ -7,6 +7,7 @@
 
 namespace App\Modules;
 
+use App\Licensing\EditionGate;
 use App\Models\TenantModule;
 use App\Models\User;
 use App\Tenancy\TenantContext;
@@ -69,10 +70,17 @@ final class TenantModules
      * Enable $key and everything it requires. Returns the modules switched on.
      *
      * @return list<string>
+     *
+     * @throws EditionNotLicensed
      */
     public function enable(string $key, ?User $actor = null): array
     {
         $plan = $this->enablePlan($key);
+        foreach ($plan as $module) {
+            if (! app(EditionGate::class)->allows($this->registry->get($module)->edition)) {
+                throw new EditionNotLicensed($module);
+            }
+        }
 
         /** @var list<string> $first */
         $first = DB::transaction(function () use ($plan, $actor): array {

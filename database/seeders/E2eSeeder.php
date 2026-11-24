@@ -12,8 +12,11 @@ use App\I18n\TenantLanguages;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Modules\TenantModules;
+use App\Settings\Settings;
 use App\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
+use Modules\Crm\Domain\Companies;
 use RuntimeException;
 
 /**
@@ -41,6 +44,10 @@ class E2eSeeder extends Seeder
         'bs' => ['email' => 'e2e-bs@example.test', 'secret' => 'JBSWY3DPEHPK3PXP', 'locale' => 'bs'],
         'ar' => ['email' => 'e2e-ar@example.test', 'secret' => 'GEZDGNBVGY3TQOJQ', 'locale' => 'ar'],
         'crawl' => ['email' => 'e2e-crawl@example.test', 'secret' => 'KRSXG5DDOJQXOZBA', 'locale' => 'bs'],
+        'crm' => ['email' => 'e2e-crm@example.test', 'secret' => 'MFRGGZDFMZTWQ2LK', 'locale' => 'bs'],
+        'projects' => ['email' => 'e2e-projects@example.test', 'secret' => 'NBSWY3DPEHPK3PXA', 'locale' => 'bs'],
+        'time' => ['email' => 'e2e-time@example.test', 'secret' => 'ONSWG4TFOQQHI33M', 'locale' => 'bs'],
+        'invoices' => ['email' => 'e2e-invoices@example.test', 'secret' => 'PFXXK4RAONSWG4TF', 'locale' => 'bs'],
     ];
 
     public function run(): void
@@ -60,6 +67,11 @@ class E2eSeeder extends Seeder
         app(TenantContext::class)->run($tenant, function (): void {
             $admin = Role::query()->where('key', Role::ADMIN)->firstOrFail();
             $users = [];
+            app(TenantModules::class)->enable('service_reports');
+            app(TenantModules::class)->enable('invoices');
+            app(TenantContext::class)->current()->update(['country_code' => 'BA', 'base_currency' => 'BAM']);
+            app(Settings::class)->save('invoices', ['legal_name' => 'E2E Company d.o.o.', 'street' => 'Testna 2', 'postal_code' => '72270', 'city' => 'Travnik', 'tax_number' => '4000000000000', 'vat_id' => '123456789012', 'vat_status' => 'registered', 'bank' => null, 'iban' => null, 'bic' => null, 'contact' => null, 'contact_name' => null, 'contact_phone' => null, 'contact_email' => null, 'legal_texts_confirmed' => true], User::factory()->create(['email' => 'e2e-settings@example.test']));
+            app(Companies::class)->create(['company' => ['name' => 'E2E Customer GmbH', 'kind' => 'customer', 'document_locale' => 'en', 'currency' => 'BAM', 'payment_days' => 14, 'einvoice_format' => 'pdf'], 'tax' => ['tax_status' => 'domestic', 'country_code' => 'BA', 'tax_number' => '4200000000000'], 'address' => ['line1' => 'Testna 1', 'city' => 'Travnik', 'postal_code' => '72270', 'country_code' => 'BA']], User::factory()->create(['email' => 'e2e-seed@example.test']));
 
             foreach (self::USERS as $key => $user) {
                 $users[$key] = User::factory()->create([

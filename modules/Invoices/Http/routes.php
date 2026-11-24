@@ -1,0 +1,32 @@
+<?php
+
+/*
+ * Copyright (c) PROJEKTRA IT SAVJETOVANJE d.o.o. Travnik (PROJEKTRA IT Consulting), projektra.net
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+use Illuminate\Auth\Middleware\RequirePassword;
+use Illuminate\Support\Facades\Route;
+use Modules\Invoices\Http\InvoiceController;
+
+// Invoices (S-0961 to S-0966).
+Route::middleware(['web', 'auth', 'verified', 'module:invoices', 'permission:invoices.view'])->prefix('invoices')->name('invoices.')->controller(InvoiceController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::post('/', 'store')->middleware('permission:invoices.create')->name('store');
+    Route::post('from-time', 'fromTime')->middleware('permission:invoices.create')->name('from_time');
+    Route::prefix('{invoice}')->whereUlid('invoice')->group(function () {
+        Route::get('/', 'show')->name('show');
+        Route::put('/', 'update')->middleware('permission:invoices.create')->name('update');
+        Route::delete('/', 'discard')->middleware('permission:invoices.create')->name('discard');
+        Route::get('pdf', 'pdf')->middleware('throttle:60,1')->name('pdf');
+        Route::get('confirm', 'confirm')->middleware(RequirePassword::class)->name('confirm');
+        Route::get('xml', 'xml')->middleware('throttle:60,1')->name('xml');
+        Route::post('finalize', 'finalize')->middleware(['permission:invoices.finalize', RequirePassword::class])->name('finalize');
+        Route::post('cancel', 'cancel')->middleware(['permission:invoices.cancel', RequirePassword::class])->name('cancel');
+        Route::post('credit', 'credit')->middleware(['permission:invoices.cancel', RequirePassword::class])->name('credit');
+        Route::put('tax-case', 'taxCase')->middleware('permission:invoices.tax_override')->name('tax_case');
+        Route::post('payments', 'pay')->middleware('permission:invoices.payments.record')->name('pay');
+        Route::post('send', 'send')->middleware(['permission:invoices.finalize', 'throttle:20,1'])->name('send');
+        Route::put('fiscal-reference', 'fiscal')->middleware(['permission:invoices.finalize', RequirePassword::class])->name('fiscal');
+    });
+});
