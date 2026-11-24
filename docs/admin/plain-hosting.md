@@ -73,7 +73,7 @@ Everything in it is synthetic; nobody can sign in as a sample person, and no inv
 | Area | State |
 |---|---|
 | Password setup, sign-in, two-factor, sessions, profile | ready |
-| Languages and own wording (bs, en), right to left | ready |
+| Languages and own wording (bs, en, de), right to left | ready |
 | Brand, settings, light and dark mode | ready |
 | License screen (works without a license as Community) | ready |
 | System check, audit log, notifications, API tokens | ready |
